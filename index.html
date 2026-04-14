@@ -1068,6 +1068,37 @@ function saveClient(){
 
 document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
 
+// localStorage save & load
+function saveData(){
+  localStorage.setItem('cvt_clients', JSON.stringify(clients));
+  localStorage.setItem('cvt_phone', JSON.stringify(phoneData));
+  localStorage.setItem('cvt_tbr', JSON.stringify(tbrData));
+  localStorage.setItem('cvt_reviews', JSON.stringify(reviewData));
+  localStorage.setItem('cvt_nextId', nextId);
+}
+
+function loadData(){
+  try {
+    const c = localStorage.getItem('cvt_clients');
+    const p = localStorage.getItem('cvt_phone');
+    const t = localStorage.getItem('cvt_tbr');
+    const r = localStorage.getItem('cvt_reviews');
+    const n = localStorage.getItem('cvt_nextId');
+    if(c) clients = JSON.parse(c);
+    if(p) Object.assign(phoneData, JSON.parse(p));
+    if(t) Object.assign(tbrData, JSON.parse(t));
+    if(r) Object.assign(reviewData, JSON.parse(r));
+    if(n) nextId = parseInt(n);
+  } catch(e){ console.log('Could not load saved data', e); }
+}
+
+const _origSaveClient = saveClient;
+saveClient = function(){
+  _origSaveClient();
+  saveData();
+};
+
+loadData();
 updateFilterOptions();
 render();
 </script>
