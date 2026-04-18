@@ -242,7 +242,6 @@
     display: flex;
     gap: 1px;
     background: var(--border);
-    border-bottom: 1px solid var(--border);
   }
 
   .stat-cell {
@@ -290,6 +289,8 @@
 
   thead {
     background: var(--surface2);
+    position: relative;
+    z-index: 1;
   }
 
   th {
