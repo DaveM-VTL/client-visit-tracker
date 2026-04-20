@@ -391,16 +391,20 @@
   td.td-edit, th.th-edit {
     position: sticky;
     right: 0;
-    background: inherit;
     z-index: 1;
+    background: var(--surface);
+  }
+
+  th.th-edit {
+    background: var(--surface2);
   }
 
   tr.has-color td.td-edit {
-    background-color: color-mix(in srgb, var(--client-color, transparent) 8%, var(--surface));
+    background: color-mix(in srgb, var(--client-color, transparent) 8%, var(--surface));
   }
 
   tr.has-color:hover td.td-edit {
-    background-color: color-mix(in srgb, var(--client-color, transparent) 16%, var(--surface));
+    background: color-mix(in srgb, var(--client-color, transparent) 16%, var(--surface));
   }
 
   /* ── Client color — full row tint ── */
@@ -1168,7 +1172,7 @@ function fmt(d){
   const [y,m,day] = d.split('-').map(Number);
   return new Date(y, m-1, day).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
 }
-function addDays(d,n){const r=new Date(d);r.setDate(r.getDate()+n);return r}
+function addDays(d,n){const r=parseDate(d);r.setDate(r.getDate()+n);return r}
 
 // ── Client colors ──
 const COLOR_PALETTE = [
@@ -1365,7 +1369,7 @@ let nextId=56, currentTab='inperson', editingId=null;
 
 function getIPStatus(c){
   if(!c.lastVisit)return{label:'Not yet visited',cls:'not-visited',days:null,nextDue:null};
-  const next=addDays(new Date(c.lastVisit),182);
+  const next=addDays(c.lastVisit,182);
   const d=daysFrom(next);
   if(d<0)return{label:'Overdue',cls:'overdue',days:d,nextDue:next};
   if(d<=30)return{label:'Due soon',cls:'due-soon',days:d,nextDue:next};
