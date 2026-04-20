@@ -402,7 +402,54 @@
     top: -1px;
   }
 
-  /* ── Inline notes textarea ── */
+  /* ── Client name popup ── */
+  .client-name-wrap {
+    position: relative;
+    display: inline-block;
+  }
+
+  .client-name-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    font-weight: 500;
+    color: var(--text);
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .client-name-btn:hover { text-decoration: underline; text-decoration-style: dotted; }
+
+  .client-popup {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 50;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    padding: 10px 14px;
+    white-space: nowrap;
+    font-size: 12px;
+    font-family: var(--mono);
+    color: var(--text-muted);
+    min-width: 180px;
+    line-height: 1.6;
+  }
+
+  .client-popup.open { display: block; }
+
+  .client-popup strong {
+    display: block;
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
   .note-inline {
     width: 100%;
     min-width: 160px;
@@ -1179,11 +1226,40 @@ function toggleNote(id){
   if(el) el.style.display = el.style.display === 'block' ? 'none' : 'block';
 }
 
+function toggleClientPopup(el){
+  const popup = el.nextElementSibling;
+  const isOpen = popup.classList.contains('open');
+  // close all open popups first
+  document.querySelectorAll('.client-popup.open').forEach(p => p.classList.remove('open'));
+  if(!isOpen) popup.classList.add('open');
+}
+
+document.addEventListener('click', function(e){
+  if(!e.target.closest('.client-name-wrap')){
+    document.querySelectorAll('.client-popup.open').forEach(p => p.classList.remove('open'));
+  }
+});
+
 async function saveNote(name, value){
   notesData[name] = value;
   try {
     await sbUpsert('notes', { name, note: value });
   } catch(e){ console.error('Note save failed', e); }
+}
+
+function nameCell(c){
+  const color = getClientColor(c.name);
+  const addr = [c.address, c.city].filter(Boolean).join(', ') || 'No address on file';
+  const nameSafe = c.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+  return `<span class="client-name-wrap">
+    <button class="client-name-btn" onclick="toggleClientPopup(this)">
+      <span class="client-dot" style="background:${color}"></span>${c.name}
+    </button>
+    <div class="client-popup">
+      <strong>${c.name}</strong>
+      ${addr}
+    </div>
+  </span>`;
 }
 
 function badge(cls,label){return`<span class="badge badge-${cls}">${label}</span>`;}
@@ -1223,7 +1299,7 @@ function render(){
       const ds=st.days!==null?(st.days<0?`${Math.abs(st.days)} days ago`:`${st.days} days`):'—';
       const color=getClientColor(c.name);
       const note=notesData[c.name]||'';
-      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name"><span class="client-dot" style="background:${color}"></span>${c.name}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(c.lastVisit)}</td><td class="td-date">${st.nextDue?fmt(st.nextDue):'—'}</td><td class="td-days">${ds}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td><td><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
+      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(c.lastVisit)}</td><td class="td-date">${st.nextDue?fmt(st.nextDue):'—'}</td><td class="td-days">${ds}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td><td><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
     });
     html+='</tbody></table>';
   } else if(currentTab==='phone'){
@@ -1232,7 +1308,7 @@ function render(){
       const p=phoneData[c.name]||{};const st=getPhoneStatus(c);
       const color=getClientColor(c.name);
       const note=notesData[c.name]||'';
-      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name"><span class="client-dot" style="background:${color}"></span>${c.name}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(p.ph1)}</td><td class="td-date">${fmt(p.ph2)}</td><td class="td-date">${fmt(p.ph1c)}</td><td class="td-date">${fmt(p.ph2c)}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td><td><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
+      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(p.ph1)}</td><td class="td-date">${fmt(p.ph2)}</td><td class="td-date">${fmt(p.ph1c)}</td><td class="td-date">${fmt(p.ph2c)}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td><td><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
     });
     html+='</tbody></table>';
   } else if(currentTab==='tbr'){
@@ -1241,7 +1317,7 @@ function render(){
       const t=tbrData[c.name]||{};const st=getTBRStatus(c);
       const color=getClientColor(c.name);
       const note=notesData[c.name]||'';
-      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name"><span class="client-dot" style="background:${color}"></span>${c.name}</td><td class="td-city">${c.city}</td><td class="td-date">${t.twice||'No'}</td><td class="td-date">${fmt(t.tbr1)}</td><td class="td-date">${fmt(t.tbr1c)}</td><td class="td-date">${fmt(t.tbr2)}</td><td class="td-date">${fmt(t.tbr2c)}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td><td><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
+      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${t.twice||'No'}</td><td class="td-date">${fmt(t.tbr1)}</td><td class="td-date">${fmt(t.tbr1c)}</td><td class="td-date">${fmt(t.tbr2)}</td><td class="td-date">${fmt(t.tbr2c)}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td><td><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
     });
     html+='</tbody></table>';
   } else {
@@ -1250,7 +1326,7 @@ function render(){
       const r=reviewData[c.name]||{};const st=getReviewStatus(c);
       const color=getClientColor(c.name);
       const note=notesData[c.name]||'';
-      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name"><span class="client-dot" style="background:${color}"></span>${c.name}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(r.sent)}</td><td>${r.person||'—'}</td><td class="td-date">${fmt(r.reviewed)}</td><td>${r.reviewer||'—'}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td><td><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
+      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(r.sent)}</td><td>${r.person||'—'}</td><td class="td-date">${fmt(r.reviewed)}</td><td>${r.reviewer||'—'}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td><td><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
     });
     html+='</tbody></table>';
   }
