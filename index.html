@@ -318,7 +318,7 @@
   td:first-child { padding-left: 32px; }
   td:last-child { padding-right: 32px; }
 
-  tr:hover td { background: var(--surface2); }
+  tr:not(.has-color):hover td { background: var(--surface2); }
 
   .td-num {
     font-family: var(--mono);
@@ -382,10 +382,13 @@
 
   .edit-btn:hover { border-color: var(--text-muted); color: var(--text); }
 
-  /* ── Client color stripe ── */
-  tr.has-color td:first-child {
-    border-left: 3px solid var(--client-color, transparent);
-    padding-left: 29px;
+  /* ── Client color — full row tint ── */
+  tr.has-color td {
+    background-color: color-mix(in srgb, var(--client-color, transparent) 8%, var(--surface));
+  }
+
+  tr.has-color:hover td {
+    background-color: color-mix(in srgb, var(--client-color, transparent) 16%, var(--surface));
   }
 
   .client-dot {
