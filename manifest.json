@@ -1,0 +1,22 @@
+{
+  "name": "Client Visit Tracker",
+  "short_name": "CVT",
+  "description": "Valley Techlogic client visit tracker",
+  "start_url": "/client-visit-tracker/",
+  "display": "standalone",
+  "background_color": "#f5f3ee",
+  "theme_color": "#1a1814",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
