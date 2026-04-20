@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Client Visit Tracker</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -136,6 +136,7 @@
   .dot-ph { background: #6ab0d4; }
   .dot-tbr { background: #d4a96a; }
   .dot-rev { background: #c47eb5; }
+  .dot-rep { background: #7ab8d4; }
 
   .nav-count {
     margin-left: auto;
@@ -386,22 +387,6 @@
   }
 
   .edit-btn:hover { border-color: var(--text-muted); color: var(--text); }
-
-  /* sticky edit column */
-  td.td-edit, th.th-edit {
-    position: sticky;
-    right: 0;
-    z-index: 1;
-    background: var(--surface);
-    box-shadow: -2px 0 4px rgba(0,0,0,0.04);
-  }
-  th.th-edit { background: var(--surface2); }
-  tr.has-color td.td-edit {
-    background: color-mix(in srgb, var(--client-color, transparent) 8%, var(--surface));
-  }
-  tr.has-color:hover td.td-edit {
-    background: color-mix(in srgb, var(--client-color, transparent) 16%, var(--surface));
-  }
 
   /* ── Client color — full row tint ── */
   tr.has-color td {
@@ -736,39 +721,10 @@
     /* hide table, show cards */
     .table-wrap table { display: none; }
 
-    /* modal — proper bottom sheet with safe area */
+    /* modal */
     .field-grid { grid-template-columns: 1fr; }
+    .modal { max-width: 100%; border-radius: 12px 12px 0 0; }
     .modal-bg { align-items: flex-end; padding: 0; }
-    .modal {
-      max-width: 100%;
-      border-radius: 16px 16px 0 0;
-      max-height: 85vh;
-      display: flex;
-      flex-direction: column;
-    }
-    .modal-body {
-      flex: 1;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
-    }
-    .modal-footer {
-      position: static;
-      flex-direction: column-reverse;
-      padding: 12px 16px;
-      padding-bottom: max(24px, env(safe-area-inset-bottom, 24px));
-      gap: 8px;
-    }
-    .modal-footer .btn-save {
-      width: 100%;
-      padding: 14px;
-      font-size: 15px;
-    }
-    .modal-footer .btn-cancel {
-      width: 100%;
-      padding: 11px;
-      font-size: 14px;
-      text-align: center;
-    }
   }
 
   /* ── Client cards (mobile) ── */
@@ -1062,6 +1018,11 @@
         Google reviews
         <span class="nav-count" id="cnt-rev">—</span>
       </button>
+      <button class="nav-item" onclick="switchTab('reports',this)">
+        <span class="nav-dot dot-rep"></span>
+        Reports
+        <span class="nav-count" id="cnt-rep">—</span>
+      </button>
     </nav>
     <div class="sidebar-footer" style="display:flex;flex-direction:column;gap:10px;align-items:flex-start;">
       <button class="logout-btn" onclick="doLogout()">Sign out</button>
@@ -1144,6 +1105,12 @@
         </div>
       </div>
       <div class="modal-section">
+        <div class="section-label">Monthly report</div>
+        <div class="field-grid">
+          <div class="field"><label>Last report sent</label><input id="f-rep-sent" type="date"></div>
+        </div>
+      </div>
+      <div class="modal-section">
         <div class="section-label">Notes</div>
         <div class="field-grid">
           <div class="field full"><label>Notes</label><textarea id="f-notes" placeholder="Any notes about this client…"></textarea></div>
@@ -1158,34 +1125,21 @@
 </div>
 
 <script>
-// ── Date helpers ──
 const TODAY = new Date(); TODAY.setHours(0,0,0,0);
-
-function parseDate(d){
-  if(!d) return null;
-  if(d instanceof Date) return d;
-  const s = String(d).split('T')[0];
-  const p = s.split('-').map(Number);
-  if(p.length !== 3 || isNaN(p[0])) return null;
-  return new Date(p[0], p[1]-1, p[2]);
-}
+function daysFrom(d){ const dt = d instanceof Date ? d : parseDate(d); if(!dt) return null; return Math.round((dt-TODAY)/86400000); }
 function fmt(d){
   if(!d) return '—';
-  const dt = parseDate(d);
-  if(!dt) return '—';
-  return dt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  const s = typeof d === 'string' ? d.split('T')[0] : d;
+  const [y,m,day] = s.split('-').map(Number);
+  return new Date(y,m-1,day).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
 }
-function addDays(d,n){
-  const r = parseDate(d);
-  if(!r) return null;
-  r.setDate(r.getDate()+n);
-  return r;
+function parseDate(d){
+  if(!d) return null;
+  const s = typeof d === 'string' ? d.split('T')[0] : d;
+  const [y,m,day] = s.split('-').map(Number);
+  return new Date(y,m-1,day);
 }
-function daysFrom(d){
-  const dt = parseDate(d);
-  if(!dt) return null;
-  return Math.round((dt-TODAY)/86400000);
-}
+function addDays(d,n){const r=parseDate(d);r.setDate(r.getDate()+n);return r}
 
 // ── Client colors ──
 const COLOR_PALETTE = [
@@ -1194,15 +1148,21 @@ const COLOR_PALETTE = [
   '#c2855a','#5aac8a','#b56db8','#7aa8d4','#c98e44',
   '#e0736b','#58b09c','#8f7ecb','#d4a05a','#6aab78'
 ];
-const clientColors = {};
+const clientColors = {}; // name -> hex color
 let colorIndex = 0;
+
 function getClientColor(name){
-  if(!clientColors[name]){ clientColors[name] = COLOR_PALETTE[colorIndex % COLOR_PALETTE.length]; colorIndex++; }
+  if(!clientColors[name]){
+    clientColors[name] = COLOR_PALETTE[colorIndex % COLOR_PALETTE.length];
+    colorIndex++;
+  }
   return clientColors[name];
 }
 
-// ── Data ──
+// ── Notes ──
 const notesData = {};
+
+const reportData = {}; // name -> { lastSent: 'YYYY-MM-DD' } // name -> string
 
 const phoneData = {
   'Alia Corp':{ph1:'2026-02-10',ph2:'2026-03-31',ph1c:null,ph2c:null},
@@ -1376,56 +1336,57 @@ let clients = [
 
 let nextId=56, currentTab='inperson', editingId=null;
 
-// ── Status functions ──
 function getIPStatus(c){
-  if(!c.lastVisit) return {label:'Not yet visited',cls:'not-visited',days:null,nextDue:null};
-  const next = addDays(c.lastVisit, 182);
-  const d = daysFrom(next);
-  if(d<0) return {label:'Overdue',cls:'overdue',days:d,nextDue:next};
-  if(d<=30) return {label:'Due soon',cls:'due-soon',days:d,nextDue:next};
-  return {label:'On track',cls:'on-track',days:d,nextDue:next};
+  if(!c.lastVisit)return{label:'Not yet visited',cls:'not-visited',days:null,nextDue:null};
+  const next=addDays(new Date(c.lastVisit),182);
+  const d=daysFrom(next);
+  if(d<0)return{label:'Overdue',cls:'overdue',days:d,nextDue:next};
+  if(d<=30)return{label:'Due soon',cls:'due-soon',days:d,nextDue:next};
+  return{label:'On track',cls:'on-track',days:d,nextDue:next};
 }
 function getPhoneStatus(c){
   const p=phoneData[c.name]||{};
-  if(!p.ph1&&!p.ph2) return {label:'Not scheduled',cls:'not-scheduled'};
-  if(p.ph1c&&p.ph2c) return {label:'Completed',cls:'completed'};
-  if(p.ph1c){
-    if(p.ph2){ const d=daysFrom(p.ph2); return d<0?{label:'Visit 2 overdue',cls:'overdue'}:{label:'Visit 2 pending',cls:'pending'}; }
-    return {label:'Visit 1 done',cls:'on-track'};
-  }
-  if(p.ph1){ const d=daysFrom(p.ph1); return d<0?{label:'Visit 1 overdue',cls:'overdue'}:{label:'Visit 1 pending',cls:'pending'}; }
-  return {label:'Not scheduled',cls:'not-scheduled'};
+  if(!p.ph1&&!p.ph2)return{label:'Not scheduled',cls:'not-scheduled'};
+  if(p.ph1c&&p.ph2c)return{label:'Completed',cls:'completed'};
+  if(p.ph1c){if(p.ph2){const d=daysFrom(new Date(p.ph2));return d<0?{label:'Visit 2 overdue',cls:'overdue'}:{label:'Visit 2 pending',cls:'pending'};}return{label:'Visit 1 done',cls:'on-track'};}
+  if(p.ph1){const d=daysFrom(new Date(p.ph1));return d<0?{label:'Visit 1 overdue',cls:'overdue'}:{label:'Visit 1 pending',cls:'pending'};}
+  return{label:'Not scheduled',cls:'not-scheduled'};
 }
 function getTBRStatus(c){
   const t=tbrData[c.name];
-  if(!t||!t.tbr1) return {label:'Not scheduled',cls:'not-scheduled'};
+  if(!t||!t.tbr1)return{label:'Not scheduled',cls:'not-scheduled'};
   if(t.twice==='Yes'){
-    if(t.tbr1c&&t.tbr2c) return {label:'Completed',cls:'completed'};
-    if(t.tbr1c){
-      if(t.tbr2){ const d=daysFrom(t.tbr2); return d<0?{label:'Visit 2 overdue',cls:'overdue'}:{label:'Visit 2 pending',cls:'pending'}; }
-      return {label:'Visit 1 done',cls:'on-track'};
-    }
-    const d=daysFrom(t.tbr1); return d<0?{label:'Visit 1 overdue',cls:'overdue'}:{label:'Visit 1 pending',cls:'pending'};
+    if(t.tbr1c&&t.tbr2c)return{label:'Completed',cls:'completed'};
+    if(t.tbr1c){if(t.tbr2){const d=daysFrom(new Date(t.tbr2));return d<0?{label:'Visit 2 overdue',cls:'overdue'}:{label:'Visit 2 pending',cls:'pending'};}return{label:'Visit 1 done',cls:'on-track'};}
+    const d=daysFrom(new Date(t.tbr1));return d<0?{label:'Visit 1 overdue',cls:'overdue'}:{label:'Visit 1 pending',cls:'pending'};
   }
-  if(t.tbr1c) return {label:'Completed',cls:'completed'};
-  const d=daysFrom(t.tbr1); return d<0?{label:'Overdue',cls:'overdue'}:{label:'Pending',cls:'pending'};
+  if(t.tbr1c)return{label:'Completed',cls:'completed'};
+  const d=daysFrom(new Date(t.tbr1));return d<0?{label:'Overdue',cls:'overdue'}:{label:'Pending',cls:'pending'};
 }
 function getReviewStatus(c){
   const r=reviewData[c.name];
-  if(!r||!r.sent) return {label:'Not sent',cls:'not-sent'};
-  if(r.reviewed) return {label:'Reviewed',cls:'reviewed'};
-  return {label:'Awaiting review',cls:'sent'};
+  if(!r||!r.sent)return{label:'Not sent',cls:'not-sent'};
+  if(r.reviewed)return{label:'Reviewed',cls:'reviewed'};
+  return{label:'Awaiting review',cls:'sent'};
+}
+function getReportStatus(c){
+  const r=reportData[c.name];
+  if(!r||!r.lastSent) return {label:'Never sent',cls:'not-sent'};
+  const d = daysFrom(r.lastSent);
+  if(d <= -28) return {label:'Overdue',cls:'overdue'};
+  if(d <= -14) return {label:'Due soon',cls:'due-soon'};
+  return {label:'Sent this month',cls:'on-track'};
 }
 
-// ── Filter/tab config ──
 const filterOptions={
   inperson:['all','overdue','due-soon','on-track','not-visited'],
   phone:['all','overdue','pending','completed','not-scheduled'],
   tbr:['all','overdue','pending','completed','not-scheduled'],
   reviews:['all','reviewed','sent','not-sent'],
+  reports:['all','overdue','due-soon','on-track','not-sent'],
 };
 const filterLabels={all:'All statuses',overdue:'Overdue','due-soon':'Due soon','on-track':'On track','not-visited':'Not yet visited',pending:'Pending',completed:'Completed','not-scheduled':'Not scheduled',reviewed:'Reviewed',sent:'Awaiting review','not-sent':'Not sent'};
-const tabTitles={inperson:'In-person visits',phone:'Phone visits',tbr:'TBRs',reviews:'Google reviews'};
+const tabTitles={inperson:'In-person visits',phone:'Phone visits',tbr:'TBRs',reviews:'Google reviews',reports:'Reports'};
 
 function updateFilterOptions(){
   const sel=document.getElementById('filter');
@@ -1434,13 +1395,15 @@ function updateFilterOptions(){
 
 function updateSidebarCounts(){
   const ipOverdue=clients.filter(c=>getIPStatus(c).cls==='overdue').length;
-  const phOverdue=clients.filter(c=>['overdue'].includes(getPhoneStatus(c).cls)).length;
+  const phOverdue=clients.filter(c=>getPhoneStatus(c).cls==='overdue').length;
   const tbrPending=clients.filter(c=>['overdue','pending'].includes(getTBRStatus(c).cls)).length;
   const revPending=clients.filter(c=>getReviewStatus(c).cls==='sent').length;
+  const repDue=clients.filter(c=>['overdue','due-soon','not-sent'].includes(getReportStatus(c).cls)).length;
   document.getElementById('cnt-ip').textContent=ipOverdue>0?ipOverdue+'↑':clients.length;
   document.getElementById('cnt-ph').textContent=phOverdue>0?phOverdue+'↑':clients.length;
   document.getElementById('cnt-tbr').textContent=tbrPending>0?tbrPending:'—';
   document.getElementById('cnt-rev').textContent=revPending>0?revPending+'↑':'—';
+  document.getElementById('cnt-rep').textContent=repDue>0?repDue+'↑':'—';
 }
 
 function renderStats(){
@@ -1479,188 +1442,244 @@ function renderStats(){
           <div class="stat-cell"><div class="stat-num num-warning">${pend}</div><div class="stat-lbl">Pending / overdue</div></div>
           <div class="stat-cell"><div class="stat-num">${ns}</div><div class="stat-lbl">Not scheduled</div></div>
           <div class="stat-cell"><div class="stat-num num-info">${clients.length}</div><div class="stat-lbl">Total clients</div></div>`;
+  } else if(currentTab==='reports'){
+    const sent=clients.filter(c=>getReportStatus(c).cls==='on-track').length;
+    const due=clients.filter(c=>getReportStatus(c).cls==='due-soon').length;
+    const overdue=clients.filter(c=>getReportStatus(c).cls==='overdue').length;
+    const never=clients.filter(c=>getReportStatus(c).cls==='not-sent').length;
+    html=`<div class="stat-cell"><div class="stat-num num-success">${sent}</div><div class="stat-lbl">Sent this month</div></div>
+          <div class="stat-cell"><div class="stat-num num-warning">${due}</div><div class="stat-lbl">Due soon</div></div>
+          <div class="stat-cell"><div class="stat-num num-danger">${overdue}</div><div class="stat-lbl">Overdue</div></div>
+          <div class="stat-cell"><div class="stat-num">${never}</div><div class="stat-lbl">Never sent</div></div>`;
   }
   document.getElementById('stats-bar').innerHTML=html;
 }
 
-// ── UI helpers ──
-function badge(cls,label){ return `<span class="badge badge-${cls}">${label}</span>`; }
+function renderNote(name, note){
+  const escaped = (note||'').replace(/"/g,'&quot;');
+  return `<textarea
+    class="note-inline"
+    placeholder="Add a note…"
+    onblur="saveNote('${name.replace(/'/g,"\\'")}', this.value)"
+  >${escaped}</textarea>`;
+}
 
-function renderNote(name,note){
-  const escaped=(note||'').replace(/"/g,'&quot;');
-  return `<textarea class="note-inline" placeholder="Add a note…" onblur="saveNote('${name.replace(/'/g,"\'")}',this.value)">${escaped}</textarea>`;
+function toggleNote(id){
+  const el = document.getElementById(id);
+  if(el) el.style.display = el.style.display === 'block' ? 'none' : 'block';
+}
+
+function toggleClientPopup(el){
+  const popup = el.nextElementSibling;
+  const isOpen = popup.classList.contains('open');
+  // close all open popups first
+  document.querySelectorAll('.client-popup.open').forEach(p => p.classList.remove('open'));
+  if(!isOpen) popup.classList.add('open');
+}
+
+document.addEventListener('click', function(e){
+  if(!e.target.closest('.client-name-wrap')){
+    document.querySelectorAll('.client-popup.open').forEach(p => p.classList.remove('open'));
+  }
+});
+
+async function saveNote(name, value){
+  notesData[name] = value;
+  try {
+    await sbUpsert('notes', { name, note: value });
+  } catch(e){ console.error('Note save failed', e); }
 }
 
 function nameCell(c){
-  const color=getClientColor(c.name);
-  const addr=[c.address,c.city].filter(Boolean).join(', ')||'No address on file';
+  const color = getClientColor(c.name);
+  const addr = [c.address, c.city].filter(Boolean).join(', ') || 'No address on file';
+  const nameSafe = c.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
   return `<span class="client-name-wrap">
     <button class="client-name-btn" onclick="toggleClientPopup(this)">
       <span class="client-dot" style="background:${color}"></span>${c.name}
     </button>
-    <div class="client-popup"><strong>${c.name}</strong>${addr}</div>
+    <div class="client-popup">
+      <strong>${c.name}</strong>
+      ${addr}
+    </div>
   </span>`;
 }
 
-function toggleClientPopup(el){
-  const popup=el.nextElementSibling;
-  const isOpen=popup.classList.contains('open');
-  document.querySelectorAll('.client-popup.open').forEach(p=>p.classList.remove('open'));
-  if(!isOpen) popup.classList.add('open');
-}
+function isMobile(){ return window.innerWidth <= 768; }
 
-document.addEventListener('click',function(e){
-  if(!e.target.closest('.client-name-wrap'))
-    document.querySelectorAll('.client-popup.open').forEach(p=>p.classList.remove('open'));
-});
-
-async function saveNote(name,value){
-  notesData[name]=value;
-  try { await sbUpsert('notes',{name,note:value}); } catch(e){ console.error('Note save failed',e); }
-}
-
-// ── Mobile/desktop ──
-function isMobile(){ return window.innerWidth <= 600; }
-window.addEventListener('resize',()=>render());
-
-// ── Cards (mobile) ──
 function renderCards(rows){
-  const wrap=document.getElementById('cards-wrap');
-  if(!rows.length){
-    wrap.innerHTML='<p style="text-align:center;padding:40px;font-family:var(--mono);font-size:12px;color:var(--text-muted)">No clients match your search.</p>';
-    return;
-  }
-  wrap.innerHTML=rows.map(c=>{
-    const color=getClientColor(c.name);
-    const note=notesData[c.name]||'';
-    const noteEsc=note.replace(/"/g,'&quot;');
-    let summary='',details='',st;
+  const wrap = document.getElementById('cards-wrap');
+  if(!rows.length){ wrap.innerHTML='<p style="text-align:center;padding:40px;font-family:var(--mono);font-size:12px;color:var(--text-muted)">No clients match your search.</p>'; return; }
+
+  wrap.innerHTML = rows.map(c => {
+    const color = getClientColor(c.name);
+    const note = notesData[c.name]||'';
+    const noteEsc = note.replace(/"/g,'&quot;');
+    let summary = '', details = '';
+
     if(currentTab==='inperson'){
-      st=getIPStatus(c);
-      summary=`<div class="card-due">Next due: ${st.nextDue?fmt(st.nextDue):'—'}</div>`;
-      details=`<div class="card-detail-row"><span class="card-detail-label">Last visit</span><span class="card-detail-val">${fmt(c.lastVisit)}</span></div>
-               <div class="card-detail-row"><span class="card-detail-label">Address</span><span class="card-detail-val">${[c.address,c.city].filter(Boolean).join(', ')||'—'}</span></div>`;
+      const st = getIPStatus(c);
+      const due = st.nextDue ? fmt(st.nextDue) : '—';
+      summary = `<div class="card-due">Next due: ${due}</div>`;
+      details = `
+        <div class="card-detail-row"><span class="card-detail-label">Last visit</span><span class="card-detail-val">${fmt(c.lastVisit)}</span></div>
+        <div class="card-detail-row"><span class="card-detail-label">Second visit</span><span class="card-detail-val">${fmt(c.lastVisit2)}</span></div>
+        <div class="card-detail-row"><span class="card-detail-label">Address</span><span class="card-detail-val">${[c.address,c.city].filter(Boolean).join(', ')||'—'}</span></div>`;
+      return cardHTML(c, color, st, summary, details, note, noteEsc);
     } else if(currentTab==='phone'){
-      const p=phoneData[c.name]||{};
-      st=getPhoneStatus(c);
-      summary=`<div class="card-due">Next call: ${p.ph1c?fmt(p.ph2):fmt(p.ph1)||'—'}</div>`;
-      details=`<div class="card-detail-row"><span class="card-detail-label">Visit 1 sched</span><span class="card-detail-val">${fmt(p.ph1)}</span></div>
-               <div class="card-detail-row"><span class="card-detail-label">Visit 1 done</span><span class="card-detail-val">${fmt(p.ph1c)}</span></div>
-               <div class="card-detail-row"><span class="card-detail-label">Visit 2 sched</span><span class="card-detail-val">${fmt(p.ph2)}</span></div>
-               <div class="card-detail-row"><span class="card-detail-label">Visit 2 done</span><span class="card-detail-val">${fmt(p.ph2c)}</span></div>`;
+      const p = phoneData[c.name]||{};
+      const st = getPhoneStatus(c);
+      const nextUp = p.ph1c ? fmt(p.ph2) : fmt(p.ph1);
+      summary = `<div class="card-due">Next call: ${nextUp||'—'}</div>`;
+      details = `
+        <div class="card-detail-row"><span class="card-detail-label">Visit 1 scheduled</span><span class="card-detail-val">${fmt(p.ph1)}</span></div>
+        <div class="card-detail-row"><span class="card-detail-label">Visit 1 done</span><span class="card-detail-val">${fmt(p.ph1c)}</span></div>
+        <div class="card-detail-row"><span class="card-detail-label">Visit 2 scheduled</span><span class="card-detail-val">${fmt(p.ph2)}</span></div>
+        <div class="card-detail-row"><span class="card-detail-label">Visit 2 done</span><span class="card-detail-val">${fmt(p.ph2c)}</span></div>`;
+      return cardHTML(c, color, st, summary, details, note, noteEsc);
     } else if(currentTab==='tbr'){
-      const t=tbrData[c.name]||{};
-      st=getTBRStatus(c);
-      summary=`<div class="card-due">Next TBR: ${t.tbr1c?fmt(t.tbr2):fmt(t.tbr1)||'—'}</div>`;
-      details=`<div class="card-detail-row"><span class="card-detail-label">2x/year</span><span class="card-detail-val">${t.twice||'No'}</span></div>
-               <div class="card-detail-row"><span class="card-detail-label">Visit 1 sched</span><span class="card-detail-val">${fmt(t.tbr1)}</span></div>
-               <div class="card-detail-row"><span class="card-detail-label">Visit 1 done</span><span class="card-detail-val">${fmt(t.tbr1c)}</span></div>`;
+      const t = tbrData[c.name]||{};
+      const st = getTBRStatus(c);
+      const nextUp = t.tbr1c ? fmt(t.tbr2) : fmt(t.tbr1);
+      summary = `<div class="card-due">Next TBR: ${nextUp||'—'}</div>`;
+      details = `
+        <div class="card-detail-row"><span class="card-detail-label">Twice/year</span><span class="card-detail-val">${t.twice||'No'}</span></div>
+        <div class="card-detail-row"><span class="card-detail-label">Visit 1 scheduled</span><span class="card-detail-val">${fmt(t.tbr1)}</span></div>
+        <div class="card-detail-row"><span class="card-detail-label">Visit 1 done</span><span class="card-detail-val">${fmt(t.tbr1c)}</span></div>
+        <div class="card-detail-row"><span class="card-detail-label">Visit 2 scheduled</span><span class="card-detail-val">${fmt(t.tbr2)}</span></div>
+        <div class="card-detail-row"><span class="card-detail-label">Visit 2 done</span><span class="card-detail-val">${fmt(t.tbr2c)}</span></div>`;
+      return cardHTML(c, color, st, summary, details, note, noteEsc);
+    } else if(currentTab==='reviews'){
+      const r = reviewData[c.name]||{};
+      const st = getReviewStatus(c);
+      summary = `<div class="card-due">Sent: ${fmt(r.sent)||'—'}</div>`;
+      details = `
+        <div class="card-detail-row"><span class="card-detail-label">Person sent to</span><span class="card-detail-val">${r.person||'—'}</span></div>
+        <div class="card-detail-row"><span class="card-detail-label">Date reviewed</span><span class="card-detail-val">${fmt(r.reviewed)}</span></div>
+        <div class="card-detail-row"><span class="card-detail-label">Reviewer</span><span class="card-detail-val">${r.reviewer||'—'}</span></div>`;
+      return cardHTML(c, color, st, summary, details, note, noteEsc);
     } else {
-      const r=reviewData[c.name]||{};
-      st=getReviewStatus(c);
-      summary=`<div class="card-due">Sent: ${fmt(r.sent)||'—'}</div>`;
-      details=`<div class="card-detail-row"><span class="card-detail-label">Person</span><span class="card-detail-val">${r.person||'—'}</span></div>
-               <div class="card-detail-row"><span class="card-detail-label">Reviewed</span><span class="card-detail-val">${fmt(r.reviewed)}</span></div>`;
+      const r = reportData[c.name]||{};
+      const st = getReportStatus(c);
+      summary = `<div class="card-due">Last sent: ${fmt(r.lastSent)||'—'}</div>`;
+      details = `
+        <div class="card-detail-row"><span class="card-detail-label">Last report sent</span><span class="card-detail-val">${fmt(r.lastSent)}</span></div>`;
+      return cardHTML(c, color, st, summary, details, note, noteEsc);
     }
-    return `<div class="client-card" style="--client-color:${color}" id="card-${c.id}">
-      <div class="card-main" onclick="toggleCard(${c.id})">
-        <div class="card-left">
-          <div class="card-name"><span class="client-dot" style="background:${color}"></span>${c.name}</div>
-          ${summary}
-        </div>
-        <div class="card-right">${badge(st.cls,st.label)}<span class="card-chevron">▼</span></div>
-      </div>
-      <div class="card-details">
-        ${details}
-        <div class="card-actions"><button class="card-edit-btn" onclick="openEdit(${c.id})">✎ Edit</button></div>
-        <textarea class="card-note" placeholder="Add a note…" onblur="saveNote('${c.name.replace(/'/g,"\'")}',this.value)">${noteEsc}</textarea>
-      </div>
-    </div>`;
   }).join('');
 }
 
+function cardHTML(c, color, st, summary, details, note, noteEsc){
+  return `<div class="client-card" style="--client-color:${color}" id="card-${c.id}">
+    <div class="card-main" onclick="toggleCard(${c.id})">
+      <div class="card-left">
+        <div class="card-name"><span class="client-dot" style="background:${color}"></span>${c.name}</div>
+        ${summary}
+      </div>
+      <div class="card-right">
+        ${badge(st.cls, st.label)}
+        <span class="card-chevron">▼</span>
+      </div>
+    </div>
+    <div class="card-details">
+      ${details}
+      <div class="card-actions">
+        <button class="card-edit-btn" onclick="openEdit(${c.id})">✎ Edit</button>
+      </div>
+      <textarea class="card-note" placeholder="Add a note…" onblur="saveNote('${c.name.replace(/'/g,"\\'")}', this.value)">${noteEsc}</textarea>
+    </div>
+  </div>`;
+}
+
 function toggleCard(id){
-  const card=document.getElementById('card-'+id);
+  const card = document.getElementById('card-'+id);
   if(card) card.classList.toggle('expanded');
 }
 
-// ── Main render ──
+function badge(cls,label){return`<span class="badge badge-${cls}">${label}</span>`;}
+
 function render(){
   renderStats();
   updateSidebarCounts();
   const q=document.getElementById('search').value.toLowerCase();
   const f=document.getElementById('filter').value;
-  document.getElementById('topbar-title').innerHTML=`${tabTitles[currentTab]} <span>${clients.length} clients</span>`;
+  const title=document.getElementById('topbar-title');
+  title.innerHTML=`${tabTitles[currentTab]} <span>${clients.length} clients</span>`;
 
   let rows=clients.filter(c=>{
-    if(q&&!c.name.toLowerCase().includes(q)&&!c.city.toLowerCase().includes(q)) return false;
+    if(q&&!c.name.toLowerCase().includes(q)&&!c.city.toLowerCase().includes(q))return false;
     if(f!=='all'){
       let cls='';
-      if(currentTab==='inperson') cls=getIPStatus(c).cls;
-      else if(currentTab==='phone') cls=getPhoneStatus(c).cls;
-      else if(currentTab==='tbr') cls=getTBRStatus(c).cls;
-      else cls=getReviewStatus(c).cls;
-      if(['not-visited','not-scheduled','not-sent'].includes(f)){
-        if(!['not-visited','not-scheduled','not-sent'].includes(cls)) return false;
-      } else if(cls!==f) return false;
+      if(currentTab==='inperson')cls=getIPStatus(c).cls;
+      else if(currentTab==='phone')cls=getPhoneStatus(c).cls;
+      else if(currentTab==='tbr')cls=getTBRStatus(c).cls;
+      else if(currentTab==='reviews') cls=getReviewStatus(c).cls;
+      else cls=getReportStatus(c).cls;
+      if(['not-visited','not-scheduled','not-sent'].includes(f)){if(!['not-visited','not-scheduled','not-sent'].includes(cls))return false;}
+      else if(cls!==f)return false;
     }
     return true;
   });
 
-  const tableWrap=document.getElementById('table-wrap');
-  const cardsWrap=document.getElementById('cards-wrap');
-
   if(!rows.length){
-    tableWrap.innerHTML='<div class="empty-state"><p>No clients match your search.</p></div>';
-    tableWrap.style.display=isMobile()?'none':'';
-    cardsWrap.innerHTML='<p style="text-align:center;padding:40px;font-family:var(--mono);font-size:12px;color:var(--text-muted)">No clients match.</p>';
-    cardsWrap.style.display=isMobile()?'flex':'none';
+    document.getElementById('table-wrap').innerHTML='<div class="empty-state"><p>No clients match your search.</p></div>';
     return;
   }
 
   let html='';
   if(currentTab==='inperson'){
-    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>Last visit</th><th>Next due</th><th>Days until due</th><th>Status</th><th>Notes</th><th class="th-edit"></th></tr></thead><tbody>`;
+    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>Last visit</th><th>Next due</th><th>Days until due</th><th>Status</th><th>Notes</th><th></th></tr></thead><tbody>`;
     rows.forEach((c,i)=>{
       const st=getIPStatus(c);
       const ds=st.days!==null?(st.days<0?`${Math.abs(st.days)} days ago`:`${st.days} days`):'—';
       const color=getClientColor(c.name);
-      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(c.lastVisit)}</td><td class="td-date">${st.nextDue?fmt(st.nextDue):'—'}</td><td class="td-days">${ds}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,notesData[c.name]||'')}</td><td class="td-edit"><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
+      const note=notesData[c.name]||'';
+      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(c.lastVisit)}</td><td class="td-date">${st.nextDue?fmt(st.nextDue):'—'}</td><td class="td-days">${ds}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td><td><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
     });
     html+='</tbody></table>';
   } else if(currentTab==='phone'){
-    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>Visit 1 sched</th><th>Visit 2 sched</th><th>Visit 1 done</th><th>Visit 2 done</th><th>Status</th><th>Notes</th><th class="th-edit"></th></tr></thead><tbody>`;
+    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>Visit 1 scheduled</th><th>Visit 2 scheduled</th><th>Visit 1 done</th><th>Visit 2 done</th><th>Status</th><th>Notes</th><th></th></tr></thead><tbody>`;
     rows.forEach((c,i)=>{
-      const p=phoneData[c.name]||{};
-      const st=getPhoneStatus(c);
+      const p=phoneData[c.name]||{};const st=getPhoneStatus(c);
       const color=getClientColor(c.name);
-      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(p.ph1)}</td><td class="td-date">${fmt(p.ph2)}</td><td class="td-date">${fmt(p.ph1c)}</td><td class="td-date">${fmt(p.ph2c)}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,notesData[c.name]||'')}</td><td class="td-edit"><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
+      const note=notesData[c.name]||'';
+      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(p.ph1)}</td><td class="td-date">${fmt(p.ph2)}</td><td class="td-date">${fmt(p.ph1c)}</td><td class="td-date">${fmt(p.ph2c)}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td><td><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
     });
     html+='</tbody></table>';
   } else if(currentTab==='tbr'){
-    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>2x/yr</th><th>Visit 1 sched</th><th>Visit 1 done</th><th>Visit 2 sched</th><th>Visit 2 done</th><th>Status</th><th class="th-edit"></th></tr></thead><tbody>`;
+    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>Twice/year</th><th>Visit 1 scheduled</th><th>Visit 1 done</th><th>Visit 2 scheduled</th><th>Visit 2 done</th><th>Status</th><th>Notes</th><th></th></tr></thead><tbody>`;
     rows.forEach((c,i)=>{
-      const t=tbrData[c.name]||{};
-      const st=getTBRStatus(c);
+      const t=tbrData[c.name]||{};const st=getTBRStatus(c);
       const color=getClientColor(c.name);
-      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${t.twice||'No'}</td><td class="td-date">${fmt(t.tbr1)}</td><td class="td-date">${fmt(t.tbr1c)}</td><td class="td-date">${fmt(t.tbr2)}</td><td class="td-date">${fmt(t.tbr2c)}</td><td>${badge(st.cls,st.label)}</td><td class="td-edit"><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
+      const note=notesData[c.name]||'';
+      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${t.twice||'No'}</td><td class="td-date">${fmt(t.tbr1)}</td><td class="td-date">${fmt(t.tbr1c)}</td><td class="td-date">${fmt(t.tbr2)}</td><td class="td-date">${fmt(t.tbr2c)}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td><td><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
+    });
+    html+='</tbody></table>';
+  } else if(currentTab==='reviews'){
+    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>Email sent</th><th>Person sent to</th><th>Date reviewed</th><th>Reviewer</th><th>Status</th><th>Notes</th><th class="th-edit"></th></tr></thead><tbody>`;
+    rows.forEach((c,i)=>{
+      const r=reviewData[c.name]||{};const st=getReviewStatus(c);
+      const color=getClientColor(c.name);
+      const note=notesData[c.name]||'';
+      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(r.sent)}</td><td>${r.person||'—'}</td><td class="td-date">${fmt(r.reviewed)}</td><td>${r.reviewer||'—'}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td><td class="td-edit"><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
     });
     html+='</tbody></table>';
   } else {
-    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>Email sent</th><th>Person sent to</th><th>Date reviewed</th><th>Reviewer</th><th>Status</th><th>Notes</th><th class="th-edit"></th></tr></thead><tbody>`;
+    // Reports tab
+    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>Last report sent</th><th>Days since</th><th>Status</th><th class="th-edit"></th></tr></thead><tbody>`;
     rows.forEach((c,i)=>{
-      const r=reviewData[c.name]||{};
-      const st=getReviewStatus(c);
+      const r=reportData[c.name]||{};
+      const st=getReportStatus(c);
       const color=getClientColor(c.name);
-      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(r.sent)}</td><td>${r.person||'—'}</td><td class="td-date">${fmt(r.reviewed)}</td><td>${r.reviewer||'—'}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,notesData[c.name]||'')}</td><td class="td-edit"><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
+      const days=r.lastSent?Math.abs(daysFrom(r.lastSent))+'d ago':'—';
+      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(r.lastSent)}</td><td class="td-days">${days}</td><td>${badge(st.cls,st.label)}</td><td class="td-edit"><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
     });
     html+='</tbody></table>';
   }
-
-  tableWrap.innerHTML=html;
-  tableWrap.style.display=isMobile()?'none':'';
+  document.getElementById('table-wrap').innerHTML=html;
+  document.getElementById('table-wrap').style.display = isMobile() ? 'none' : '';
   renderCards(rows);
-  cardsWrap.style.display=isMobile()?'flex':'none';
+  document.getElementById('cards-wrap').style.display = isMobile() ? 'flex' : 'none';
 }
 
 function switchTab(tab,el){
@@ -1671,12 +1690,12 @@ function switchTab(tab,el){
   render();
 }
 
-// ── Modal ──
 function openAdd(){
   editingId=null;
   document.getElementById('modal-title').textContent='Add client';
-  ['f-name','f-addr','f-city','f-last','f-last2','f-ph1','f-ph2','f-ph1c','f-ph2c','f-tbr1','f-tbr1c','f-tbr2','f-tbr2c','f-rev-sent','f-rev-person','f-rev-date','f-rev-reviewer','f-notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['f-name','f-addr','f-city','f-last','f-last2','f-ph1','f-ph2','f-ph1c','f-ph2c','f-tbr1','f-tbr1c','f-tbr2','f-tbr2c','f-rev-sent','f-rev-person','f-rev-date','f-rev-reviewer','f-rep-sent'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
   document.getElementById('f-tbr-twice').value='No';
+  document.getElementById('f-notes').value='';
   document.getElementById('modal').classList.add('open');
 }
 
@@ -1688,8 +1707,8 @@ function openEdit(id){
   const r=reviewData[c.name]||{};
   document.getElementById('modal-title').textContent='Edit — '+c.name;
   document.getElementById('f-name').value=c.name;
-  document.getElementById('f-addr').value=c.address||'';
-  document.getElementById('f-city').value=c.city||'';
+  document.getElementById('f-addr').value=c.address;
+  document.getElementById('f-city').value=c.city;
   document.getElementById('f-last').value=c.lastVisit||'';
   document.getElementById('f-last2').value=c.lastVisit2||'';
   document.getElementById('f-ph1').value=p.ph1||'';
@@ -1705,19 +1724,21 @@ function openEdit(id){
   document.getElementById('f-rev-person').value=r.person||'';
   document.getElementById('f-rev-date').value=r.reviewed||'';
   document.getElementById('f-rev-reviewer').value=r.reviewer||'';
+  document.getElementById('f-rep-sent').value=(reportData[c.name]||{}).lastSent||'';
   document.getElementById('f-notes').value=notesData[c.name]||'';
   document.getElementById('modal').classList.add('open');
 }
 
-function closeModal(){ document.getElementById('modal').classList.remove('open'); }
+function closeModal(){document.getElementById('modal').classList.remove('open');}
 
 function saveClient(){
   const name=document.getElementById('f-name').value.trim();
-  if(!name) return;
+  if(!name)return;
   const data={name,address:document.getElementById('f-addr').value.trim(),city:document.getElementById('f-city').value.trim()||'Merced',lastVisit:document.getElementById('f-last').value||null,lastVisit2:document.getElementById('f-last2').value||null};
   phoneData[name]={ph1:document.getElementById('f-ph1').value||null,ph2:document.getElementById('f-ph2').value||null,ph1c:document.getElementById('f-ph1c').value||null,ph2c:document.getElementById('f-ph2c').value||null};
   tbrData[name]={twice:document.getElementById('f-tbr-twice').value,tbr1:document.getElementById('f-tbr1').value||null,tbr1c:document.getElementById('f-tbr1c').value||null,tbr2:document.getElementById('f-tbr2').value||null,tbr2c:document.getElementById('f-tbr2c').value||null};
   reviewData[name]={sent:document.getElementById('f-rev-sent').value||null,person:document.getElementById('f-rev-person').value||null,reviewed:document.getElementById('f-rev-date').value||null,reviewer:document.getElementById('f-rev-reviewer').value||null};
+  reportData[name]={lastSent:document.getElementById('f-rep-sent').value||null};
   if(editingId){const i=clients.findIndex(c=>c.id===editingId);clients[i]={...clients[i],...data};}
   else{clients.push({id:nextId++,...data});}
   closeModal();
@@ -1726,126 +1747,252 @@ function saveClient(){
 
 document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
 
-// ── Supabase ──
-const SUPA_URL='https://wugttsxluyryekqwnktt.supabase.co';
-const SUPA_KEY='sb_publishable_C3qE0bvbXbk3p4fZnl8Q8g_Vkbr9xGM';
+// ── Supabase cloud sync ──
+const SUPA_URL = 'https://wugttsxluyryekqwnktt.supabase.co';
+const SUPA_KEY = 'sb_publishable_C3qE0bvbXbk3p4fZnl8Q8g_Vkbr9xGM';
 
 function sbHeaders(){
-  const token=sessionStorage.getItem('cvt_token')||SUPA_KEY;
-  return {'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+token,'Prefer':'return=minimal'};
-}
-async function sbGet(table){
-  const res=await fetch(SUPA_URL+'/rest/v1/'+table+'?select=*',{headers:sbHeaders()});
-  if(!res.ok) throw new Error('sbGet failed: '+table);
-  return res.json();
-}
-async function sbUpsert(table,row){
-  await fetch(SUPA_URL+'/rest/v1/'+table,{method:'POST',headers:{...sbHeaders(),'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(row)});
+  const token = sessionStorage.getItem('cvt_token') || SUPA_KEY;
+  return {
+    'Content-Type': 'application/json',
+    'apikey': SUPA_KEY,
+    'Authorization': 'Bearer ' + token,
+    'Prefer': 'return=minimal'
+  };
 }
 
-function showStatus(msg,ok=true){
-  let el=document.getElementById('sync-status');
-  if(!el){el=document.createElement('div');el.id='sync-status';el.style='position:fixed;bottom:20px;right:20px;padding:10px 16px;border-radius:6px;font-family:var(--mono);font-size:12px;z-index:999;transition:opacity 0.5s;';document.body.appendChild(el);}
-  el.textContent=msg;
-  el.style.background=ok?'var(--success-light)':'var(--danger-light)';
-  el.style.color=ok?'var(--success)':'var(--danger)';
-  el.style.opacity='1';
-  setTimeout(()=>{el.style.opacity='0';},3000);
+async function sbGet(table){
+  const res = await fetch(SUPA_URL + '/rest/v1/' + table + '?select=*', {
+    headers: sbHeaders()
+  });
+  return res.json();
+}
+
+async function sbUpsert(table, row){
+  await fetch(SUPA_URL + '/rest/v1/' + table, {
+    method: 'POST',
+    headers: { ...sbHeaders(), 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify(row)
+  });
+}
+
+function showStatus(msg, ok=true){
+  let el = document.getElementById('sync-status');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'sync-status';
+    el.style = 'position:fixed;bottom:20px;right:20px;padding:10px 16px;border-radius:6px;font-family:var(--mono);font-size:12px;z-index:999;transition:opacity 0.5s;';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.background = ok ? 'var(--success-light)' : 'var(--danger-light)';
+  el.style.color = ok ? 'var(--success)' : 'var(--danger)';
+  el.style.opacity = '1';
+  setTimeout(() => { el.style.opacity = '0'; }, 3000);
 }
 
 async function loadFromSupabase(){
-  showStatus('Loading data...',true);
+  showStatus('Loading data...', true);
   try {
-    const [c,p,t,r]=await Promise.all([sbGet('clients'),sbGet('phone_visits'),sbGet('tbr_visits'),sbGet('review_data')]);
-    const n=await sbGet('notes').catch(()=>[]);
+    // Fetch notes separately so if that table is missing it doesn't break everything
+    const [c, p, t, r] = await Promise.all([
+      sbGet('clients'), sbGet('phone_visits'), sbGet('tbr_visits'), sbGet('review_data')
+    ]);
+    const n = await sbGet('notes').catch(() => []);
+    const rp = await sbGet('report_data').catch(() => []);
 
-    if(c&&c.length>0){
-      const localMap={};
-      clients.forEach(lc=>localMap[lc.name]=lc);
-      clients=c.map(row=>{
-        const local=localMap[row.name]||{};
-        return {id:row.id,name:row.name,address:row.address||local.address||'',city:row.city||local.city||'',lastVisit:row.last_visit||local.lastVisit||null,lastVisit2:row.last_visit2||local.lastVisit2||null};
+    if(c && c.length > 0){
+      // Keep hardcoded data as fallback for missing fields
+      const localMap = {};
+      clients.forEach(lc => localMap[lc.name] = lc);
+
+      clients = c.map(row => {
+        const local = localMap[row.name] || {};
+        return {
+          id: row.id,
+          name: row.name,
+          address: row.address || local.address || '',
+          city: row.city || local.city || '',
+          lastVisit: row.last_visit || local.lastVisit || null,
+          lastVisit2: row.last_visit2 || local.lastVisit2 || null
+        };
       });
-      clients.sort((a,b)=>a.name.localeCompare(b.name));
-      nextId=Math.max(...clients.map(c=>c.id))+1;
-      colorIndex=0;
-      clients.forEach(cl=>getClientColor(cl.name));
+      clients.sort((a,b) => a.name.localeCompare(b.name));
+      nextId = Math.max(...clients.map(c => c.id)) + 1;
+      colorIndex = 0;
+      clients.forEach(cl => getClientColor(cl.name));
     }
-    if(p&&p.length>0) p.forEach(row=>{phoneData[row.name]={ph1:row.ph1,ph2:row.ph2,ph1c:row.ph1c,ph2c:row.ph2c};});
-    if(t&&t.length>0) t.forEach(row=>{tbrData[row.name]={twice:row.twice,tbr1:row.tbr1,tbr1c:row.tbr1c,tbr2:row.tbr2,tbr2c:row.tbr2c};});
-    if(r&&r.length>0) r.forEach(row=>{reviewData[row.name]={sent:row.sent,person:row.person,reviewed:row.reviewed,reviewer:row.reviewer};});
-    if(n&&n.length>0) n.forEach(row=>{notesData[row.name]=row.note||'';});
 
-    showStatus('Data loaded',true);
+    if(p && p.length > 0){
+      p.forEach(row => {
+        phoneData[row.name] = { ph1: row.ph1, ph2: row.ph2, ph1c: row.ph1c, ph2c: row.ph2c };
+      });
+    }
+
+    if(t && t.length > 0){
+      t.forEach(row => {
+        tbrData[row.name] = { twice: row.twice, tbr1: row.tbr1, tbr1c: row.tbr1c, tbr2: row.tbr2, tbr2c: row.tbr2c };
+      });
+    }
+
+    if(r && r.length > 0){
+      r.forEach(row => {
+        reviewData[row.name] = { sent: row.sent, person: row.person, reviewed: row.reviewed, reviewer: row.reviewer };
+      });
+    }
+
+    if(n && n.length > 0){
+      n.forEach(row => { notesData[row.name] = row.note || ''; });
+    }
+    if(rp && rp.length > 0){
+      rp.forEach(row => { reportData[row.name] = { lastSent: row.last_sent || null }; });
+    }
+
+    showStatus('Data loaded', true);
   } catch(e){
     console.error(e);
-    showStatus('Could not connect to database',false);
+    showStatus('Could not connect to database', false);
   }
   updateFilterOptions();
   render();
 }
 
 async function saveClientToSupabase(){
-  const name=document.getElementById('f-name').value.trim();
+  const name = document.getElementById('f-name').value.trim();
   if(!name) return;
-  const clientRow={id:editingId||nextId,name,address:document.getElementById('f-addr').value.trim(),city:document.getElementById('f-city').value.trim()||'Merced',last_visit:document.getElementById('f-last').value||null,last_visit2:document.getElementById('f-last2').value||null};
-  const phoneRow={name,ph1:document.getElementById('f-ph1').value||null,ph2:document.getElementById('f-ph2').value||null,ph1c:document.getElementById('f-ph1c').value||null,ph2c:document.getElementById('f-ph2c').value||null};
-  const tbrRow={name,twice:document.getElementById('f-tbr-twice').value,tbr1:document.getElementById('f-tbr1').value||null,tbr1c:document.getElementById('f-tbr1c').value||null,tbr2:document.getElementById('f-tbr2').value||null,tbr2c:document.getElementById('f-tbr2c').value||null};
-  const reviewRow={name,sent:document.getElementById('f-rev-sent').value||null,person:document.getElementById('f-rev-person').value||null,reviewed:document.getElementById('f-rev-date').value||null,reviewer:document.getElementById('f-rev-reviewer').value||null};
-  const note=document.getElementById('f-notes').value.trim();
+
+  const clientRow = {
+    id: editingId || nextId,
+    name,
+    address: document.getElementById('f-addr').value.trim(),
+    city: document.getElementById('f-city').value.trim() || 'Merced',
+    last_visit: document.getElementById('f-last').value || null,
+    last_visit2: document.getElementById('f-last2').value || null
+  };
+
+  const phoneRow = {
+    name,
+    ph1: document.getElementById('f-ph1').value || null,
+    ph2: document.getElementById('f-ph2').value || null,
+    ph1c: document.getElementById('f-ph1c').value || null,
+    ph2c: document.getElementById('f-ph2c').value || null
+  };
+
+  const tbrRow = {
+    name,
+    twice: document.getElementById('f-tbr-twice').value,
+    tbr1: document.getElementById('f-tbr1').value || null,
+    tbr1c: document.getElementById('f-tbr1c').value || null,
+    tbr2: document.getElementById('f-tbr2').value || null,
+    tbr2c: document.getElementById('f-tbr2c').value || null
+  };
+
+  const reviewRow = {
+    name,
+    sent: document.getElementById('f-rev-sent').value || null,
+    person: document.getElementById('f-rev-person').value || null,
+    reviewed: document.getElementById('f-rev-date').value || null,
+    reviewer: document.getElementById('f-rev-reviewer').value || null
+  };
+
+  const note = document.getElementById('f-notes').value.trim();
+  const repSent = document.getElementById('f-rep-sent').value || null;
+
   try {
-    showStatus('Saving...',true);
-    await Promise.all([sbUpsert('clients',clientRow),sbUpsert('phone_visits',phoneRow),sbUpsert('tbr_visits',tbrRow),sbUpsert('review_data',reviewRow),sbUpsert('notes',{name,note})]);
-    const data={id:clientRow.id,name,address:clientRow.address,city:clientRow.city,lastVisit:clientRow.last_visit,lastVisit2:clientRow.last_visit2};
-    phoneData[name]={ph1:phoneRow.ph1,ph2:phoneRow.ph2,ph1c:phoneRow.ph1c,ph2c:phoneRow.ph2c};
-    tbrData[name]={twice:tbrRow.twice,tbr1:tbrRow.tbr1,tbr1c:tbrRow.tbr1c,tbr2:tbrRow.tbr2,tbr2c:tbrRow.tbr2c};
-    reviewData[name]={sent:reviewRow.sent,person:reviewRow.person,reviewed:reviewRow.reviewed,reviewer:reviewRow.reviewer};
-    notesData[name]=note;
-    if(editingId){const i=clients.findIndex(c=>c.id===editingId);clients[i]={...clients[i],...data};}
-    else{clients.push(data);nextId++;clients.sort((a,b)=>a.name.localeCompare(b.name));}
-    closeModal();render();showStatus('Saved!',true);
-  } catch(e){console.error(e);showStatus('Save failed',false);}
+    showStatus('Saving...', true);
+    await Promise.all([
+      sbUpsert('clients', clientRow),
+      sbUpsert('phone_visits', phoneRow),
+      sbUpsert('tbr_visits', tbrRow),
+      sbUpsert('review_data', reviewRow),
+      sbUpsert('notes', { name, note }),
+      sbUpsert('report_data', { name, last_sent: repSent })
+    ]);
+
+    // update local data too
+    const data = { id: clientRow.id, name, address: clientRow.address, city: clientRow.city, lastVisit: clientRow.last_visit, lastVisit2: clientRow.last_visit2 };
+    phoneData[name] = { ph1: phoneRow.ph1, ph2: phoneRow.ph2, ph1c: phoneRow.ph1c, ph2c: phoneRow.ph2c };
+    tbrData[name] = { twice: tbrRow.twice, tbr1: tbrRow.tbr1, tbr1c: tbrRow.tbr1c, tbr2: tbrRow.tbr2, tbr2c: tbrRow.tbr2c };
+    reviewData[name] = { sent: reviewRow.sent, person: reviewRow.person, reviewed: reviewRow.reviewed, reviewer: reviewRow.reviewer };
+    reportData[name] = { lastSent: repSent };
+    notesData[name] = note;
+
+    if(editingId){ const i = clients.findIndex(c => c.id === editingId); clients[i] = { ...clients[i], ...data }; }
+    else { clients.push(data); nextId++; clients.sort((a,b) => a.name.localeCompare(b.name)); }
+
+    closeModal();
+    render();
+    showStatus('Saved!', true);
+  } catch(e){
+    console.error(e);
+    showStatus('Save failed', false);
+  }
 }
 
-saveClient=saveClientToSupabase;
+window.addEventListener('resize', () => render());
+
+// Override saveClient to use Supabase
+saveClient = saveClientToSupabase;
+
 
 // ── Auth ──
-const SUPA_AUTH=SUPA_URL+'/auth/v1';
+const SUPA_AUTH = SUPA_URL + '/auth/v1';
 
 async function doLogin(){
-  const email=document.getElementById('login-email').value.trim();
-  const password=document.getElementById('login-password').value;
-  const errEl=document.getElementById('login-error');
-  errEl.style.display='none';
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  errEl.style.display = 'none';
+
   try {
-    const res=await fetch(SUPA_AUTH+'/token?grant_type=password',{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPA_KEY},body:JSON.stringify({email,password})});
-    const data=await res.json();
+    const res = await fetch(SUPA_AUTH + '/token?grant_type=password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
     if(data.access_token){
-      sessionStorage.setItem('cvt_token',data.access_token);
-      document.getElementById('login-screen').style.display='none';
-      document.querySelector('.shell').style.display='';
+      sessionStorage.setItem('cvt_token', data.access_token);
+      sessionStorage.setItem('cvt_refresh', data.refresh_token);
+      document.getElementById('login-screen').style.display = 'none';
+      document.querySelector('.shell').style.display = '';
       loadFromSupabase();
-    } else { errEl.style.display='block'; }
-  } catch(e){ errEl.style.display='block'; }
+    } else {
+      errEl.style.display = 'block';
+    }
+  } catch(e){
+    errEl.style.display = 'block';
+  }
 }
 
 async function doLogout(){
-  const token=sessionStorage.getItem('cvt_token');
-  if(token){ await fetch(SUPA_AUTH+'/logout',{method:'POST',headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token}}).catch(()=>{}); }
+  const token = sessionStorage.getItem('cvt_token');
+  if(token){
+    await fetch(SUPA_AUTH + '/logout', {
+      method: 'POST',
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + token }
+    }).catch(()=>{});
+  }
   sessionStorage.removeItem('cvt_token');
   sessionStorage.removeItem('cvt_refresh');
-  document.getElementById('login-screen').style.display='flex';
-  document.querySelector('.shell').style.display='none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.querySelector('.shell').style.display = 'none';
 }
 
+function getAuthToken(){
+  return sessionStorage.getItem('cvt_token') || SUPA_KEY;
+}
+
+// Check if already logged in
 (function checkSession(){
-  const token=sessionStorage.getItem('cvt_token');
+  const token = sessionStorage.getItem('cvt_token');
   if(token){
-    document.getElementById('login-screen').style.display='none';
-    document.querySelector('.shell').style.display='';
+    document.getElementById('login-screen').style.display = 'none';
+    document.querySelector('.shell').style.display = '';
     loadFromSupabase();
   }
 })();
+
 </script>
 </body>
 </html>
