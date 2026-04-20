@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, shrink-to-fit=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Client Visit Tracker</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -387,26 +387,6 @@
 
   .edit-btn:hover { border-color: var(--text-muted); color: var(--text); }
 
-  /* keep edit column always visible when scrolling wide tables */
-  td.td-edit, th.th-edit {
-    position: sticky;
-    right: 0;
-    z-index: 1;
-    background: var(--surface);
-  }
-
-  th.th-edit {
-    background: var(--surface2);
-  }
-
-  tr.has-color td.td-edit {
-    background: color-mix(in srgb, var(--client-color, transparent) 8%, var(--surface));
-  }
-
-  tr.has-color:hover td.td-edit {
-    background: color-mix(in srgb, var(--client-color, transparent) 16%, var(--surface));
-  }
-
   /* ── Client color — full row tint ── */
   tr.has-color td {
     background-color: color-mix(in srgb, var(--client-color, transparent) 8%, var(--surface));
@@ -740,40 +720,10 @@
     /* hide table, show cards */
     .table-wrap table { display: none; }
 
-    /* modal — bottom sheet with safe area */
+    /* modal */
     .field-grid { grid-template-columns: 1fr; }
+    .modal { max-width: 100%; border-radius: 12px 12px 0 0; }
     .modal-bg { align-items: flex-end; padding: 0; }
-    .modal {
-      max-width: 100%;
-      border-radius: 16px 16px 0 0;
-      max-height: 88vh;
-      display: flex;
-      flex-direction: column;
-    }
-    .modal-body {
-      flex: 1;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
-    }
-    .modal-footer {
-      position: static;
-      flex-direction: column;
-      padding: 12px 16px;
-      padding-bottom: max(20px, env(safe-area-inset-bottom, 20px));
-      gap: 10px;
-    }
-    .modal-footer .btn-save {
-      width: 100%;
-      padding: 15px;
-      font-size: 15px;
-      order: -1;
-    }
-    .modal-footer .btn-cancel {
-      width: 100%;
-      padding: 12px;
-      font-size: 15px;
-      text-align: center;
-    }
   }
 
   /* ── Client cards (mobile) ── */
@@ -1164,15 +1114,9 @@
 
 <script>
 const TODAY = new Date(); TODAY.setHours(0,0,0,0);
-function parseDate(d){ if(!d) return null; const [y,m,day]=d.split('-').map(Number); return new Date(y,m-1,day); }
-function daysFrom(d){ const dt = typeof d === 'string' ? parseDate(d) : d; if(!dt) return null; return Math.round((dt-TODAY)/86400000); }
-function fmt(d){
-  if(!d) return '—';
-  // Parse date parts directly to avoid UTC timezone shifting the day
-  const [y,m,day] = d.split('-').map(Number);
-  return new Date(y, m-1, day).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
-}
-function addDays(d,n){const r=parseDate(d);r.setDate(r.getDate()+n);return r}
+function daysFrom(d){return Math.round((new Date(d)-TODAY)/86400000)}
+function fmt(d){if(!d)return'—';return new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}
+function addDays(d,n){const r=new Date(d);r.setDate(r.getDate()+n);return r}
 
 // ── Client colors ──
 const COLOR_PALETTE = [
@@ -1369,7 +1313,7 @@ let nextId=56, currentTab='inperson', editingId=null;
 
 function getIPStatus(c){
   if(!c.lastVisit)return{label:'Not yet visited',cls:'not-visited',days:null,nextDue:null};
-  const next=addDays(c.lastVisit,182);
+  const next=addDays(new Date(c.lastVisit),182);
   const d=daysFrom(next);
   if(d<0)return{label:'Overdue',cls:'overdue',days:d,nextDue:next};
   if(d<=30)return{label:'Due soon',cls:'due-soon',days:d,nextDue:next};
@@ -1379,8 +1323,8 @@ function getPhoneStatus(c){
   const p=phoneData[c.name]||{};
   if(!p.ph1&&!p.ph2)return{label:'Not scheduled',cls:'not-scheduled'};
   if(p.ph1c&&p.ph2c)return{label:'Completed',cls:'completed'};
-  if(p.ph1c){if(p.ph2){const d=daysFrom(p.ph2);return d<0?{label:'Visit 2 overdue',cls:'overdue'}:{label:'Visit 2 pending',cls:'pending'};}return{label:'Visit 1 done',cls:'on-track'};}
-  if(p.ph1){const d=daysFrom(p.ph1);return d<0?{label:'Visit 1 overdue',cls:'overdue'}:{label:'Visit 1 pending',cls:'pending'};}
+  if(p.ph1c){if(p.ph2){const d=daysFrom(new Date(p.ph2));return d<0?{label:'Visit 2 overdue',cls:'overdue'}:{label:'Visit 2 pending',cls:'pending'};}return{label:'Visit 1 done',cls:'on-track'};}
+  if(p.ph1){const d=daysFrom(new Date(p.ph1));return d<0?{label:'Visit 1 overdue',cls:'overdue'}:{label:'Visit 1 pending',cls:'pending'};}
   return{label:'Not scheduled',cls:'not-scheduled'};
 }
 function getTBRStatus(c){
@@ -1388,11 +1332,11 @@ function getTBRStatus(c){
   if(!t||!t.tbr1)return{label:'Not scheduled',cls:'not-scheduled'};
   if(t.twice==='Yes'){
     if(t.tbr1c&&t.tbr2c)return{label:'Completed',cls:'completed'};
-    if(t.tbr1c){if(t.tbr2){const d=daysFrom(t.tbr2);return d<0?{label:'Visit 2 overdue',cls:'overdue'}:{label:'Visit 2 pending',cls:'pending'};}return{label:'Visit 1 done',cls:'on-track'};}
-    const d=daysFrom(t.tbr1);return d<0?{label:'Visit 1 overdue',cls:'overdue'}:{label:'Visit 1 pending',cls:'pending'};
+    if(t.tbr1c){if(t.tbr2){const d=daysFrom(new Date(t.tbr2));return d<0?{label:'Visit 2 overdue',cls:'overdue'}:{label:'Visit 2 pending',cls:'pending'};}return{label:'Visit 1 done',cls:'on-track'};}
+    const d=daysFrom(new Date(t.tbr1));return d<0?{label:'Visit 1 overdue',cls:'overdue'}:{label:'Visit 1 pending',cls:'pending'};
   }
   if(t.tbr1c)return{label:'Completed',cls:'completed'};
-  const d=daysFrom(t.tbr1);return d<0?{label:'Overdue',cls:'overdue'}:{label:'Pending',cls:'pending'};
+  const d=daysFrom(new Date(t.tbr1));return d<0?{label:'Overdue',cls:'overdue'}:{label:'Pending',cls:'pending'};
 }
 function getReviewStatus(c){
   const r=reviewData[c.name];
@@ -1507,9 +1451,8 @@ function nameCell(c){
   </span>`;
 }
 
-function isMobile(){ return window.innerWidth <= 768; }
-
 function renderCards(rows){
+  const wrap = document.getElementById('cards-wrap');
   if(!rows.length){ wrap.innerHTML='<p style="text-align:center;padding:40px;font-family:var(--mono);font-size:12px;color:var(--text-muted)">No clients match your search.</p>'; return; }
 
   wrap.innerHTML = rows.map(c => {
@@ -1621,47 +1564,45 @@ function render(){
 
   let html='';
   if(currentTab==='inperson'){
-    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>Last visit</th><th>Next due</th><th>Days until due</th><th>Status</th><th>Notes</th><th class="th-edit"></th></tr></thead><tbody>`;
+    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>Last visit</th><th>Next due</th><th>Days until due</th><th>Status</th><th>Notes</th><th></th></tr></thead><tbody>`;
     rows.forEach((c,i)=>{
       const st=getIPStatus(c);
       const ds=st.days!==null?(st.days<0?`${Math.abs(st.days)} days ago`:`${st.days} days`):'—';
       const color=getClientColor(c.name);
       const note=notesData[c.name]||'';
-      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(c.lastVisit)}</td><td class="td-date">${st.nextDue?fmt(st.nextDue):'—'}</td><td class="td-days">${ds}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td><td class="td-edit"><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
+      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(c.lastVisit)}</td><td class="td-date">${st.nextDue?fmt(st.nextDue):'—'}</td><td class="td-days">${ds}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td><td><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
     });
     html+='</tbody></table>';
   } else if(currentTab==='phone'){
-    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>Visit 1 scheduled</th><th>Visit 2 scheduled</th><th>Visit 1 done</th><th>Visit 2 done</th><th>Status</th><th>Notes</th><th class="th-edit"></th></tr></thead><tbody>`;
+    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>Visit 1 scheduled</th><th>Visit 2 scheduled</th><th>Visit 1 done</th><th>Visit 2 done</th><th>Status</th><th>Notes</th><th></th></tr></thead><tbody>`;
     rows.forEach((c,i)=>{
       const p=phoneData[c.name]||{};const st=getPhoneStatus(c);
       const color=getClientColor(c.name);
       const note=notesData[c.name]||'';
-      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(p.ph1)}</td><td class="td-date">${fmt(p.ph2)}</td><td class="td-date">${fmt(p.ph1c)}</td><td class="td-date">${fmt(p.ph2c)}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td><td class="td-edit"><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
+      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(p.ph1)}</td><td class="td-date">${fmt(p.ph2)}</td><td class="td-date">${fmt(p.ph1c)}</td><td class="td-date">${fmt(p.ph2c)}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td><td><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
     });
     html+='</tbody></table>';
   } else if(currentTab==='tbr'){
-    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>Twice/year</th><th>Visit 1 scheduled</th><th>Visit 1 done</th><th>Visit 2 scheduled</th><th>Visit 2 done</th><th>Status</th><th>Notes</th><th class="th-edit"></th></tr></thead><tbody>`;
+    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>Twice/year</th><th>Visit 1 scheduled</th><th>Visit 1 done</th><th>Visit 2 scheduled</th><th>Visit 2 done</th><th>Status</th><th>Notes</th><th></th></tr></thead><tbody>`;
     rows.forEach((c,i)=>{
       const t=tbrData[c.name]||{};const st=getTBRStatus(c);
       const color=getClientColor(c.name);
       const note=notesData[c.name]||'';
-      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${t.twice||'No'}</td><td class="td-date">${fmt(t.tbr1)}</td><td class="td-date">${fmt(t.tbr1c)}</td><td class="td-date">${fmt(t.tbr2)}</td><td class="td-date">${fmt(t.tbr2c)}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td><td class="td-edit"><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
+      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${t.twice||'No'}</td><td class="td-date">${fmt(t.tbr1)}</td><td class="td-date">${fmt(t.tbr1c)}</td><td class="td-date">${fmt(t.tbr2)}</td><td class="td-date">${fmt(t.tbr2c)}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td><td><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
     });
     html+='</tbody></table>';
   } else {
-    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>Email sent</th><th>Person sent to</th><th>Date reviewed</th><th>Reviewer</th><th>Status</th><th>Notes</th><th class="th-edit"></th></tr></thead><tbody>`;
+    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>Email sent</th><th>Person sent to</th><th>Date reviewed</th><th>Reviewer</th><th>Status</th><th>Notes</th><th></th></tr></thead><tbody>`;
     rows.forEach((c,i)=>{
       const r=reviewData[c.name]||{};const st=getReviewStatus(c);
       const color=getClientColor(c.name);
       const note=notesData[c.name]||'';
-      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(r.sent)}</td><td>${r.person||'—'}</td><td class="td-date">${fmt(r.reviewed)}</td><td>${r.reviewer||'—'}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td><td class="td-edit"><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
+      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(r.sent)}</td><td>${r.person||'—'}</td><td class="td-date">${fmt(r.reviewed)}</td><td>${r.reviewer||'—'}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td><td><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
     });
     html+='</tbody></table>';
   }
-  document.getElementById('table-wrap').innerHTML = html;
-  document.getElementById('table-wrap').style.display = isMobile() ? 'none' : '';
+  document.getElementById('table-wrap').innerHTML=html;
   renderCards(rows);
-  document.getElementById('cards-wrap').style.display = isMobile() ? 'flex' : 'none';
 }
 
 function switchTab(tab,el){
@@ -1779,21 +1720,14 @@ async function loadFromSupabase(){
     ]);
 
     if(c && c.length > 0){
-      // Keep a reference to the hardcoded local data for fallback
-      const localMap = {};
-      clients.forEach(lc => localMap[lc.name] = lc);
-
-      clients = c.map(row => {
-        const local = localMap[row.name] || {};
-        return {
-          id: row.id,
-          name: row.name,
-          address: row.address || local.address || '',
-          city: row.city || local.city || '',
-          lastVisit: row.last_visit || local.lastVisit || null,
-          lastVisit2: row.last_visit2 || local.lastVisit2 || null
-        };
-      });
+      clients = c.map(row => ({
+        id: row.id,
+        name: row.name,
+        address: row.address || '',
+        city: row.city || '',
+        lastVisit: row.last_visit || null,
+        lastVisit2: row.last_visit2 || null
+      }));
       clients.sort((a,b) => a.name.localeCompare(b.name));
       nextId = Math.max(...clients.map(c => c.id)) + 1;
       // assign colors in alphabetical order so they're consistent
@@ -1902,8 +1836,6 @@ async function saveClientToSupabase(){
     showStatus('Save failed', false);
   }
 }
-
-window.addEventListener('resize', () => render());
 
 // Override saveClient to use Supabase
 saveClient = saveClientToSupabase;
