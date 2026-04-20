@@ -1779,14 +1779,21 @@ async function loadFromSupabase(){
     ]);
 
     if(c && c.length > 0){
-      clients = c.map(row => ({
-        id: row.id,
-        name: row.name,
-        address: row.address || '',
-        city: row.city || '',
-        lastVisit: row.last_visit || null,
-        lastVisit2: row.last_visit2 || null
-      }));
+      // Keep a reference to the hardcoded local data for fallback
+      const localMap = {};
+      clients.forEach(lc => localMap[lc.name] = lc);
+
+      clients = c.map(row => {
+        const local = localMap[row.name] || {};
+        return {
+          id: row.id,
+          name: row.name,
+          address: row.address || local.address || '',
+          city: row.city || local.city || '',
+          lastVisit: row.last_visit || local.lastVisit || null,
+          lastVisit2: row.last_visit2 || local.lastVisit2 || null
+        };
+      });
       clients.sort((a,b) => a.name.localeCompare(b.name));
       nextId = Math.max(...clients.map(c => c.id)) + 1;
       // assign colors in alphabetical order so they're consistent
