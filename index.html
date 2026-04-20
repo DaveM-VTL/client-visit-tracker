@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, shrink-to-fit=no">
 <title>Client Visit Tracker</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1451,6 +1451,8 @@ function nameCell(c){
   </span>`;
 }
 
+function isMobile(){ return window.innerWidth <= 768; }
+
 function renderCards(rows){
   const wrap = document.getElementById('cards-wrap');
   if(!rows.length){ wrap.innerHTML='<p style="text-align:center;padding:40px;font-family:var(--mono);font-size:12px;color:var(--text-muted)">No clients match your search.</p>'; return; }
@@ -1601,8 +1603,10 @@ function render(){
     });
     html+='</tbody></table>';
   }
-  document.getElementById('table-wrap').innerHTML=html;
+  document.getElementById('table-wrap').innerHTML = html;
+  document.getElementById('table-wrap').style.display = isMobile() ? 'none' : '';
   renderCards(rows);
+  document.getElementById('cards-wrap').style.display = isMobile() ? 'flex' : 'none';
 }
 
 function switchTab(tab,el){
@@ -1836,6 +1840,9 @@ async function saveClientToSupabase(){
     showStatus('Save failed', false);
   }
 }
+
+// Re-render on resize/rotation so table↔cards switches correctly
+window.addEventListener('resize', () => render());
 
 // Override saveClient to use Supabase
 saveClient = saveClientToSupabase;
