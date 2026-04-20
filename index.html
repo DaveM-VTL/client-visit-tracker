@@ -658,19 +658,202 @@
   .btn-save:hover { opacity: 0.85; }
 
   @media (max-width: 768px) {
+    /* sidebar becomes a horizontal tab bar at the bottom */
     .shell { grid-template-columns: 1fr; }
-    .sidebar { position: static; width: 100%; height: auto; flex-direction: row; flex-wrap: wrap; }
-    .sidebar-brand { border-bottom: none; border-right: 1px solid rgba(255,255,255,0.08); padding: 16px; }
-    .sidebar-nav { display: flex; flex-wrap: wrap; gap: 4px; padding: 12px; }
+    .sidebar {
+      position: fixed;
+      bottom: 0; top: auto;
+      width: 100%; height: auto;
+      flex-direction: row;
+      align-items: center;
+      z-index: 200;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      padding: 0;
+    }
+    .sidebar-brand { display: none; }
+    .sidebar-nav {
+      display: flex;
+      flex-direction: row;
+      flex: 1;
+      padding: 0;
+      gap: 0;
+    }
     .nav-label { display: none; }
+    .nav-item {
+      flex: 1;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 10px 4px 12px;
+      border-radius: 0;
+      font-size: 10px;
+      text-align: center;
+    }
+    .nav-count { display: none; }
+    .nav-dot { width: 6px; height: 6px; }
     .sidebar-footer { display: none; }
-    .main { margin-left: 0; }
-    .field-grid { grid-template-columns: 1fr; }
-    .stats-bar { flex-wrap: wrap; }
-    .stat-cell { min-width: 120px; }
-    .topbar { flex-wrap: wrap; gap: 10px; }
+
+    /* main shifts up, padded at bottom for tab bar */
+    .main { margin-left: 0; padding-bottom: 70px; }
+
+    /* topbar */
+    .topbar { flex-wrap: wrap; gap: 8px; padding: 12px 16px; }
+    .topbar-title { font-size: 14px; width: 100%; }
     .search { width: 100%; }
+    .search-wrap { flex: 1; }
+    .filter-select { flex: 1; font-size: 13px; }
+    .btn-add { font-size: 13px; }
+
+    /* stats */
+    .stats-bar { flex-wrap: wrap; }
+    .stat-cell { min-width: 50%; flex: 1 1 50%; padding: 12px 16px; }
+    .stat-cell:first-child { padding-left: 16px; }
+    .stat-cell:last-child { padding-right: 16px; }
+    .stat-num { font-size: 20px; }
+
+    /* hide table, show cards */
+    .table-wrap table { display: none; }
+
+    /* modal */
+    .field-grid { grid-template-columns: 1fr; }
+    .modal { max-width: 100%; border-radius: 12px 12px 0 0; }
+    .modal-bg { align-items: flex-end; padding: 0; }
   }
+
+  /* ── Client cards (mobile) ── */
+  .cards-wrap {
+    display: none;
+    padding: 12px 16px;
+    gap: 10px;
+    flex-direction: column;
+  }
+
+  @media (max-width: 768px) {
+    .cards-wrap { display: flex; }
+  }
+
+  .client-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    border-left: 4px solid var(--client-color, var(--border));
+  }
+
+  .card-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    cursor: pointer;
+    gap: 10px;
+  }
+
+  .card-left { flex: 1; min-width: 0; }
+
+  .card-name {
+    font-weight: 600;
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .card-due {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  .card-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .card-chevron {
+    color: var(--text-muted);
+    font-size: 12px;
+    transition: transform 0.2s;
+  }
+
+  .client-card.expanded .card-chevron { transform: rotate(180deg); }
+
+  .card-details {
+    display: none;
+    padding: 0 14px 14px;
+    border-top: 1px solid var(--border);
+    font-size: 13px;
+  }
+
+  .client-card.expanded .card-details { display: block; }
+
+  .card-detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+  }
+
+  .card-detail-row:last-child { border-bottom: none; }
+
+  .card-detail-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    flex-shrink: 0;
+  }
+
+  .card-detail-val {
+    font-size: 12px;
+    text-align: right;
+    color: var(--text);
+  }
+
+  .card-actions {
+    display: flex;
+    gap: 8px;
+    padding-top: 10px;
+    margin-top: 4px;
+  }
+
+  .card-edit-btn {
+    flex: 1;
+    padding: 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: none;
+    font-family: var(--mono);
+    font-size: 11px;
+    cursor: pointer;
+    color: var(--text-muted);
+    text-align: center;
+  }
+
+  .card-note {
+    width: 100%;
+    margin-top: 8px;
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: var(--sans);
+    font-size: 13px;
+    background: var(--bg);
+    color: var(--text);
+    resize: none;
+    height: 60px;
+    line-height: 1.4;
+    outline: none;
+  }
+
+  .card-note:focus { border-color: var(--accent); }
 </style>
 
 <style>
@@ -851,6 +1034,7 @@
     <div class="stats-bar" id="stats-bar"></div>
     <div class="content">
       <div class="table-wrap" id="table-wrap"></div>
+      <div class="cards-wrap" id="cards-wrap"></div>
     </div>
   </div>
 </div>
@@ -1262,6 +1446,88 @@ function nameCell(c){
   </span>`;
 }
 
+function renderCards(rows){
+  const wrap = document.getElementById('cards-wrap');
+  if(!rows.length){ wrap.innerHTML='<p style="text-align:center;padding:40px;font-family:var(--mono);font-size:12px;color:var(--text-muted)">No clients match your search.</p>'; return; }
+
+  wrap.innerHTML = rows.map(c => {
+    const color = getClientColor(c.name);
+    const note = notesData[c.name]||'';
+    const noteEsc = note.replace(/"/g,'&quot;');
+    let summary = '', details = '';
+
+    if(currentTab==='inperson'){
+      const st = getIPStatus(c);
+      const due = st.nextDue ? fmt(st.nextDue) : '—';
+      summary = `<div class="card-due">Next due: ${due}</div>`;
+      details = `
+        <div class="card-detail-row"><span class="card-detail-label">Last visit</span><span class="card-detail-val">${fmt(c.lastVisit)}</span></div>
+        <div class="card-detail-row"><span class="card-detail-label">Second visit</span><span class="card-detail-val">${fmt(c.lastVisit2)}</span></div>
+        <div class="card-detail-row"><span class="card-detail-label">Address</span><span class="card-detail-val">${[c.address,c.city].filter(Boolean).join(', ')||'—'}</span></div>`;
+      return cardHTML(c, color, st, summary, details, note, noteEsc);
+    } else if(currentTab==='phone'){
+      const p = phoneData[c.name]||{};
+      const st = getPhoneStatus(c);
+      const nextUp = p.ph1c ? fmt(p.ph2) : fmt(p.ph1);
+      summary = `<div class="card-due">Next call: ${nextUp||'—'}</div>`;
+      details = `
+        <div class="card-detail-row"><span class="card-detail-label">Visit 1 scheduled</span><span class="card-detail-val">${fmt(p.ph1)}</span></div>
+        <div class="card-detail-row"><span class="card-detail-label">Visit 1 done</span><span class="card-detail-val">${fmt(p.ph1c)}</span></div>
+        <div class="card-detail-row"><span class="card-detail-label">Visit 2 scheduled</span><span class="card-detail-val">${fmt(p.ph2)}</span></div>
+        <div class="card-detail-row"><span class="card-detail-label">Visit 2 done</span><span class="card-detail-val">${fmt(p.ph2c)}</span></div>`;
+      return cardHTML(c, color, st, summary, details, note, noteEsc);
+    } else if(currentTab==='tbr'){
+      const t = tbrData[c.name]||{};
+      const st = getTBRStatus(c);
+      const nextUp = t.tbr1c ? fmt(t.tbr2) : fmt(t.tbr1);
+      summary = `<div class="card-due">Next TBR: ${nextUp||'—'}</div>`;
+      details = `
+        <div class="card-detail-row"><span class="card-detail-label">Twice/year</span><span class="card-detail-val">${t.twice||'No'}</span></div>
+        <div class="card-detail-row"><span class="card-detail-label">Visit 1 scheduled</span><span class="card-detail-val">${fmt(t.tbr1)}</span></div>
+        <div class="card-detail-row"><span class="card-detail-label">Visit 1 done</span><span class="card-detail-val">${fmt(t.tbr1c)}</span></div>
+        <div class="card-detail-row"><span class="card-detail-label">Visit 2 scheduled</span><span class="card-detail-val">${fmt(t.tbr2)}</span></div>
+        <div class="card-detail-row"><span class="card-detail-label">Visit 2 done</span><span class="card-detail-val">${fmt(t.tbr2c)}</span></div>`;
+      return cardHTML(c, color, st, summary, details, note, noteEsc);
+    } else {
+      const r = reviewData[c.name]||{};
+      const st = getReviewStatus(c);
+      summary = `<div class="card-due">Sent: ${fmt(r.sent)||'—'}</div>`;
+      details = `
+        <div class="card-detail-row"><span class="card-detail-label">Person sent to</span><span class="card-detail-val">${r.person||'—'}</span></div>
+        <div class="card-detail-row"><span class="card-detail-label">Date reviewed</span><span class="card-detail-val">${fmt(r.reviewed)}</span></div>
+        <div class="card-detail-row"><span class="card-detail-label">Reviewer</span><span class="card-detail-val">${r.reviewer||'—'}</span></div>`;
+      return cardHTML(c, color, st, summary, details, note, noteEsc);
+    }
+  }).join('');
+}
+
+function cardHTML(c, color, st, summary, details, note, noteEsc){
+  return `<div class="client-card" style="--client-color:${color}" id="card-${c.id}">
+    <div class="card-main" onclick="toggleCard(${c.id})">
+      <div class="card-left">
+        <div class="card-name"><span class="client-dot" style="background:${color}"></span>${c.name}</div>
+        ${summary}
+      </div>
+      <div class="card-right">
+        ${badge(st.cls, st.label)}
+        <span class="card-chevron">▼</span>
+      </div>
+    </div>
+    <div class="card-details">
+      ${details}
+      <div class="card-actions">
+        <button class="card-edit-btn" onclick="openEdit(${c.id})">✎ Edit</button>
+      </div>
+      <textarea class="card-note" placeholder="Add a note…" onblur="saveNote('${c.name.replace(/'/g,"\\'")}', this.value)">${noteEsc}</textarea>
+    </div>
+  </div>`;
+}
+
+function toggleCard(id){
+  const card = document.getElementById('card-'+id);
+  if(card) card.classList.toggle('expanded');
+}
+
 function badge(cls,label){return`<span class="badge badge-${cls}">${label}</span>`;}
 
 function render(){
@@ -1331,6 +1597,7 @@ function render(){
     html+='</tbody></table>';
   }
   document.getElementById('table-wrap').innerHTML=html;
+  renderCards(rows);
 }
 
 function switchTab(tab,el){
