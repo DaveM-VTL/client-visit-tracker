@@ -1114,9 +1114,20 @@
 
 <script>
 const TODAY = new Date(); TODAY.setHours(0,0,0,0);
-function daysFrom(d){return Math.round((new Date(d)-TODAY)/86400000)}
-function fmt(d){if(!d)return'—';return new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}
-function addDays(d,n){const r=new Date(d);r.setDate(r.getDate()+n);return r}
+function daysFrom(d){ const dt = d instanceof Date ? d : parseDate(d); if(!dt) return null; return Math.round((dt-TODAY)/86400000); }
+function fmt(d){
+  if(!d) return '—';
+  const s = typeof d === 'string' ? d.split('T')[0] : d;
+  const [y,m,day] = s.split('-').map(Number);
+  return new Date(y,m-1,day).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+}
+function parseDate(d){
+  if(!d) return null;
+  const s = typeof d === 'string' ? d.split('T')[0] : d;
+  const [y,m,day] = s.split('-').map(Number);
+  return new Date(y,m-1,day);
+}
+function addDays(d,n){const r=parseDate(d);r.setDate(r.getDate()+n);return r}
 
 // ── Client colors ──
 const COLOR_PALETTE = [
@@ -1381,6 +1392,15 @@ function renderStats(){
           <div class="stat-cell"><div class="stat-num num-warning">${dueSoon}</div><div class="stat-lbl">Due soon</div></div>
           <div class="stat-cell"><div class="stat-num num-success">${onTrack}</div><div class="stat-lbl">On track</div></div>
           <div class="stat-cell"><div class="stat-num">${notVisited}</div><div class="stat-lbl">Not yet visited</div></div>`;
+  } else if(currentTab==='phone'){
+    const overdue=clients.filter(c=>getPhoneStatus(c).cls==='overdue').length;
+    const pending=clients.filter(c=>getPhoneStatus(c).cls==='pending').length;
+    const completed=clients.filter(c=>getPhoneStatus(c).cls==='completed').length;
+    const notSched=clients.filter(c=>getPhoneStatus(c).cls==='not-scheduled').length;
+    html=`<div class="stat-cell"><div class="stat-num num-danger">${overdue}</div><div class="stat-lbl">Overdue</div></div>
+          <div class="stat-cell"><div class="stat-num num-warning">${pending}</div><div class="stat-lbl">Pending</div></div>
+          <div class="stat-cell"><div class="stat-num num-success">${completed}</div><div class="stat-lbl">Completed</div></div>
+          <div class="stat-cell"><div class="stat-num">${notSched}</div><div class="stat-lbl">Not scheduled</div></div>`;
   } else if(currentTab==='reviews'){
     const reviewed=clients.filter(c=>getReviewStatus(c).cls==='reviewed').length;
     const awaiting=clients.filter(c=>getReviewStatus(c).cls==='sent').length;
