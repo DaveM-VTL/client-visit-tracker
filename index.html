@@ -677,7 +677,7 @@
 
   .btn-save:hover { opacity: 0.85; }
 
-  @media (max-width: 768px) {
+  @media (max-width: 600px) {
     /* sidebar becomes a horizontal tab bar at the bottom */
     .shell { grid-template-columns: 1fr; }
     .sidebar {
@@ -749,7 +749,7 @@
     flex-direction: column;
   }
 
-  @media (max-width: 768px) {
+  @media (max-width: 600px) {
     .cards-wrap { display: flex; }
   }
 
@@ -1128,24 +1128,37 @@
 </div>
 
 <script>
+// ── Date helpers ──
 const TODAY = new Date(); TODAY.setHours(0,0,0,0);
-function daysFrom(d){ const dt = d instanceof Date ? d : parseDate(d); if(!dt) return null; return Math.round((dt-TODAY)/86400000); }
-function fmt(d){
-  if(!d) return '—';
-  if(d instanceof Date) return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
-  const s = d.split('T')[0];
-  const [y,m,day] = s.split('-').map(Number);
-  return new Date(y,m-1,day).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
-}
+
 function parseDate(d){
   if(!d) return null;
   if(d instanceof Date) return d;
-  const s = d.split('T')[0];
+  const s = String(d).split('T')[0];
   const [y,m,day] = s.split('-').map(Number);
-  return new Date(y,m-1,day);
+  if(!y||!m||!day) return null;
+  return new Date(y, m-1, day);
 }
-function addDays(d,n){const r=parseDate(d);r.setDate(r.getDate()+n);return r}
 
+function fmt(d){
+  if(!d) return '—';
+  const dt = parseDate(d);
+  if(!dt) return '—';
+  return dt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+}
+
+function addDays(d, n){
+  const r = parseDate(d);
+  if(!r) return null;
+  r.setDate(r.getDate() + n);
+  return r;
+}
+
+function daysFrom(d){
+  const dt = parseDate(d);
+  if(!dt) return null;
+  return Math.round((dt - TODAY) / 86400000);
+}
 // ── Client colors ──
 const COLOR_PALETTE = [
   '#e07b54','#d4a843','#6db88a','#5ba3c9','#9b7ec8',
@@ -1488,7 +1501,7 @@ function nameCell(c){
   </span>`;
 }
 
-function isMobile(){ return window.innerWidth <= 768; }
+function isMobile(){ return window.innerWidth <= 600; }
 
 function renderCards(rows){
   const wrap = document.getElementById('cards-wrap');
@@ -1598,6 +1611,9 @@ function render(){
 
   if(!rows.length){
     document.getElementById('table-wrap').innerHTML='<div class="empty-state"><p>No clients match your search.</p></div>';
+    document.getElementById('table-wrap').style.display = isMobile() ? 'none' : '';
+    document.getElementById('cards-wrap').innerHTML='<p style="text-align:center;padding:40px;font-family:var(--mono);font-size:12px;color:var(--text-muted)">No clients match your search.</p>';
+    document.getElementById('cards-wrap').style.display = isMobile() ? 'flex' : 'none';
     return;
   }
 
