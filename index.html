@@ -1123,11 +1123,18 @@ function fmt(d){
 }
 function parseDate(d){
   if(!d) return null;
-  const s = typeof d === 'string' ? d.split('T')[0] : d;
-  const [y,m,day] = s.split('-').map(Number);
-  return new Date(y,m-1,day);
+  if(d instanceof Date) return d;
+  const s = String(d).split('T')[0];
+  const parts = s.split('-').map(Number);
+  if(parts.length !== 3 || isNaN(parts[0])) return null;
+  return new Date(parts[0], parts[1]-1, parts[2]);
 }
-function addDays(d,n){const r=parseDate(d);r.setDate(r.getDate()+n);return r}
+function addDays(d,n){
+  const r = parseDate(d);
+  if(!r) return null;
+  r.setDate(r.getDate()+n);
+  return r;
+}
 
 // ── Client colors ──
 const COLOR_PALETTE = [
