@@ -1117,13 +1117,15 @@ const TODAY = new Date(); TODAY.setHours(0,0,0,0);
 function daysFrom(d){ const dt = d instanceof Date ? d : parseDate(d); if(!dt) return null; return Math.round((dt-TODAY)/86400000); }
 function fmt(d){
   if(!d) return '—';
-  const s = typeof d === 'string' ? d.split('T')[0] : d;
+  if(d instanceof Date) return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  const s = d.split('T')[0];
   const [y,m,day] = s.split('-').map(Number);
   return new Date(y,m-1,day).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
 }
 function parseDate(d){
   if(!d) return null;
-  const s = typeof d === 'string' ? d.split('T')[0] : d;
+  if(d instanceof Date) return d;
+  const s = d.split('T')[0];
   const [y,m,day] = s.split('-').map(Number);
   return new Date(y,m-1,day);
 }
