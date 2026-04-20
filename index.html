@@ -1739,22 +1739,30 @@ function showStatus(msg, ok=true){
 async function loadFromSupabase(){
   showStatus('Loading data...', true);
   try {
-    const [c, p, t, r, n] = await Promise.all([
-      sbGet('clients'), sbGet('phone_visits'), sbGet('tbr_visits'), sbGet('review_data'), sbGet('notes')
+    // Fetch notes separately so if that table is missing it doesn't break everything
+    const [c, p, t, r] = await Promise.all([
+      sbGet('clients'), sbGet('phone_visits'), sbGet('tbr_visits'), sbGet('review_data')
     ]);
+    const n = await sbGet('notes').catch(() => []);
 
     if(c && c.length > 0){
-      clients = c.map(row => ({
-        id: row.id,
-        name: row.name,
-        address: row.address || '',
-        city: row.city || '',
-        lastVisit: row.last_visit || null,
-        lastVisit2: row.last_visit2 || null
-      }));
+      // Keep hardcoded data as fallback for missing fields
+      const localMap = {};
+      clients.forEach(lc => localMap[lc.name] = lc);
+
+      clients = c.map(row => {
+        const local = localMap[row.name] || {};
+        return {
+          id: row.id,
+          name: row.name,
+          address: row.address || local.address || '',
+          city: row.city || local.city || '',
+          lastVisit: row.last_visit || local.lastVisit || null,
+          lastVisit2: row.last_visit2 || local.lastVisit2 || null
+        };
+      });
       clients.sort((a,b) => a.name.localeCompare(b.name));
       nextId = Math.max(...clients.map(c => c.id)) + 1;
-      // assign colors in alphabetical order so they're consistent
       colorIndex = 0;
       clients.forEach(cl => getClientColor(cl.name));
     }
