@@ -1126,20 +1126,31 @@
 
 <script>
 const TODAY = new Date(); TODAY.setHours(0,0,0,0);
-function daysFrom(d){ const dt = d instanceof Date ? d : parseDate(d); if(!dt) return null; return Math.round((dt-TODAY)/86400000); }
-function fmt(d){
-  if(!d) return '—';
-  const s = typeof d === 'string' ? d.split('T')[0] : d;
-  const [y,m,day] = s.split('-').map(Number);
-  return new Date(y,m-1,day).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
-}
 function parseDate(d){
   if(!d) return null;
-  const s = typeof d === 'string' ? d.split('T')[0] : d;
-  const [y,m,day] = s.split('-').map(Number);
-  return new Date(y,m-1,day);
+  if(d instanceof Date) return d;
+  const s = String(d).split('T')[0];
+  const p = s.split('-').map(Number);
+  if(p.length!==3||isNaN(p[0])) return null;
+  return new Date(p[0],p[1]-1,p[2]);
 }
-function addDays(d,n){const r=parseDate(d);r.setDate(r.getDate()+n);return r}
+function fmt(d){
+  if(!d) return '—';
+  const dt = parseDate(d);
+  if(!dt) return '—';
+  return dt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+}
+function addDays(d,n){
+  const r=parseDate(d);
+  if(!r) return null;
+  r.setDate(r.getDate()+n);
+  return r;
+}
+function daysFrom(d){
+  const dt=parseDate(d);
+  if(!dt) return null;
+  return Math.round((dt-TODAY)/86400000);
+}
 
 // ── Client colors ──
 const COLOR_PALETTE = [
