@@ -728,8 +728,8 @@
     .modal {
       max-width: 100%;
       border-radius: 16px 16px 0 0;
-      height: 85vh;
-      max-height: 85vh;
+      height: 80vh;
+      max-height: 80vh;
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -749,7 +749,7 @@
       position: static;
       flex-direction: column;
       padding: 12px 16px;
-      padding-bottom: max(24px, env(safe-area-inset-bottom, 24px));
+      padding-bottom: max(80px, calc(env(safe-area-inset-bottom, 0px) + 70px));
       gap: 8px;
       background: var(--surface);
       border-top: 1px solid var(--border);
