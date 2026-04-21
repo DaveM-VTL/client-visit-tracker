@@ -1,0 +1,1998 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Client Visit Tracker</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CVT">
+<meta name="theme-color" content="#1a1814">
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f3ee;
+    --surface: #ffffff;
+    --surface2: #f0ede6;
+    --border: #e0dbd0;
+    --text: #1a1814;
+    --text-muted: #8a8278;
+    --accent: #2d5a3d;
+    --accent-light: #e8f0ea;
+    --danger: #8b2020;
+    --danger-light: #f5e8e8;
+    --warning: #7a5500;
+    --warning-light: #fdf3dc;
+    --info: #1a4060;
+    --info-light: #e3eef7;
+    --success: #1e4d2b;
+    --success-light: #e6f2ea;
+    --radius: 6px;
+    --mono: 'DM Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  /* ── Layout ── */
+  .shell {
+    min-height: 100vh;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    background: var(--text);
+    color: #f5f3ee;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    width: 220px;
+    height: 100vh;
+    overflow-y: auto;
+  }
+
+  .sidebar-brand {
+    padding: 28px 24px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .sidebar-brand h1 {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #f5f3ee;
+    line-height: 1.4;
+  }
+
+  .sidebar-brand p {
+    font-size: 11px;
+    color: rgba(245,243,238,0.4);
+    margin-top: 4px;
+    font-family: var(--mono);
+  }
+
+  .sidebar-nav {
+    padding: 16px 12px;
+    flex: 1;
+  }
+
+  .nav-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(245,243,238,0.3);
+    padding: 0 12px;
+    margin: 16px 0 6px;
+  }
+
+  .nav-label:first-child { margin-top: 0; }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 400;
+    color: rgba(245,243,238,0.6);
+    transition: all 0.15s;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    position: relative;
+  }
+
+  .nav-item:hover { background: rgba(255,255,255,0.06); color: #f5f3ee; }
+
+  .nav-item.active {
+    background: rgba(255,255,255,0.1);
+    color: #f5f3ee;
+    font-weight: 500;
+  }
+
+  .nav-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .dot-ip { background: #6db88a; }
+  .dot-ph { background: #6ab0d4; }
+  .dot-tbr { background: #d4a96a; }
+  .dot-rev { background: #c47eb5; }
+  .dot-rep { background: #7ab8d4; }
+
+  .nav-count {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 10px;
+    background: rgba(255,255,255,0.1);
+    padding: 1px 6px;
+    border-radius: 10px;
+    color: rgba(245,243,238,0.5);
+  }
+
+  .sidebar-footer {
+    padding: 16px 24px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    font-family: var(--mono);
+    font-size: 10px;
+    color: rgba(245,243,238,0.25);
+  }
+
+  /* ── Main content ── */
+  .main {
+    margin-left: 220px;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  .topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .topbar-title {
+    font-size: 15px;
+    font-weight: 600;
+    flex: 1;
+  }
+
+  .topbar-title span {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--text-muted);
+    margin-left: 8px;
+  }
+
+  .search-wrap {
+    position: relative;
+  }
+
+  .search-wrap svg {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    pointer-events: none;
+  }
+
+  .search {
+    padding: 8px 12px 8px 32px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: var(--sans);
+    font-size: 13px;
+    background: var(--bg);
+    color: var(--text);
+    width: 220px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .search:focus { border-color: var(--accent); }
+
+  .filter-select {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: var(--sans);
+    font-size: 13px;
+    background: var(--bg);
+    color: var(--text);
+    outline: none;
+    cursor: pointer;
+  }
+
+  .btn-add {
+    padding: 8px 16px;
+    background: var(--text);
+    color: var(--bg);
+    border: none;
+    border-radius: var(--radius);
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    white-space: nowrap;
+  }
+
+  .btn-add:hover { opacity: 0.85; }
+
+  /* ── Stats bar ── */
+  .stats-bar {
+    display: flex;
+    gap: 1px;
+    background: var(--border);
+  }
+
+  .stat-cell {
+    flex: 1;
+    background: var(--surface);
+    padding: 16px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .stat-cell:first-child { padding-left: 32px; }
+  .stat-cell:last-child { padding-right: 32px; }
+
+  .stat-num {
+    font-family: var(--mono);
+    font-size: 26px;
+    font-weight: 500;
+    line-height: 1;
+  }
+
+  .stat-lbl {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-family: var(--mono);
+  }
+
+  .num-danger { color: var(--danger); }
+  .num-warning { color: var(--warning); }
+  .num-success { color: var(--success); }
+  .num-info { color: var(--info); }
+
+  /* ── Table ── */
+  .content { padding: 0; flex: 1; }
+
+  .table-wrap { overflow-x: auto; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  thead {
+    background: var(--surface2);
+    position: relative;
+    z-index: 1;
+  }
+
+  th {
+    text-align: left;
+    padding: 10px 16px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 500;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  th:first-child { padding-left: 32px; }
+  th:last-child { padding-right: 32px; }
+
+  td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+
+  td:first-child { padding-left: 32px; }
+  td:last-child { padding-right: 32px; }
+
+  tr:not(.has-color):hover td { background: var(--surface2); }
+
+  .td-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    width: 36px;
+  }
+
+  .td-name { font-weight: 500; }
+
+  .td-city {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .td-date {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .td-days {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  /* ── Badges ── */
+  .badge {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 3px;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .badge-overdue { background: var(--danger-light); color: var(--danger); }
+  .badge-due-soon { background: var(--warning-light); color: var(--warning); }
+  .badge-on-track { background: var(--success-light); color: var(--success); }
+  .badge-not-visited, .badge-not-scheduled, .badge-not-sent { background: var(--surface2); color: var(--text-muted); }
+  .badge-completed, .badge-reviewed { background: var(--success-light); color: var(--success); }
+  .badge-pending { background: var(--info-light); color: var(--info); }
+  .badge-sent { background: var(--warning-light); color: var(--warning); }
+
+  .edit-btn {
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: none;
+    font-family: var(--mono);
+    font-size: 10px;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all 0.15s;
+  }
+
+  .edit-btn:hover { border-color: var(--text-muted); color: var(--text); }
+
+  /* ── Client color — full row tint ── */
+  tr.has-color td {
+    background-color: color-mix(in srgb, var(--client-color, transparent) 8%, var(--surface));
+  }
+
+  tr.has-color:hover td {
+    background-color: color-mix(in srgb, var(--client-color, transparent) 16%, var(--surface));
+  }
+
+  .client-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    margin-right: 7px;
+    flex-shrink: 0;
+    vertical-align: middle;
+    position: relative;
+    top: -1px;
+  }
+
+  /* ── Client name popup ── */
+  .client-name-wrap {
+    position: relative;
+    display: inline-block;
+  }
+
+  .client-name-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    font-weight: 500;
+    color: var(--text);
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .client-name-btn:hover { text-decoration: underline; text-decoration-style: dotted; }
+
+  .client-popup {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 50;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    padding: 10px 14px;
+    white-space: nowrap;
+    font-size: 12px;
+    font-family: var(--mono);
+    color: var(--text-muted);
+    min-width: 180px;
+    line-height: 1.6;
+  }
+
+  .client-popup.open { display: block; }
+
+  .client-popup strong {
+    display: block;
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .note-inline {
+    width: 100%;
+    min-width: 160px;
+    padding: 5px 7px;
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+    font-family: var(--sans);
+    font-size: 12px;
+    color: var(--text);
+    background: transparent;
+    resize: none;
+    height: 34px;
+    line-height: 1.4;
+    transition: border-color 0.15s, background 0.15s, height 0.15s;
+    overflow: hidden;
+  }
+
+  .note-inline::placeholder { color: var(--border); }
+
+  .note-inline:hover {
+    border-color: var(--border);
+    background: var(--surface);
+  }
+
+  .note-inline:focus {
+    border-color: var(--accent);
+    background: var(--surface);
+    height: 72px;
+    overflow: auto;
+    outline: none;
+  }
+
+  .notes-cell { min-width: 180px; }
+
+  /* ── Notes textarea in modal ── */
+  .field textarea {
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: var(--sans);
+    font-size: 13px;
+    background: var(--bg);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+    resize: vertical;
+    min-height: 80px;
+    line-height: 1.5;
+  }
+
+  .field textarea:focus { border-color: var(--accent); }
+
+  .empty-state {
+    text-align: center;
+    padding: 80px 32px;
+    color: var(--text-muted);
+  }
+
+  .empty-state p { font-family: var(--mono); font-size: 12px; }
+
+  /* ── Modal ── */
+  .modal-bg {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(26,24,20,0.5);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .modal-bg.open { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border-radius: 10px;
+    width: 100%;
+    max-width: 520px;
+    max-height: 90vh;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+  }
+
+  .modal-header {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    background: var(--surface);
+    z-index: 2;
+  }
+
+  .modal-header h3 {
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .modal-close {
+    width: 28px; height: 28px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    font-size: 16px;
+    line-height: 1;
+    transition: all 0.15s;
+  }
+
+  .modal-close:hover { border-color: var(--text-muted); color: var(--text); }
+
+  .modal-body { padding: 20px 24px; }
+
+  .modal-section {
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .modal-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+  }
+
+  .field-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field.full { grid-column: 1 / -1; }
+
+  .field label {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: var(--mono);
+  }
+
+  .field input, .field select {
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: var(--sans);
+    font-size: 13px;
+    background: var(--bg);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .field input:focus, .field select:focus { border-color: var(--accent); }
+
+  .modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    position: sticky;
+    bottom: 0;
+    background: var(--surface);
+  }
+
+  .btn-cancel {
+    padding: 8px 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: none;
+    font-family: var(--sans);
+    font-size: 13px;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all 0.15s;
+  }
+
+  .btn-cancel:hover { border-color: var(--text-muted); color: var(--text); }
+
+  .btn-save {
+    padding: 8px 20px;
+    background: var(--text);
+    color: var(--bg);
+    border: none;
+    border-radius: var(--radius);
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+
+  .btn-save:hover { opacity: 0.85; }
+
+  @media (max-width: 768px) {
+    /* sidebar becomes a horizontal tab bar at the bottom */
+    .shell { grid-template-columns: 1fr; }
+    .sidebar {
+      position: fixed;
+      bottom: 0; top: auto;
+      width: 100%; height: auto;
+      flex-direction: row;
+      align-items: center;
+      z-index: 200;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      padding: 0;
+    }
+    .sidebar-brand { display: none; }
+    .sidebar-nav {
+      display: flex;
+      flex-direction: row;
+      flex: 1;
+      padding: 0;
+      gap: 0;
+    }
+    .nav-label { display: none; }
+    .nav-item {
+      flex: 1;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 10px 4px 12px;
+      border-radius: 0;
+      font-size: 10px;
+      text-align: center;
+    }
+    .nav-count { display: none; }
+    .nav-dot { width: 6px; height: 6px; }
+    .sidebar-footer { display: none; }
+
+    /* main shifts up, padded at bottom for tab bar */
+    .main { margin-left: 0; padding-bottom: 70px; }
+
+    /* topbar */
+    .topbar { flex-wrap: wrap; gap: 8px; padding: 12px 16px; }
+    .topbar-title { font-size: 14px; width: 100%; }
+    .search { width: 100%; }
+    .search-wrap { flex: 1; }
+    .filter-select { flex: 1; font-size: 13px; }
+    .btn-add { font-size: 13px; }
+
+    /* stats */
+    .stats-bar { flex-wrap: wrap; }
+    .stat-cell { min-width: 50%; flex: 1 1 50%; padding: 12px 16px; }
+    .stat-cell:first-child { padding-left: 16px; }
+    .stat-cell:last-child { padding-right: 16px; }
+    .stat-num { font-size: 20px; }
+
+    /* hide table, show cards */
+    .table-wrap table { display: none; }
+
+    /* modal */
+    .field-grid { grid-template-columns: 1fr; }
+    .modal { max-width: 100%; border-radius: 12px 12px 0 0; }
+    .modal-bg { align-items: flex-end; padding: 0; }
+  }
+
+  /* ── Client cards (mobile) ── */
+  .cards-wrap {
+    display: none;
+    padding: 12px 16px;
+    gap: 10px;
+    flex-direction: column;
+  }
+
+  @media (max-width: 768px) {
+    .cards-wrap { display: flex; }
+  }
+
+  .client-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    border-left: 4px solid var(--client-color, var(--border));
+  }
+
+  .card-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    cursor: pointer;
+    gap: 10px;
+  }
+
+  .card-left { flex: 1; min-width: 0; }
+
+  .card-name {
+    font-weight: 600;
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .card-due {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  .card-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .card-chevron {
+    color: var(--text-muted);
+    font-size: 12px;
+    transition: transform 0.2s;
+  }
+
+  .client-card.expanded .card-chevron { transform: rotate(180deg); }
+
+  .card-details {
+    display: none;
+    padding: 0 14px 14px;
+    border-top: 1px solid var(--border);
+    font-size: 13px;
+  }
+
+  .client-card.expanded .card-details { display: block; }
+
+  .card-detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+  }
+
+  .card-detail-row:last-child { border-bottom: none; }
+
+  .card-detail-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    flex-shrink: 0;
+  }
+
+  .card-detail-val {
+    font-size: 12px;
+    text-align: right;
+    color: var(--text);
+  }
+
+  .card-actions {
+    display: flex;
+    gap: 8px;
+    padding-top: 10px;
+    margin-top: 4px;
+  }
+
+  .card-edit-btn {
+    flex: 1;
+    padding: 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: none;
+    font-family: var(--mono);
+    font-size: 11px;
+    cursor: pointer;
+    color: var(--text-muted);
+    text-align: center;
+  }
+
+  .card-note {
+    width: 100%;
+    margin-top: 8px;
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: var(--sans);
+    font-size: 13px;
+    background: var(--bg);
+    color: var(--text);
+    resize: none;
+    height: 60px;
+    line-height: 1.4;
+    outline: none;
+  }
+
+  .card-note:focus { border-color: var(--accent); }
+</style>
+
+<style>
+  .login-screen {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background: var(--bg);
+  }
+  .login-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 40px;
+    width: 100%;
+    max-width: 380px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+  }
+  .login-brand {
+    margin-bottom: 28px;
+    text-align: center;
+  }
+  .login-brand h1 {
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+  .login-brand p {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: var(--mono);
+  }
+  .login-field {
+    margin-bottom: 14px;
+  }
+  .login-field label {
+    display: block;
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--text-muted);
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .login-field input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: var(--sans);
+    font-size: 14px;
+    background: var(--bg);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .login-field input:focus { border-color: var(--accent); }
+  .login-btn {
+    width: 100%;
+    padding: 11px;
+    background: var(--text);
+    color: var(--bg);
+    border: none;
+    border-radius: var(--radius);
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: opacity 0.15s;
+  }
+  .login-btn:hover { opacity: 0.85; }
+  .login-error {
+    margin-top: 12px;
+    padding: 8px 12px;
+    background: var(--danger-light);
+    color: var(--danger);
+    border-radius: var(--radius);
+    font-size: 12px;
+    font-family: var(--mono);
+    display: none;
+    text-align: center;
+  }
+  .logout-btn {
+    padding: 6px 12px;
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: var(--radius);
+    background: none;
+    color: rgba(245,243,238,0.6);
+    font-family: var(--mono);
+    font-size: 10px;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    transition: all 0.15s;
+    width: calc(100% - 48px);
+    margin: 0 24px;
+  }
+  .logout-btn:hover { border-color: rgba(255,255,255,0.4); color: #f5f3ee; }
+</style>
+</head>
+<body>
+
+<!-- Login Screen -->
+<div class="login-screen" id="login-screen">
+  <div class="login-box">
+    <div class="login-brand">
+      <h1>Client Visit Tracker</h1>
+      <p>Valley Techlogic</p>
+    </div>
+    <div class="login-field">
+      <label>Email</label>
+      <input type="email" id="login-email" placeholder="your@email.com" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div class="login-field">
+      <label>Password</label>
+      <input type="password" id="login-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="login-btn" onclick="doLogin()">Sign in</button>
+    <div class="login-error" id="login-error">Incorrect email or password</div>
+  </div>
+</div>
+
+
+<div class="shell" style="display:none">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <h1>Client Visit<br>Tracker</h1>
+      <p>55 clients</p>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-label">Trackers</div>
+      <button class="nav-item active" onclick="switchTab('inperson',this)">
+        <span class="nav-dot dot-ip"></span>
+        In-person visits
+        <span class="nav-count" id="cnt-ip">—</span>
+      </button>
+      <button class="nav-item" onclick="switchTab('phone',this)">
+        <span class="nav-dot dot-ph"></span>
+        Phone visits
+        <span class="nav-count" id="cnt-ph">—</span>
+      </button>
+      <button class="nav-item" onclick="switchTab('tbr',this)">
+        <span class="nav-dot dot-tbr"></span>
+        TBRs
+        <span class="nav-count" id="cnt-tbr">—</span>
+      </button>
+      <button class="nav-item" onclick="switchTab('reviews',this)">
+        <span class="nav-dot dot-rev"></span>
+        Google reviews
+        <span class="nav-count" id="cnt-rev">—</span>
+      </button>
+      <button class="nav-item" onclick="switchTab('reports',this)">
+        <span class="nav-dot dot-rep"></span>
+        Reports
+        <span class="nav-count" id="cnt-rep">—</span>
+      </button>
+    </nav>
+    <div class="sidebar-footer" style="display:flex;flex-direction:column;gap:10px;align-items:flex-start;">
+      <button class="logout-btn" onclick="doLogout()">Sign out</button>
+      <span style="padding-left:24px">Updated today</span>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title" id="topbar-title">In-person visits <span>all clients</span></div>
+      <div class="search-wrap">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input class="search" type="text" placeholder="Search clients..." oninput="render()" id="search">
+      </div>
+      <select class="filter-select" onchange="render()" id="filter"></select>
+      <button class="btn-add" onclick="openAdd()">+ Add client</button>
+    </div>
+
+    <div class="stats-bar" id="stats-bar"></div>
+    <div class="content">
+      <div class="table-wrap" id="table-wrap"></div>
+      <div class="cards-wrap" id="cards-wrap"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-title">Edit client</h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-section">
+        <div class="section-label">Client info</div>
+        <div class="field-grid">
+          <div class="field full"><label>Client name</label><input id="f-name" type="text"></div>
+          <div class="field full"><label>Address</label><input id="f-addr" type="text"></div>
+          <div class="field"><label>City</label><input id="f-city" type="text"></div>
+        </div>
+      </div>
+      <div class="modal-section">
+        <div class="section-label">In-person visits</div>
+        <div class="field-grid">
+          <div class="field"><label>Last visit</label><input id="f-last" type="date"></div>
+          <div class="field"><label>Second visit</label><input id="f-last2" type="date"></div>
+        </div>
+      </div>
+      <div class="modal-section">
+        <div class="section-label">Phone visits</div>
+        <div class="field-grid">
+          <div class="field"><label>Visit 1 scheduled</label><input id="f-ph1" type="date"></div>
+          <div class="field"><label>Visit 2 scheduled</label><input id="f-ph2" type="date"></div>
+          <div class="field"><label>Visit 1 completed</label><input id="f-ph1c" type="date"></div>
+          <div class="field"><label>Visit 2 completed</label><input id="f-ph2c" type="date"></div>
+        </div>
+      </div>
+      <div class="modal-section">
+        <div class="section-label">TBRs</div>
+        <div class="field-grid">
+          <div class="field"><label>Twice per year?</label>
+            <select id="f-tbr-twice"><option value="No">No</option><option value="Yes">Yes</option></select>
+          </div>
+          <div class="field"></div>
+          <div class="field"><label>Visit 1 scheduled</label><input id="f-tbr1" type="date"></div>
+          <div class="field"><label>Visit 1 completed</label><input id="f-tbr1c" type="date"></div>
+          <div class="field"><label>Visit 2 scheduled</label><input id="f-tbr2" type="date"></div>
+          <div class="field"><label>Visit 2 completed</label><input id="f-tbr2c" type="date"></div>
+        </div>
+      </div>
+      <div class="modal-section">
+        <div class="section-label">Google review</div>
+        <div class="field-grid">
+          <div class="field"><label>Email sent date</label><input id="f-rev-sent" type="date"></div>
+          <div class="field"><label>Person sent to</label><input id="f-rev-person" type="text"></div>
+          <div class="field"><label>Date reviewed</label><input id="f-rev-date" type="date"></div>
+          <div class="field"><label>Reviewer</label><input id="f-rev-reviewer" type="text"></div>
+        </div>
+      </div>
+      <div class="modal-section">
+        <div class="section-label">Monthly report</div>
+        <div class="field-grid">
+          <div class="field"><label>Last report sent</label><input id="f-rep-sent" type="date"></div>
+        </div>
+      </div>
+      <div class="modal-section">
+        <div class="section-label">Notes</div>
+        <div class="field-grid">
+          <div class="field full"><label>Notes</label><textarea id="f-notes" placeholder="Any notes about this client…"></textarea></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" onclick="saveClient()">Save changes</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const TODAY = new Date(); TODAY.setHours(0,0,0,0);
+function daysFrom(d){ const dt = d instanceof Date ? d : parseDate(d); if(!dt) return null; return Math.round((dt-TODAY)/86400000); }
+function fmt(d){
+  if(!d) return '—';
+  const s = typeof d === 'string' ? d.split('T')[0] : d;
+  const [y,m,day] = s.split('-').map(Number);
+  return new Date(y,m-1,day).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+}
+function parseDate(d){
+  if(!d) return null;
+  const s = typeof d === 'string' ? d.split('T')[0] : d;
+  const [y,m,day] = s.split('-').map(Number);
+  return new Date(y,m-1,day);
+}
+function addDays(d,n){const r=parseDate(d);r.setDate(r.getDate()+n);return r}
+
+// ── Client colors ──
+const COLOR_PALETTE = [
+  '#e07b54','#d4a843','#6db88a','#5ba3c9','#9b7ec8',
+  '#c9607a','#4faa9e','#d4774e','#7bb86f','#6e8fcb',
+  '#c2855a','#5aac8a','#b56db8','#7aa8d4','#c98e44',
+  '#e0736b','#58b09c','#8f7ecb','#d4a05a','#6aab78'
+];
+const clientColors = {}; // name -> hex color
+let colorIndex = 0;
+
+function getClientColor(name){
+  if(!clientColors[name]){
+    clientColors[name] = COLOR_PALETTE[colorIndex % COLOR_PALETTE.length];
+    colorIndex++;
+  }
+  return clientColors[name];
+}
+
+// ── Notes ──
+const notesData = {};
+
+const reportData = {}; // name -> { lastSent: 'YYYY-MM-DD' } // name -> string
+
+const phoneData = {
+  'Alia Corp':{ph1:'2026-02-10',ph2:'2026-03-31',ph1c:null,ph2c:null},
+  'Alldrin Bros. Almond Co.':{ph1:'2026-04-30',ph2:'2026-06-18',ph1c:null,ph2c:null},
+  'Benton Roberson CPA':{ph1:'2026-01-30',ph2:'2026-03-20',ph1c:null,ph2c:null},
+  'Busseto Foods':{ph1:'2026-03-05',ph2:'2026-04-23',ph1c:null,ph2c:null},
+  'California Mill Equipment Company':{ph1:'2026-02-23',ph2:'2026-04-13',ph1c:null,ph2c:null},
+  'CenCal Foods':{ph1:'2026-03-04',ph2:'2026-04-22',ph1c:null,ph2c:null},
+  'Center of Vision Enhancement':{ph1:'2026-04-29',ph2:'2026-06-17',ph1c:null,ph2c:null},
+  'Central California Railcar Repair LLC':{ph1:'2026-04-01',ph2:'2026-05-20',ph1c:null,ph2c:null},
+  'Central Counties DHIA':{ph1:'2026-04-22',ph2:'2026-06-10',ph1c:null,ph2c:null},
+  'Coldwell Banker Kaljian':{ph1:'2026-04-15',ph2:'2026-06-03',ph1c:null,ph2c:null},
+  'Collins Hernandez, LLP':{ph1:'2026-03-11',ph2:'2026-04-29',ph1c:null,ph2c:null},
+  'Cortez Growers':{ph1:'2026-02-16',ph2:'2026-04-06',ph1c:null,ph2c:null},
+  'DayBreak AdultCare':{ph1:'2026-04-22',ph2:'2026-06-10',ph1c:null,ph2c:null},
+  'Del Rio Nut':{ph1:'2026-03-25',ph2:'2026-05-13',ph1c:null,ph2c:null},
+  'Dependable Precision Manufacturing':{ph1:'2026-04-16',ph2:'2026-06-04',ph1c:null,ph2c:null},
+  'Dr. Jennifer M Jones Foundation':{ph1:'2026-04-29',ph2:'2026-06-17',ph1c:null,ph2c:null},
+  'E M Manufacturing':{ph1:'2026-02-16',ph2:'2026-04-06',ph1c:null,ph2c:null},
+  'Engstrom Property Management':{ph1:'2026-03-18',ph2:'2026-05-06',ph1c:null,ph2c:null},
+  'Franklin County Water District':{ph1:null,ph2:null,ph1c:null,ph2c:null},
+  'Grace Home':{ph1:'2026-03-25',ph2:'2026-05-13',ph1c:null,ph2c:null},
+  'Grimaud Farm':{ph1:'2026-02-16',ph2:'2026-04-06',ph1c:'2026-02-19',ph2c:null},
+  'Image Masters':{ph1:null,ph2:null,ph1c:null,ph2c:null},
+  'Inter-County Title Company':{ph1:'2026-05-06',ph2:'2026-06-24',ph1c:null,ph2c:null},
+  'James J Stevinson Corp':{ph1:'2026-04-15',ph2:'2026-06-03',ph1c:null,ph2c:null},
+  'Johnson Plumbing':{ph1:'2026-04-29',ph2:'2026-06-17',ph1c:null,ph2c:null},
+  'Kirby Manufacturing':{ph1:'2026-04-29',ph2:'2026-06-17',ph1c:null,ph2c:null},
+  'Love Inc':{ph1:'2026-04-29',ph2:'2026-06-17',ph1c:null,ph2c:null},
+  'Mariposa Energy':{ph1:'2026-04-01',ph2:'2026-05-20',ph1c:null,ph2c:null},
+  'Marvulli':{ph1:null,ph2:null,ph1c:null,ph2c:null},
+  'Merced County Association of Goverment':{ph1:'2026-04-02',ph2:'2026-05-21',ph1c:null,ph2c:null},
+  'Natural Vision':{ph1:'2026-04-20',ph2:'2026-06-08',ph1c:null,ph2c:null},
+  'Norcal Safe and Vault':{ph1:'2026-03-18',ph2:'2026-05-06',ph1c:null,ph2c:null},
+  'Note Servicing Center':{ph1:'2026-04-08',ph2:'2026-05-27',ph1c:null,ph2c:null},
+  'Oak Tree AG':{ph1:'2026-04-08',ph2:'2026-05-27',ph1c:null,ph2c:null},
+  'Ortho Spine Advanced Health':{ph1:null,ph2:null,ph1c:null,ph2c:null},
+  'P & F Metals':{ph1:'2026-02-23',ph2:'2026-04-13',ph1c:null,ph2c:null},
+  'Pacific Ultrapower Chinese Station':{ph1:null,ph2:null,ph1c:null,ph2c:null},
+  'Patients First Medical Center':{ph1:null,ph2:null,ph1c:null,ph2c:null},
+  'PCS Concrete':{ph1:'2026-04-22',ph2:'2026-06-10',ph1c:null,ph2c:null},
+  'Raw Farm':{ph1:'2026-03-04',ph2:'2026-04-22',ph1c:null,ph2c:null},
+  'Rico, Pfitzer, Pires Insurance Agency, Inc.':{ph1:'2026-02-24',ph2:'2026-04-14',ph1c:null,ph2c:null},
+  'Rio Bravo Fresno':{ph1:'2026-03-04',ph2:'2026-04-22',ph1c:null,ph2c:null},
+  'Salinas Valley Basin':{ph1:null,ph2:null,ph1c:null,ph2c:null},
+  'Serene Aesthetics & Wellness MedSpa':{ph1:'2026-03-25',ph2:'2026-05-13',ph1c:null,ph2c:null},
+  'Shannon Pump':{ph1:null,ph2:null,ph1c:null,ph2c:null},
+  'Sierra Mountain Construction Inc':{ph1:'2026-01-30',ph2:'2026-03-20',ph1c:null,ph2c:null},
+  'Spruce MultiSpeciality':{ph1:'2026-03-11',ph2:'2026-04-29',ph1c:null,ph2c:null},
+  'TBA Auto Parts':{ph1:null,ph2:null,ph1c:null,ph2c:null},
+  'Ullrich Delevati':{ph1:'2026-03-18',ph2:'2026-05-06',ph1c:null,ph2c:null},
+  'Valley Cancer Medical Center':{ph1:'2026-04-01',ph2:'2026-05-20',ph1c:null,ph2c:null},
+  'Valley Wine Warehouse':{ph1:'2026-03-19',ph2:'2026-05-07',ph1c:null,ph2c:null},
+  'Vinfillment LLC':{ph1:'2026-03-19',ph2:'2026-05-07',ph1c:null,ph2c:null},
+  'Winton Water District':{ph1:null,ph2:null,ph1c:null,ph2c:null},
+  'Wood Connection':{ph1:'2026-04-16',ph2:'2026-06-04',ph1c:null,ph2c:null},
+  'Yarra, Rivas, and Associates':{ph1:'2026-03-04',ph2:'2026-04-22',ph1c:null,ph2c:null},
+};
+
+const tbrData = {
+  'Dependable Precision Manufacturing':{twice:'No',tbr1:'2026-02-26',tbr1c:'2026-02-26',tbr2:null,tbr2c:null},
+  'Natural Vision':{twice:'No',tbr1:'2026-04-01',tbr1c:null,tbr2:null,tbr2c:null},
+  'Ortho Spine Advanced Health':{twice:'No',tbr1:'2026-04-16',tbr1c:null,tbr2:null,tbr2c:null},
+  'Pacific Ultrapower Chinese Station':{twice:'No',tbr1:'2026-04-30',tbr1c:null,tbr2:null,tbr2c:null},
+  'Rico, Pfitzer, Pires Insurance Agency, Inc.':{twice:'No',tbr1:'2026-01-22',tbr1c:'2026-01-22',tbr2:null,tbr2c:null},
+};
+
+const reviewData = {
+  'Alia Corp':{sent:'2026-03-24',person:'Rigo',reviewed:null,reviewer:null},
+  'Benton Roberson CPA':{sent:'2026-03-24',person:'Lisa',reviewed:null,reviewer:null},
+  'Busseto Foods':{sent:'2026-03-24',person:'Jason',reviewed:null,reviewer:null},
+  'California Mill Equipment Company':{sent:'2026-03-24',person:'Paul',reviewed:null,reviewer:null},
+  'CenCal Foods':{sent:'2026-03-24',person:'Bob and Brittani',reviewed:'2026-03-24',reviewer:'Brittani'},
+  'Center of Vision Enhancement':{sent:'2026-03-24',person:'Margaret',reviewed:null,reviewer:null},
+  'Central California Railcar Repair LLC':{sent:'2026-03-24',person:'LaToya',reviewed:null,reviewer:null},
+  'Central Counties DHIA':{sent:'2026-03-24',person:'Frank',reviewed:'2026-03-25',reviewer:'Frank (both locations)'},
+  'Coldwell Banker Kaljian':{sent:'2026-03-24',person:'Beverly',reviewed:null,reviewer:null},
+  'Collins Hernandez, LLP':{sent:'2026-03-24',person:'Stalin',reviewed:null,reviewer:null},
+  'Cortez Growers':{sent:'2026-03-24',person:'Dave and Santi',reviewed:null,reviewer:null},
+  'DayBreak AdultCare':{sent:'2026-03-24',person:'Valerie',reviewed:null,reviewer:null},
+  'Del Rio Nut':{sent:'2026-03-24',person:'Michelle and Paul',reviewed:null,reviewer:null},
+  'Dependable Precision Manufacturing':{sent:'2026-03-24',person:'Cliff and Mark',reviewed:null,reviewer:null},
+  'Dr. Jennifer M Jones Foundation':{sent:'2026-03-24',person:'Otieno and Dr Jones',reviewed:null,reviewer:null},
+  'E M Manufacturing':{sent:'2026-03-24',person:'Scott',reviewed:null,reviewer:null},
+  'Engstrom Property Management':{sent:'2026-03-24',person:'Jim',reviewed:null,reviewer:null},
+  'Grace Home':{sent:'2026-03-24',person:'Barry',reviewed:null,reviewer:null},
+  'Grimaud Farm':{sent:'2026-03-24',person:'Howard',reviewed:null,reviewer:null},
+  'Inter-County Title Company':{sent:'2026-03-24',person:'Debbie',reviewed:null,reviewer:null},
+  'James J Stevinson Corp':{sent:'2026-03-24',person:'Rex and Stephanie',reviewed:null,reviewer:null},
+  'Johnson Plumbing':{sent:'2026-03-24',person:'Greg and Scott',reviewed:null,reviewer:null},
+  'Kirby Manufacturing':{sent:'2026-03-24',person:'Stephanie',reviewed:null,reviewer:null},
+  'Love Inc':{sent:'2026-03-24',person:'Annette',reviewed:null,reviewer:null},
+  'Mariposa Energy':{sent:'2026-03-24',person:'Oliver and Fred',reviewed:null,reviewer:null},
+  'Merced County Association of Goverment':{sent:'2026-03-24',person:'Nav and Stephanie',reviewed:null,reviewer:null},
+  'Natural Vision':{sent:'2026-03-24',person:'Nara',reviewed:null,reviewer:null},
+  'Norcal Safe and Vault':{sent:'2026-03-24',person:'Dan',reviewed:null,reviewer:null},
+  'Note Servicing Center':{sent:'2026-03-24',person:'Thomas',reviewed:null,reviewer:null},
+  'Oak Tree AG':{sent:'2026-03-24',person:'Linda',reviewed:null,reviewer:null},
+  'P & F Metals':{sent:'2026-03-24',person:'Garret and Bernadette',reviewed:null,reviewer:null},
+  'Pacific Ultrapower Chinese Station':{sent:'2026-03-26',person:'Gem and Jarrett',reviewed:null,reviewer:null},
+  'Patients First Medical Center':{sent:'2026-03-26',person:'Alyssa',reviewed:null,reviewer:null},
+  'PCS Concrete':{sent:'2026-03-24',person:'Breanna and Josie',reviewed:null,reviewer:null},
+  'Raw Farm':{sent:'2026-03-24',person:'Aaron and Lizbeth',reviewed:null,reviewer:null},
+  'Shannon Pump':{sent:'2026-03-24',person:'Betty',reviewed:null,reviewer:null},
+  'Sierra Mountain Construction Inc':{sent:'2026-03-24',person:'Javier',reviewed:null,reviewer:null},
+  'Spruce MultiSpeciality':{sent:'2026-03-24',person:'Carol and Connie',reviewed:null,reviewer:null},
+  'Ullrich Delevati':{sent:'2026-03-24',person:'Tony and Lisa',reviewed:null,reviewer:null},
+  'Valley Cancer Medical Center':{sent:'2026-03-24',person:'Rupee',reviewed:null,reviewer:null},
+  'Valley Wine Warehouse':{sent:'2026-03-24',person:'Paul and Dev',reviewed:'2026-03-25',reviewer:'Paul (both locations)'},
+  'Vinfillment LLC':{sent:'2026-03-24',person:'Efren',reviewed:null,reviewer:null},
+  'Yarra, Rivas, and Associates':{sent:'2026-03-24',person:'Sonia',reviewed:null,reviewer:null},
+};
+
+let clients = [
+  {id:1,name:'Alia Corp',address:'140 Heron Way',city:'Merced',lastVisit:'2025-12-23',lastVisit2:null},
+  {id:2,name:'Alldrin Bros. Almond Co.',address:'961 N. Emerald Ave',city:'Modesto',lastVisit:'2026-03-12',lastVisit2:null},
+  {id:3,name:'Benton Roberson CPA',address:'13919 Mono Way',city:'Sonora',lastVisit:'2025-12-12',lastVisit2:null},
+  {id:4,name:'Busseto Foods',address:'1351 N Crystal Ave',city:'Fresno',lastVisit:'2026-01-15',lastVisit2:null},
+  {id:5,name:'California Mill Equipment Company',address:'213 C St',city:'Turlock',lastVisit:'2026-01-05',lastVisit2:null},
+  {id:6,name:'CenCal Foods',address:'1828 E Hedges Ave',city:'Fresno',lastVisit:'2026-01-14',lastVisit2:'2026-03-05'},
+  {id:7,name:'Center of Vision Enhancement',address:'1901 G St',city:'Merced',lastVisit:'2026-03-11',lastVisit2:null},
+  {id:8,name:'Central California Railcar Repair LLC',address:'1104 N. F St',city:'Stockton',lastVisit:'2026-02-11',lastVisit2:'2026-04-03'},
+  {id:9,name:'Central Counties DHIA',address:'241 Business Parkway',city:'Atwater',lastVisit:'2025-12-23',lastVisit2:'2026-03-04'},
+  {id:10,name:'Coldwell Banker Kaljian',address:'645 E Pacheco Blvd',city:'Los Banos',lastVisit:'2026-02-25',lastVisit2:null},
+  {id:11,name:'Collins Hernandez, LLP',address:'7111 N Fresno St',city:'Fresno',lastVisit:'2026-01-21',lastVisit2:null},
+  {id:12,name:'Cortez Growers',address:'7111 N. Fresno Street',city:'Turlock',lastVisit:'2025-12-29',lastVisit2:null},
+  {id:13,name:'DayBreak AdultCare',address:'1251 Grove Ave Suite E',city:'Atwater',lastVisit:'2026-03-04',lastVisit2:null},
+  {id:14,name:'Del Rio Nut',address:'15391 Vinewood Circle',city:'Livingston',lastVisit:'2026-02-04',lastVisit2:null},
+  {id:15,name:'Dependable Precision Manufacturing',address:'1111 S Stockton St',city:'Lodi',lastVisit:'2026-02-26',lastVisit2:null},
+  {id:16,name:'Dr. Jennifer M Jones Foundation',address:'3144 North G Street',city:'Merced',lastVisit:'2026-03-11',lastVisit2:null},
+  {id:17,name:'E M Manufacturing',address:'1290 Dupont Court',city:'Manteca',lastVisit:'2025-12-29',lastVisit2:null},
+  {id:18,name:'Engstrom Property Management',address:'837 Jefferson Blvd',city:'West Sacramento',lastVisit:'2026-01-28',lastVisit2:'2026-04-03'},
+  {id:19,name:'Franklin County Water District',address:'2126 Drake Ave',city:'Merced',lastVisit:null,lastVisit2:null},
+  {id:20,name:'Grace Home',address:'13435 Peach Ave',city:'Livingston',lastVisit:'2026-02-04',lastVisit2:null},
+  {id:21,name:'Grimaud Farm',address:'2716 E Miner Avenue',city:'Stockton',lastVisit:'2025-12-29',lastVisit2:'2026-04-03'},
+  {id:22,name:'Image Masters',address:'429 Grogan Avenue',city:'Merced',lastVisit:'2026-04-02',lastVisit2:null},
+  {id:23,name:'Inter-County Title Company',address:'5160 Bullion St',city:'Mariposa',lastVisit:'2026-03-18',lastVisit2:null},
+  {id:24,name:'James J Stevinson Corp',address:'25079 River Rd',city:'Stevinson',lastVisit:'2026-02-25',lastVisit2:null},
+  {id:25,name:'Johnson Plumbing',address:'2190 Yosemite Parkway',city:'Merced',lastVisit:'2026-03-11',lastVisit2:null},
+  {id:26,name:'Kirby Manufacturing',address:'484 South Hwy 59',city:'Merced',lastVisit:'2026-03-11',lastVisit2:null},
+  {id:27,name:'Love Inc',address:'1920 Canal St',city:'Merced',lastVisit:'2026-03-11',lastVisit2:null},
+  {id:28,name:'Mariposa Energy',address:'4887 Bruns Rd',city:'Byron',lastVisit:'2026-02-11',lastVisit2:null},
+  {id:29,name:'Marvulli',address:'1005 E Childs Ave',city:'Merced',lastVisit:null,lastVisit2:null},
+  {id:30,name:'Merced County Association of Goverment',address:'369 West 18th Street',city:'Merced',lastVisit:'2026-02-12',lastVisit2:null},
+  {id:31,name:'Natural Vision',address:'6767 N Fresno St',city:'Fresno',lastVisit:'2026-03-02',lastVisit2:null},
+  {id:32,name:'Norcal Safe and Vault',address:'817 Jefferson Blvd',city:'West Sacramento',lastVisit:'2026-01-28',lastVisit2:'2026-04-03'},
+  {id:33,name:'Note Servicing Center',address:'3275 E. Robertson Blvd.',city:'Chowchilla',lastVisit:'2026-02-18',lastVisit2:null},
+  {id:34,name:'Oak Tree AG',address:'23591 Robertson Blvd',city:'Chowchilla',lastVisit:'2026-02-18',lastVisit2:null},
+  {id:35,name:'Ortho Spine Advanced Health',address:'330 E Yosemite Ave',city:'Merced',lastVisit:'2026-03-25',lastVisit2:null},
+  {id:36,name:'P & F Metals',address:'301 S Broadway',city:'Turlock',lastVisit:'2026-01-05',lastVisit2:null},
+  {id:37,name:'Pacific Ultrapower Chinese Station',address:'8755 Enterprise Dr',city:'Jamestown',lastVisit:'2026-03-25',lastVisit2:null},
+  {id:38,name:'Patients First Medical Center',address:'394 E Yosemite Ave',city:'Merced',lastVisit:'2026-03-25',lastVisit2:null},
+  {id:39,name:'PCS Concrete',address:'101 Business Parkway',city:'Atwater',lastVisit:'2026-03-04',lastVisit2:null},
+  {id:40,name:'Raw Farm',address:'7221 S. Jameson Ave',city:'Fresno',lastVisit:'2026-01-14',lastVisit2:null},
+  {id:41,name:'Rico, Pfitzer, Pires Insurance Agency, Inc.',address:'208 5th Street',city:'Gustine',lastVisit:'2026-01-06',lastVisit2:null},
+  {id:42,name:'Rio Bravo Fresno',address:'3350 S Willow Ave',city:'Fresno',lastVisit:'2026-01-14',lastVisit2:null},
+  {id:43,name:'Salinas Valley Basin',address:'1441 Schilling Place',city:'Carmel Valley',lastVisit:null,lastVisit2:null},
+  {id:44,name:'Serene Aesthetics & Wellness MedSpa',address:'2401 Coffee Road',city:'Modesto',lastVisit:'2026-02-04',lastVisit2:null},
+  {id:45,name:'Shannon Pump',address:'275 State Hwy 59',city:'Merced',lastVisit:null,lastVisit2:null},
+  {id:46,name:'Sierra Mountain Construction Inc',address:'19500 Nugget Blvd',city:'Sonora',lastVisit:'2025-12-12',lastVisit2:null},
+  {id:47,name:'Spruce MultiSpeciality',address:'1360 E Herndon Ave',city:'Fresno',lastVisit:'2026-01-21',lastVisit2:null},
+  {id:48,name:'TBA Auto Parts',address:'934 W 15th St',city:'Merced',lastVisit:null,lastVisit2:null},
+  {id:49,name:'Ullrich Delevati',address:'433 Second Street',city:'Woodland',lastVisit:'2026-01-28',lastVisit2:null},
+  {id:50,name:'Valley Cancer Medical Center',address:'1138 Norman Drive',city:'Manteca',lastVisit:'2026-02-11',lastVisit2:null},
+  {id:51,name:'Valley Wine Warehouse',address:'175 Tower Rd',city:'American Canyon',lastVisit:'2026-01-29',lastVisit2:null},
+  {id:52,name:'Vinfillment LLC',address:'644 Hanna Drive',city:'American Canyon',lastVisit:'2026-01-29',lastVisit2:null},
+  {id:53,name:'Winton Water District',address:'6951 North Winton Way',city:'Winton',lastVisit:null,lastVisit2:null},
+  {id:54,name:'Wood Connection',address:'4701 N Star Way',city:'Modesto',lastVisit:'2026-02-26',lastVisit2:null},
+  {id:55,name:'Yarra, Rivas, and Associates',address:'2000 Fresno Street',city:'Fresno',lastVisit:'2026-01-14',lastVisit2:null},
+];
+
+let nextId=56, currentTab='inperson', editingId=null;
+
+function getIPStatus(c){
+  if(!c.lastVisit)return{label:'Not yet visited',cls:'not-visited',days:null,nextDue:null};
+  const next=addDays(new Date(c.lastVisit),182);
+  const d=daysFrom(next);
+  if(d<0)return{label:'Overdue',cls:'overdue',days:d,nextDue:next};
+  if(d<=30)return{label:'Due soon',cls:'due-soon',days:d,nextDue:next};
+  return{label:'On track',cls:'on-track',days:d,nextDue:next};
+}
+function getPhoneStatus(c){
+  const p=phoneData[c.name]||{};
+  if(!p.ph1&&!p.ph2)return{label:'Not scheduled',cls:'not-scheduled'};
+  if(p.ph1c&&p.ph2c)return{label:'Completed',cls:'completed'};
+  if(p.ph1c){if(p.ph2){const d=daysFrom(new Date(p.ph2));return d<0?{label:'Visit 2 overdue',cls:'overdue'}:{label:'Visit 2 pending',cls:'pending'};}return{label:'Visit 1 done',cls:'on-track'};}
+  if(p.ph1){const d=daysFrom(new Date(p.ph1));return d<0?{label:'Visit 1 overdue',cls:'overdue'}:{label:'Visit 1 pending',cls:'pending'};}
+  return{label:'Not scheduled',cls:'not-scheduled'};
+}
+function getTBRStatus(c){
+  const t=tbrData[c.name];
+  if(!t||!t.tbr1)return{label:'Not scheduled',cls:'not-scheduled'};
+  if(t.twice==='Yes'){
+    if(t.tbr1c&&t.tbr2c)return{label:'Completed',cls:'completed'};
+    if(t.tbr1c){if(t.tbr2){const d=daysFrom(new Date(t.tbr2));return d<0?{label:'Visit 2 overdue',cls:'overdue'}:{label:'Visit 2 pending',cls:'pending'};}return{label:'Visit 1 done',cls:'on-track'};}
+    const d=daysFrom(new Date(t.tbr1));return d<0?{label:'Visit 1 overdue',cls:'overdue'}:{label:'Visit 1 pending',cls:'pending'};
+  }
+  if(t.tbr1c)return{label:'Completed',cls:'completed'};
+  const d=daysFrom(new Date(t.tbr1));return d<0?{label:'Overdue',cls:'overdue'}:{label:'Pending',cls:'pending'};
+}
+function getReviewStatus(c){
+  const r=reviewData[c.name];
+  if(!r||!r.sent)return{label:'Not sent',cls:'not-sent'};
+  if(r.reviewed)return{label:'Reviewed',cls:'reviewed'};
+  return{label:'Awaiting review',cls:'sent'};
+}
+function getReportStatus(c){
+  const r=reportData[c.name];
+  if(!r||!r.lastSent) return {label:'Never sent',cls:'not-sent'};
+  const d = daysFrom(r.lastSent);
+  if(d <= -28) return {label:'Overdue',cls:'overdue'};
+  if(d <= -14) return {label:'Due soon',cls:'due-soon'};
+  return {label:'Sent this month',cls:'on-track'};
+}
+
+const filterOptions={
+  inperson:['all','overdue','due-soon','on-track','not-visited'],
+  phone:['all','overdue','pending','completed','not-scheduled'],
+  tbr:['all','overdue','pending','completed','not-scheduled'],
+  reviews:['all','reviewed','sent','not-sent'],
+  reports:['all','overdue','due-soon','on-track','not-sent'],
+};
+const filterLabels={all:'All statuses',overdue:'Overdue','due-soon':'Due soon','on-track':'On track','not-visited':'Not yet visited',pending:'Pending',completed:'Completed','not-scheduled':'Not scheduled',reviewed:'Reviewed',sent:'Awaiting review','not-sent':'Not sent'};
+const tabTitles={inperson:'In-person visits',phone:'Phone visits',tbr:'TBRs',reviews:'Google reviews',reports:'Reports'};
+
+function updateFilterOptions(){
+  const sel=document.getElementById('filter');
+  sel.innerHTML=filterOptions[currentTab].map(v=>`<option value="${v}">${filterLabels[v]}</option>`).join('');
+}
+
+function updateSidebarCounts(){
+  const ipOverdue=clients.filter(c=>getIPStatus(c).cls==='overdue').length;
+  const phOverdue=clients.filter(c=>getPhoneStatus(c).cls==='overdue').length;
+  const tbrPending=clients.filter(c=>['overdue','pending'].includes(getTBRStatus(c).cls)).length;
+  const revPending=clients.filter(c=>getReviewStatus(c).cls==='sent').length;
+  const repDue=clients.filter(c=>['overdue','due-soon','not-sent'].includes(getReportStatus(c).cls)).length;
+  document.getElementById('cnt-ip').textContent=ipOverdue>0?ipOverdue+'↑':clients.length;
+  document.getElementById('cnt-ph').textContent=phOverdue>0?phOverdue+'↑':clients.length;
+  document.getElementById('cnt-tbr').textContent=tbrPending>0?tbrPending:'—';
+  document.getElementById('cnt-rev').textContent=revPending>0?revPending+'↑':'—';
+  document.getElementById('cnt-rep').textContent=repDue>0?repDue+'↑':'—';
+}
+
+function renderStats(){
+  let html='';
+  if(currentTab==='inperson'){
+    const overdue=clients.filter(c=>getIPStatus(c).cls==='overdue').length;
+    const dueSoon=clients.filter(c=>getIPStatus(c).cls==='due-soon').length;
+    const onTrack=clients.filter(c=>getIPStatus(c).cls==='on-track').length;
+    const notVisited=clients.filter(c=>getIPStatus(c).cls==='not-visited').length;
+    html=`<div class="stat-cell"><div class="stat-num num-danger">${overdue}</div><div class="stat-lbl">Overdue</div></div>
+          <div class="stat-cell"><div class="stat-num num-warning">${dueSoon}</div><div class="stat-lbl">Due soon</div></div>
+          <div class="stat-cell"><div class="stat-num num-success">${onTrack}</div><div class="stat-lbl">On track</div></div>
+          <div class="stat-cell"><div class="stat-num">${notVisited}</div><div class="stat-lbl">Not yet visited</div></div>`;
+  } else if(currentTab==='phone'){
+    const overdue=clients.filter(c=>getPhoneStatus(c).cls==='overdue').length;
+    const pending=clients.filter(c=>getPhoneStatus(c).cls==='pending').length;
+    const completed=clients.filter(c=>getPhoneStatus(c).cls==='completed').length;
+    const notSched=clients.filter(c=>getPhoneStatus(c).cls==='not-scheduled').length;
+    html=`<div class="stat-cell"><div class="stat-num num-danger">${overdue}</div><div class="stat-lbl">Overdue</div></div>
+          <div class="stat-cell"><div class="stat-num num-warning">${pending}</div><div class="stat-lbl">Pending</div></div>
+          <div class="stat-cell"><div class="stat-num num-success">${completed}</div><div class="stat-lbl">Completed</div></div>
+          <div class="stat-cell"><div class="stat-num">${notSched}</div><div class="stat-lbl">Not scheduled</div></div>`;
+  } else if(currentTab==='reviews'){
+    const reviewed=clients.filter(c=>getReviewStatus(c).cls==='reviewed').length;
+    const awaiting=clients.filter(c=>getReviewStatus(c).cls==='sent').length;
+    const notSent=clients.filter(c=>getReviewStatus(c).cls==='not-sent').length;
+    html=`<div class="stat-cell"><div class="stat-num num-success">${reviewed}</div><div class="stat-lbl">Reviewed</div></div>
+          <div class="stat-cell"><div class="stat-num num-warning">${awaiting}</div><div class="stat-lbl">Awaiting review</div></div>
+          <div class="stat-cell"><div class="stat-num">${notSent}</div><div class="stat-lbl">Not sent</div></div>
+          <div class="stat-cell"><div class="stat-num num-info">${clients.length}</div><div class="stat-lbl">Total clients</div></div>`;
+  } else if(currentTab==='tbr'){
+    const comp=clients.filter(c=>getTBRStatus(c).cls==='completed').length;
+    const pend=clients.filter(c=>['pending','overdue'].includes(getTBRStatus(c).cls)).length;
+    const ns=clients.filter(c=>getTBRStatus(c).cls==='not-scheduled').length;
+    html=`<div class="stat-cell"><div class="stat-num num-success">${comp}</div><div class="stat-lbl">Completed</div></div>
+          <div class="stat-cell"><div class="stat-num num-warning">${pend}</div><div class="stat-lbl">Pending / overdue</div></div>
+          <div class="stat-cell"><div class="stat-num">${ns}</div><div class="stat-lbl">Not scheduled</div></div>
+          <div class="stat-cell"><div class="stat-num num-info">${clients.length}</div><div class="stat-lbl">Total clients</div></div>`;
+  } else if(currentTab==='reports'){
+    const sent=clients.filter(c=>getReportStatus(c).cls==='on-track').length;
+    const due=clients.filter(c=>getReportStatus(c).cls==='due-soon').length;
+    const overdue=clients.filter(c=>getReportStatus(c).cls==='overdue').length;
+    const never=clients.filter(c=>getReportStatus(c).cls==='not-sent').length;
+    html=`<div class="stat-cell"><div class="stat-num num-success">${sent}</div><div class="stat-lbl">Sent this month</div></div>
+          <div class="stat-cell"><div class="stat-num num-warning">${due}</div><div class="stat-lbl">Due soon</div></div>
+          <div class="stat-cell"><div class="stat-num num-danger">${overdue}</div><div class="stat-lbl">Overdue</div></div>
+          <div class="stat-cell"><div class="stat-num">${never}</div><div class="stat-lbl">Never sent</div></div>`;
+  }
+  document.getElementById('stats-bar').innerHTML=html;
+}
+
+function renderNote(name, note){
+  const escaped = (note||'').replace(/"/g,'&quot;');
+  return `<textarea
+    class="note-inline"
+    placeholder="Add a note…"
+    onblur="saveNote('${name.replace(/'/g,"\\'")}', this.value)"
+  >${escaped}</textarea>`;
+}
+
+function toggleNote(id){
+  const el = document.getElementById(id);
+  if(el) el.style.display = el.style.display === 'block' ? 'none' : 'block';
+}
+
+function toggleClientPopup(el){
+  const popup = el.nextElementSibling;
+  const isOpen = popup.classList.contains('open');
+  // close all open popups first
+  document.querySelectorAll('.client-popup.open').forEach(p => p.classList.remove('open'));
+  if(!isOpen) popup.classList.add('open');
+}
+
+document.addEventListener('click', function(e){
+  if(!e.target.closest('.client-name-wrap')){
+    document.querySelectorAll('.client-popup.open').forEach(p => p.classList.remove('open'));
+  }
+});
+
+async function saveNote(name, value){
+  notesData[name] = value;
+  try {
+    await sbUpsert('notes', { name, note: value });
+  } catch(e){ console.error('Note save failed', e); }
+}
+
+function nameCell(c){
+  const color = getClientColor(c.name);
+  const addr = [c.address, c.city].filter(Boolean).join(', ') || 'No address on file';
+  const nameSafe = c.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+  return `<span class="client-name-wrap">
+    <button class="client-name-btn" onclick="toggleClientPopup(this)">
+      <span class="client-dot" style="background:${color}"></span>${c.name}
+    </button>
+    <div class="client-popup">
+      <strong>${c.name}</strong>
+      ${addr}
+    </div>
+  </span>`;
+}
+
+function isMobile(){ return window.innerWidth <= 768; }
+
+function renderCards(rows){
+  const wrap = document.getElementById('cards-wrap');
+  if(!rows.length){ wrap.innerHTML='<p style="text-align:center;padding:40px;font-family:var(--mono);font-size:12px;color:var(--text-muted)">No clients match your search.</p>'; return; }
+
+  wrap.innerHTML = rows.map(c => {
+    const color = getClientColor(c.name);
+    const note = notesData[c.name]||'';
+    const noteEsc = note.replace(/"/g,'&quot;');
+    let summary = '', details = '';
+
+    if(currentTab==='inperson'){
+      const st = getIPStatus(c);
+      const due = st.nextDue ? fmt(st.nextDue) : '—';
+      summary = `<div class="card-due">Next due: ${due}</div>`;
+      details = `
+        <div class="card-detail-row"><span class="card-detail-label">Last visit</span><span class="card-detail-val">${fmt(c.lastVisit)}</span></div>
+        <div class="card-detail-row"><span class="card-detail-label">Second visit</span><span class="card-detail-val">${fmt(c.lastVisit2)}</span></div>
+        <div class="card-detail-row"><span class="card-detail-label">Address</span><span class="card-detail-val">${[c.address,c.city].filter(Boolean).join(', ')||'—'}</span></div>`;
+      return cardHTML(c, color, st, summary, details, note, noteEsc);
+    } else if(currentTab==='phone'){
+      const p = phoneData[c.name]||{};
+      const st = getPhoneStatus(c);
+      const nextUp = p.ph1c ? fmt(p.ph2) : fmt(p.ph1);
+      summary = `<div class="card-due">Next call: ${nextUp||'—'}</div>`;
+      details = `
+        <div class="card-detail-row"><span class="card-detail-label">Visit 1 scheduled</span><span class="card-detail-val">${fmt(p.ph1)}</span></div>
+        <div class="card-detail-row"><span class="card-detail-label">Visit 1 done</span><span class="card-detail-val">${fmt(p.ph1c)}</span></div>
+        <div class="card-detail-row"><span class="card-detail-label">Visit 2 scheduled</span><span class="card-detail-val">${fmt(p.ph2)}</span></div>
+        <div class="card-detail-row"><span class="card-detail-label">Visit 2 done</span><span class="card-detail-val">${fmt(p.ph2c)}</span></div>`;
+      return cardHTML(c, color, st, summary, details, note, noteEsc);
+    } else if(currentTab==='tbr'){
+      const t = tbrData[c.name]||{};
+      const st = getTBRStatus(c);
+      const nextUp = t.tbr1c ? fmt(t.tbr2) : fmt(t.tbr1);
+      summary = `<div class="card-due">Next TBR: ${nextUp||'—'}</div>`;
+      details = `
+        <div class="card-detail-row"><span class="card-detail-label">Twice/year</span><span class="card-detail-val">${t.twice||'No'}</span></div>
+        <div class="card-detail-row"><span class="card-detail-label">Visit 1 scheduled</span><span class="card-detail-val">${fmt(t.tbr1)}</span></div>
+        <div class="card-detail-row"><span class="card-detail-label">Visit 1 done</span><span class="card-detail-val">${fmt(t.tbr1c)}</span></div>
+        <div class="card-detail-row"><span class="card-detail-label">Visit 2 scheduled</span><span class="card-detail-val">${fmt(t.tbr2)}</span></div>
+        <div class="card-detail-row"><span class="card-detail-label">Visit 2 done</span><span class="card-detail-val">${fmt(t.tbr2c)}</span></div>`;
+      return cardHTML(c, color, st, summary, details, note, noteEsc);
+    } else if(currentTab==='reviews'){
+      const r = reviewData[c.name]||{};
+      const st = getReviewStatus(c);
+      summary = `<div class="card-due">Sent: ${fmt(r.sent)||'—'}</div>`;
+      details = `
+        <div class="card-detail-row"><span class="card-detail-label">Person sent to</span><span class="card-detail-val">${r.person||'—'}</span></div>
+        <div class="card-detail-row"><span class="card-detail-label">Date reviewed</span><span class="card-detail-val">${fmt(r.reviewed)}</span></div>
+        <div class="card-detail-row"><span class="card-detail-label">Reviewer</span><span class="card-detail-val">${r.reviewer||'—'}</span></div>`;
+      return cardHTML(c, color, st, summary, details, note, noteEsc);
+    } else {
+      const r = reportData[c.name]||{};
+      const st = getReportStatus(c);
+      summary = `<div class="card-due">Last sent: ${fmt(r.lastSent)||'—'}</div>`;
+      details = `
+        <div class="card-detail-row"><span class="card-detail-label">Last report sent</span><span class="card-detail-val">${fmt(r.lastSent)}</span></div>`;
+      return cardHTML(c, color, st, summary, details, note, noteEsc);
+    }
+  }).join('');
+}
+
+function cardHTML(c, color, st, summary, details, note, noteEsc){
+  return `<div class="client-card" style="--client-color:${color}" id="card-${c.id}">
+    <div class="card-main" onclick="toggleCard(${c.id})">
+      <div class="card-left">
+        <div class="card-name"><span class="client-dot" style="background:${color}"></span>${c.name}</div>
+        ${summary}
+      </div>
+      <div class="card-right">
+        ${badge(st.cls, st.label)}
+        <span class="card-chevron">▼</span>
+      </div>
+    </div>
+    <div class="card-details">
+      ${details}
+      <div class="card-actions">
+        <button class="card-edit-btn" onclick="openEdit(${c.id})">✎ Edit</button>
+      </div>
+      <textarea class="card-note" placeholder="Add a note…" onblur="saveNote('${c.name.replace(/'/g,"\\'")}', this.value)">${noteEsc}</textarea>
+    </div>
+  </div>`;
+}
+
+function toggleCard(id){
+  const card = document.getElementById('card-'+id);
+  if(card) card.classList.toggle('expanded');
+}
+
+function badge(cls,label){return`<span class="badge badge-${cls}">${label}</span>`;}
+
+function render(){
+  renderStats();
+  updateSidebarCounts();
+  const q=document.getElementById('search').value.toLowerCase();
+  const f=document.getElementById('filter').value;
+  const title=document.getElementById('topbar-title');
+  title.innerHTML=`${tabTitles[currentTab]} <span>${clients.length} clients</span>`;
+
+  let rows=clients.filter(c=>{
+    if(q&&!c.name.toLowerCase().includes(q)&&!c.city.toLowerCase().includes(q))return false;
+    if(f!=='all'){
+      let cls='';
+      if(currentTab==='inperson')cls=getIPStatus(c).cls;
+      else if(currentTab==='phone')cls=getPhoneStatus(c).cls;
+      else if(currentTab==='tbr')cls=getTBRStatus(c).cls;
+      else if(currentTab==='reviews') cls=getReviewStatus(c).cls;
+      else cls=getReportStatus(c).cls;
+      if(['not-visited','not-scheduled','not-sent'].includes(f)){if(!['not-visited','not-scheduled','not-sent'].includes(cls))return false;}
+      else if(cls!==f)return false;
+    }
+    return true;
+  });
+
+  if(!rows.length){
+    document.getElementById('table-wrap').innerHTML='<div class="empty-state"><p>No clients match your search.</p></div>';
+    return;
+  }
+
+  let html='';
+  if(currentTab==='inperson'){
+    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>Last visit</th><th>Next due</th><th>Days until due</th><th>Status</th><th>Notes</th><th></th></tr></thead><tbody>`;
+    rows.forEach((c,i)=>{
+      const st=getIPStatus(c);
+      const ds=st.days!==null?(st.days<0?`${Math.abs(st.days)} days ago`:`${st.days} days`):'—';
+      const color=getClientColor(c.name);
+      const note=notesData[c.name]||'';
+      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(c.lastVisit)}</td><td class="td-date">${st.nextDue?fmt(st.nextDue):'—'}</td><td class="td-days">${ds}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td><td><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
+    });
+    html+='</tbody></table>';
+  } else if(currentTab==='phone'){
+    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>Visit 1 scheduled</th><th>Visit 2 scheduled</th><th>Visit 1 done</th><th>Visit 2 done</th><th>Status</th><th>Notes</th><th></th></tr></thead><tbody>`;
+    rows.forEach((c,i)=>{
+      const p=phoneData[c.name]||{};const st=getPhoneStatus(c);
+      const color=getClientColor(c.name);
+      const note=notesData[c.name]||'';
+      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(p.ph1)}</td><td class="td-date">${fmt(p.ph2)}</td><td class="td-date">${fmt(p.ph1c)}</td><td class="td-date">${fmt(p.ph2c)}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td><td><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
+    });
+    html+='</tbody></table>';
+  } else if(currentTab==='tbr'){
+    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>Twice/year</th><th>Visit 1 scheduled</th><th>Visit 1 done</th><th>Visit 2 scheduled</th><th>Visit 2 done</th><th>Status</th><th>Notes</th><th></th></tr></thead><tbody>`;
+    rows.forEach((c,i)=>{
+      const t=tbrData[c.name]||{};const st=getTBRStatus(c);
+      const color=getClientColor(c.name);
+      const note=notesData[c.name]||'';
+      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${t.twice||'No'}</td><td class="td-date">${fmt(t.tbr1)}</td><td class="td-date">${fmt(t.tbr1c)}</td><td class="td-date">${fmt(t.tbr2)}</td><td class="td-date">${fmt(t.tbr2c)}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td><td><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
+    });
+    html+='</tbody></table>';
+  } else if(currentTab==='reviews'){
+    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>Email sent</th><th>Person sent to</th><th>Date reviewed</th><th>Reviewer</th><th>Status</th><th>Notes</th><th class="th-edit"></th></tr></thead><tbody>`;
+    rows.forEach((c,i)=>{
+      const r=reviewData[c.name]||{};const st=getReviewStatus(c);
+      const color=getClientColor(c.name);
+      const note=notesData[c.name]||'';
+      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(r.sent)}</td><td>${r.person||'—'}</td><td class="td-date">${fmt(r.reviewed)}</td><td>${r.reviewer||'—'}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td><td class="td-edit"><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
+    });
+    html+='</tbody></table>';
+  } else {
+    // Reports tab
+    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>Last report sent</th><th>Days since</th><th>Status</th><th class="th-edit"></th></tr></thead><tbody>`;
+    rows.forEach((c,i)=>{
+      const r=reportData[c.name]||{};
+      const st=getReportStatus(c);
+      const color=getClientColor(c.name);
+      const days=r.lastSent?Math.abs(daysFrom(r.lastSent))+'d ago':'—';
+      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(r.lastSent)}</td><td class="td-days">${days}</td><td>${badge(st.cls,st.label)}</td><td class="td-edit"><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
+    });
+    html+='</tbody></table>';
+  }
+  document.getElementById('table-wrap').innerHTML=html;
+  document.getElementById('table-wrap').style.display = isMobile() ? 'none' : '';
+  renderCards(rows);
+  document.getElementById('cards-wrap').style.display = isMobile() ? 'flex' : 'none';
+}
+
+function switchTab(tab,el){
+  currentTab=tab;
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  el.classList.add('active');
+  updateFilterOptions();
+  render();
+}
+
+function openAdd(){
+  editingId=null;
+  document.getElementById('modal-title').textContent='Add client';
+  ['f-name','f-addr','f-city','f-last','f-last2','f-ph1','f-ph2','f-ph1c','f-ph2c','f-tbr1','f-tbr1c','f-tbr2','f-tbr2c','f-rev-sent','f-rev-person','f-rev-date','f-rev-reviewer','f-rep-sent'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
+  document.getElementById('f-tbr-twice').value='No';
+  document.getElementById('f-notes').value='';
+  document.getElementById('modal').classList.add('open');
+}
+
+function openEdit(id){
+  editingId=id;
+  const c=clients.find(x=>x.id===id);
+  const p=phoneData[c.name]||{};
+  const t=tbrData[c.name]||{};
+  const r=reviewData[c.name]||{};
+  document.getElementById('modal-title').textContent='Edit — '+c.name;
+  document.getElementById('f-name').value=c.name;
+  document.getElementById('f-addr').value=c.address;
+  document.getElementById('f-city').value=c.city;
+  document.getElementById('f-last').value=c.lastVisit||'';
+  document.getElementById('f-last2').value=c.lastVisit2||'';
+  document.getElementById('f-ph1').value=p.ph1||'';
+  document.getElementById('f-ph2').value=p.ph2||'';
+  document.getElementById('f-ph1c').value=p.ph1c||'';
+  document.getElementById('f-ph2c').value=p.ph2c||'';
+  document.getElementById('f-tbr-twice').value=t.twice||'No';
+  document.getElementById('f-tbr1').value=t.tbr1||'';
+  document.getElementById('f-tbr1c').value=t.tbr1c||'';
+  document.getElementById('f-tbr2').value=t.tbr2||'';
+  document.getElementById('f-tbr2c').value=t.tbr2c||'';
+  document.getElementById('f-rev-sent').value=r.sent||'';
+  document.getElementById('f-rev-person').value=r.person||'';
+  document.getElementById('f-rev-date').value=r.reviewed||'';
+  document.getElementById('f-rev-reviewer').value=r.reviewer||'';
+  document.getElementById('f-rep-sent').value=(reportData[c.name]||{}).lastSent||'';
+  document.getElementById('f-notes').value=notesData[c.name]||'';
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal(){document.getElementById('modal').classList.remove('open');}
+
+function saveClient(){
+  const name=document.getElementById('f-name').value.trim();
+  if(!name)return;
+  const data={name,address:document.getElementById('f-addr').value.trim(),city:document.getElementById('f-city').value.trim()||'Merced',lastVisit:document.getElementById('f-last').value||null,lastVisit2:document.getElementById('f-last2').value||null};
+  phoneData[name]={ph1:document.getElementById('f-ph1').value||null,ph2:document.getElementById('f-ph2').value||null,ph1c:document.getElementById('f-ph1c').value||null,ph2c:document.getElementById('f-ph2c').value||null};
+  tbrData[name]={twice:document.getElementById('f-tbr-twice').value,tbr1:document.getElementById('f-tbr1').value||null,tbr1c:document.getElementById('f-tbr1c').value||null,tbr2:document.getElementById('f-tbr2').value||null,tbr2c:document.getElementById('f-tbr2c').value||null};
+  reviewData[name]={sent:document.getElementById('f-rev-sent').value||null,person:document.getElementById('f-rev-person').value||null,reviewed:document.getElementById('f-rev-date').value||null,reviewer:document.getElementById('f-rev-reviewer').value||null};
+  reportData[name]={lastSent:document.getElementById('f-rep-sent').value||null};
+  if(editingId){const i=clients.findIndex(c=>c.id===editingId);clients[i]={...clients[i],...data};}
+  else{clients.push({id:nextId++,...data});}
+  closeModal();
+  render();
+}
+
+document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
+
+// ── Supabase cloud sync ──
+const SUPA_URL = 'https://wugttsxluyryekqwnktt.supabase.co';
+const SUPA_KEY = 'sb_publishable_C3qE0bvbXbk3p4fZnl8Q8g_Vkbr9xGM';
+
+function sbHeaders(){
+  const token = sessionStorage.getItem('cvt_token') || SUPA_KEY;
+  return {
+    'Content-Type': 'application/json',
+    'apikey': SUPA_KEY,
+    'Authorization': 'Bearer ' + token,
+    'Prefer': 'return=minimal'
+  };
+}
+
+async function sbGet(table){
+  const res = await fetch(SUPA_URL + '/rest/v1/' + table + '?select=*', {
+    headers: sbHeaders()
+  });
+  return res.json();
+}
+
+async function sbUpsert(table, row){
+  await fetch(SUPA_URL + '/rest/v1/' + table, {
+    method: 'POST',
+    headers: { ...sbHeaders(), 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify(row)
+  });
+}
+
+function showStatus(msg, ok=true){
+  let el = document.getElementById('sync-status');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'sync-status';
+    el.style = 'position:fixed;bottom:20px;right:20px;padding:10px 16px;border-radius:6px;font-family:var(--mono);font-size:12px;z-index:999;transition:opacity 0.5s;';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.background = ok ? 'var(--success-light)' : 'var(--danger-light)';
+  el.style.color = ok ? 'var(--success)' : 'var(--danger)';
+  el.style.opacity = '1';
+  setTimeout(() => { el.style.opacity = '0'; }, 3000);
+}
+
+async function loadFromSupabase(){
+  showStatus('Loading data...', true);
+  try {
+    // Fetch notes separately so if that table is missing it doesn't break everything
+    const [c, p, t, r] = await Promise.all([
+      sbGet('clients'), sbGet('phone_visits'), sbGet('tbr_visits'), sbGet('review_data')
+    ]);
+    const n = await sbGet('notes').catch(() => []);
+    const rp = await sbGet('report_data').catch(() => []);
+
+    if(c && c.length > 0){
+      // Keep hardcoded data as fallback for missing fields
+      const localMap = {};
+      clients.forEach(lc => localMap[lc.name] = lc);
+
+      clients = c.map(row => {
+        const local = localMap[row.name] || {};
+        return {
+          id: row.id,
+          name: row.name,
+          address: row.address || local.address || '',
+          city: row.city || local.city || '',
+          lastVisit: row.last_visit || local.lastVisit || null,
+          lastVisit2: row.last_visit2 || local.lastVisit2 || null
+        };
+      });
+      clients.sort((a,b) => a.name.localeCompare(b.name));
+      nextId = Math.max(...clients.map(c => c.id)) + 1;
+      colorIndex = 0;
+      clients.forEach(cl => getClientColor(cl.name));
+    }
+
+    if(p && p.length > 0){
+      p.forEach(row => {
+        phoneData[row.name] = { ph1: row.ph1, ph2: row.ph2, ph1c: row.ph1c, ph2c: row.ph2c };
+      });
+    }
+
+    if(t && t.length > 0){
+      t.forEach(row => {
+        tbrData[row.name] = { twice: row.twice, tbr1: row.tbr1, tbr1c: row.tbr1c, tbr2: row.tbr2, tbr2c: row.tbr2c };
+      });
+    }
+
+    if(r && r.length > 0){
+      r.forEach(row => {
+        reviewData[row.name] = { sent: row.sent, person: row.person, reviewed: row.reviewed, reviewer: row.reviewer };
+      });
+    }
+
+    if(n && n.length > 0){
+      n.forEach(row => { notesData[row.name] = row.note || ''; });
+    }
+    if(rp && rp.length > 0){
+      rp.forEach(row => { reportData[row.name] = { lastSent: row.last_sent || null }; });
+    }
+
+    showStatus('Data loaded', true);
+  } catch(e){
+    console.error(e);
+    showStatus('Could not connect to database', false);
+  }
+  updateFilterOptions();
+  render();
+}
+
+async function saveClientToSupabase(){
+  const name = document.getElementById('f-name').value.trim();
+  if(!name) return;
+
+  const clientRow = {
+    id: editingId || nextId,
+    name,
+    address: document.getElementById('f-addr').value.trim(),
+    city: document.getElementById('f-city').value.trim() || 'Merced',
+    last_visit: document.getElementById('f-last').value || null,
+    last_visit2: document.getElementById('f-last2').value || null
+  };
+
+  const phoneRow = {
+    name,
+    ph1: document.getElementById('f-ph1').value || null,
+    ph2: document.getElementById('f-ph2').value || null,
+    ph1c: document.getElementById('f-ph1c').value || null,
+    ph2c: document.getElementById('f-ph2c').value || null
+  };
+
+  const tbrRow = {
+    name,
+    twice: document.getElementById('f-tbr-twice').value,
+    tbr1: document.getElementById('f-tbr1').value || null,
+    tbr1c: document.getElementById('f-tbr1c').value || null,
+    tbr2: document.getElementById('f-tbr2').value || null,
+    tbr2c: document.getElementById('f-tbr2c').value || null
+  };
+
+  const reviewRow = {
+    name,
+    sent: document.getElementById('f-rev-sent').value || null,
+    person: document.getElementById('f-rev-person').value || null,
+    reviewed: document.getElementById('f-rev-date').value || null,
+    reviewer: document.getElementById('f-rev-reviewer').value || null
+  };
+
+  const note = document.getElementById('f-notes').value.trim();
+  const repSent = document.getElementById('f-rep-sent').value || null;
+
+  try {
+    showStatus('Saving...', true);
+    await Promise.all([
+      sbUpsert('clients', clientRow),
+      sbUpsert('phone_visits', phoneRow),
+      sbUpsert('tbr_visits', tbrRow),
+      sbUpsert('review_data', reviewRow),
+      sbUpsert('notes', { name, note }),
+      sbUpsert('report_data', { name, last_sent: repSent })
+    ]);
+
+    // update local data too
+    const data = { id: clientRow.id, name, address: clientRow.address, city: clientRow.city, lastVisit: clientRow.last_visit, lastVisit2: clientRow.last_visit2 };
+    phoneData[name] = { ph1: phoneRow.ph1, ph2: phoneRow.ph2, ph1c: phoneRow.ph1c, ph2c: phoneRow.ph2c };
+    tbrData[name] = { twice: tbrRow.twice, tbr1: tbrRow.tbr1, tbr1c: tbrRow.tbr1c, tbr2: tbrRow.tbr2, tbr2c: tbrRow.tbr2c };
+    reviewData[name] = { sent: reviewRow.sent, person: reviewRow.person, reviewed: reviewRow.reviewed, reviewer: reviewRow.reviewer };
+    reportData[name] = { lastSent: repSent };
+    notesData[name] = note;
+
+    if(editingId){ const i = clients.findIndex(c => c.id === editingId); clients[i] = { ...clients[i], ...data }; }
+    else { clients.push(data); nextId++; clients.sort((a,b) => a.name.localeCompare(b.name)); }
+
+    closeModal();
+    render();
+    showStatus('Saved!', true);
+  } catch(e){
+    console.error(e);
+    showStatus('Save failed', false);
+  }
+}
+
+window.addEventListener('resize', () => render());
+
+// Override saveClient to use Supabase
+saveClient = saveClientToSupabase;
+
+
+// ── Auth ──
+const SUPA_AUTH = SUPA_URL + '/auth/v1';
+
+async function doLogin(){
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  errEl.style.display = 'none';
+
+  try {
+    const res = await fetch(SUPA_AUTH + '/token?grant_type=password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    if(data.access_token){
+      sessionStorage.setItem('cvt_token', data.access_token);
+      sessionStorage.setItem('cvt_refresh', data.refresh_token);
+      document.getElementById('login-screen').style.display = 'none';
+      document.querySelector('.shell').style.display = '';
+      loadFromSupabase();
+    } else {
+      errEl.style.display = 'block';
+    }
+  } catch(e){
+    errEl.style.display = 'block';
+  }
+}
+
+async function doLogout(){
+  const token = sessionStorage.getItem('cvt_token');
+  if(token){
+    await fetch(SUPA_AUTH + '/logout', {
+      method: 'POST',
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + token }
+    }).catch(()=>{});
+  }
+  sessionStorage.removeItem('cvt_token');
+  sessionStorage.removeItem('cvt_refresh');
+  document.getElementById('login-screen').style.display = 'flex';
+  document.querySelector('.shell').style.display = 'none';
+}
+
+function getAuthToken(){
+  return sessionStorage.getItem('cvt_token') || SUPA_KEY;
+}
+
+// Check if already logged in
+(function checkSession(){
+  const token = sessionStorage.getItem('cvt_token');
+  if(token){
+    document.getElementById('login-screen').style.display = 'none';
+    document.querySelector('.shell').style.display = '';
+    loadFromSupabase();
+  }
+})();
+
+</script>
+</body>
+</html>
