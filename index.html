@@ -1067,7 +1067,8 @@
     </nav>
     <div class="sidebar-footer" style="display:flex;flex-direction:column;gap:10px;align-items:flex-start;">
       <button class="logout-btn" onclick="doLogout()">Sign out</button>
-      <span style="padding-left:24px">Updated today</span>
+      <button class="logout-btn" onclick="manualRefresh()" id="refresh-btn">↻ Refresh</button>
+      <span style="padding-left:24px;font-size:10px;" id="last-updated">Updated today</span>
     </div>
   </aside>
 
@@ -1901,6 +1902,7 @@ async function loadFromSupabase(){
     }
 
     showStatus('Data loaded', true);
+    updateLastUpdated();
   } catch(e){
     console.error(e);
     showStatus('Could not connect to database', false);
@@ -1982,6 +1984,24 @@ async function saveClientToSupabase(){
 }
 
 window.addEventListener('resize', () => render());
+
+// ── Auto refresh ──
+function updateLastUpdated(){
+  const el = document.getElementById('last-updated');
+  if(el) el.textContent = 'Updated ' + new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+}
+
+async function manualRefresh(){
+  const btn = document.getElementById('refresh-btn');
+  if(btn){ btn.textContent = '↻ Refreshing...'; btn.disabled = true; }
+  await loadFromSupabase();
+  if(btn){ btn.textContent = '↻ Refresh'; btn.disabled = false; }
+}
+
+// Auto-refresh every 2 minutes
+setInterval(() => {
+  if(sessionStorage.getItem('cvt_token')) loadFromSupabase();
+}, 2 * 60 * 1000);
 
 // Override saveClient to use Supabase
 saveClient = saveClientToSupabase;
