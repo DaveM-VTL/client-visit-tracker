@@ -437,13 +437,15 @@
     border: 1px solid var(--border);
     border-radius: var(--radius);
     box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-    padding: 10px 14px;
+    padding: 12px 14px;
     white-space: nowrap;
     font-size: 12px;
     font-family: var(--mono);
     color: var(--text-muted);
-    min-width: 180px;
+    min-width: 260px;
+    max-width: 320px;
     line-height: 1.6;
+    white-space: normal;
   }
 
   .client-popup.open { display: block; }
@@ -1548,17 +1550,94 @@ async function saveNote(name, value){
   } catch(e){ console.error('Note save failed', e); }
 }
 
+const clientProfiles = {
+  'Alia Corp': {contacts:[{"name": "Rigo Vasquez", "phone": "209-769-9182", "email": "rigo@aliacorp.net", "position": ""}],website:'https://aliacorpmcd.com/'},
+  'Alldrin Bros. Almond Co.': {contacts:[{"name": "Grant Alldrin", "phone": "209-289-5264", "email": "grant@alldrinbros.com / galldrin.alldrinbros@gmail.com", "position": "General Manager"}],website:'https://alldrinalmonds.com/'},
+  'Benton Roberson CPA': {contacts:[{"name": "Lisa Hurley", "phone": "(209) 840-3176", "email": "lisa@br-cpa.net", "position": ""}],website:'https://www.br-cpa.net/'},
+  'Busseto Foods': {contacts:[{"name": "Jason Mixon", "phone": "(559) 485-9882", "email": "jason.mixon@fratelliberettausa.com", "position": ""}],website:'https://busseto.com/'},
+  'California Mill Equipment Company': {contacts:[{"name": "Courtney Kollmeyer", "phone": "209-669-2695", "email": "CKolleymeyer@calmill.com", "position": ""}, {"name": "Paul Souza", "phone": "(209) 669-2695", "email": "psouza@calmill.com", "position": ""}],website:'https://calmill.com/'},
+  'CenCal Foods': {contacts:[{"name": "Bob Coyle", "phone": "(559) 498-7115", "email": "bcoyle@cencalfoods.com", "position": ""}, {"name": "Brittani Jacobs", "phone": "(559) 246-2152", "email": "bjacobs@cencalfoods.com", "position": ""}],website:''},
+  'Center of Vision Enhancement': {contacts:[{"name": "Margaret Garcia", "phone": "(209) 722-8118", "email": "info@covemerced.org", "position": ""}, {"name": "Allen Norris", "phone": "", "email": "", "position": ""}],website:'http://covemerced.org/'},
+  'Central California Railcar Repair LLC': {contacts:[{"name": "Edith Vega", "phone": "209-465-2236", "email": "apccrr@aol.com", "position": "Bookkeeper/Accounts payable"}, {"name": "LaToya Daniel", "phone": "209-465-2236", "email": "ccrqa@aol.com", "position": "Office manager"}],website:'http://www.centralcaliforniarailcarrepair.com/'},
+  'Central Counties DHIA': {contacts:[{"name": "Frank Azevedo", "phone": "209-356-0355", "email": "fazevedo@ccdhia.com", "position": ""}, {"name": "Gabby Ochoa", "phone": "", "email": "gochoa@ccdhia.com", "position": ""}],website:'https://www.ccdhia.org/'},
+  'Coldwell Banker Kaljian': {contacts:[{"name": "Beverly Viets", "phone": "(209) 826-1826", "email": "beverly@losbanosrealestate.com", "position": ""}],website:'https://www.coldwellbanker.com/company/coldwell-banker-kaljian-associates/cid-P00500000FDdqRnfyaHvMHNWnS1yH8Q2AozHt3Nr'},
+  'Collins Hernandez, LLP': {contacts:[{"name": "Tom Collins", "phone": "(559) 644-3775", "email": "tom@collinshernandezllp.com", "position": ""}, {"name": "Stalin Hernandez", "phone": "", "email": "Stalin@collinshernandezllp.com", "position": ""}],website:'https://www.collinshernandezllp.com/'},
+  'Cortez Growers': {contacts:[{"name": "Dave Thiel", "phone": "(209) 632-3118", "email": "dave@cortezgrowers.com", "position": ""}, {"name": "Santi Olvera", "phone": "", "email": "santi@cortezgrowers.com", "position": "Accounts Payable Clerk"}],website:'cortezgrowers.com'},
+  'DayBreak AdultCare': {contacts:[{"name": "Valerie Roden", "phone": "(209) 357-0765", "email": "valerie@daybreakadhc.com", "position": "Operations Manager"}],website:'https://daybreakadhc.org/'},
+  'Del Rio Nut': {contacts:[{"name": "David Arakelian", "phone": "(209) 394-7945", "email": "delrio@delrionut.com", "position": ""}, {"name": "Michelle Penney", "phone": "(209) 394-7945", "email": "michelle@delrionut.com", "position": ""}],website:'https://delrionut.com/'},
+  'Dependable Precision Manufacturing': {contacts:[{"name": "Cliff McBride", "phone": "(209) 369-1055", "email": "cliffmc@dependableprecision.com", "position": ""}, {"name": "Mark Lutz", "phone": "", "email": "marklu@dependableprecision.com", "position": ""}],website:'https://www.dependableprecision.com/'},
+  'Dr. Jennifer M Jones Foundation': {contacts:[{"name": "Dr. Jennifer M Jones", "phone": "(209) 947-0494", "email": "drjenniferjones4@gmail.com", "position": ""}, {"name": "Otieno T. Diallo", "phone": "(209) 947-0494", "email": "otieno@lproject.org", "position": "Regional Outreach Director"}],website:'https://drjennifermjonesfoundation.org/'},
+  'E M Manufacturing': {contacts:[{"name": "Scott Hicken", "phone": "(209) 825-1800", "email": "scott@emmanufacturing.com", "position": "CFO"}],website:'http://www.emmanufacturing.com/'},
+  'Engstrom Property Management': {contacts:[{"name": "Jim Engstrom", "phone": "(916) 371-8821", "email": "Jim@epropinc.com", "position": ""}],website:'https://engstromproperties.com/'},
+  'Franklin County Water District': {contacts:[{"name": "Melissa Martin", "phone": "(209) 723-1353", "email": "melissa@franklincountywd.com", "position": ""}, {"name": "Brenda Steinhauer", "phone": "", "email": "Brenda@franklincountywd.com", "position": ""}],website:'https://fcwd.myruralwater.com/'},
+  'Grace Home': {contacts:[{"name": "Barry Yost", "phone": "(209) 325-0101 ext 32", "email": "admin@gracehomeinc.com", "position": "Administrator"}],website:'http://www.gracehomeinc.com/'},
+  'Grimaud Farm': {contacts:[{"name": "Howard Chan", "phone": "(209) 887-3121", "email": "howard@grimaudfarms.com", "position": ""}],website:'https://grimaudfarms.com/'},
+  'Image Masters': {contacts:[{"name": "Chris O'Neil", "phone": "209-723-1691", "email": "chris@imagemasters.com", "position": ""}],website:'https://www.imagemasters.com/'},
+  'Inter-County Title Company': {contacts:[{"name": "Rick Lobaugh", "phone": "(209) 966-3653", "email": "rick@mariposaictc.com", "position": ""}, {"name": "Debbie Lobaugh", "phone": "", "email": "debbie@mariposaictc.com", "position": ""}],website:'https://www.mariposaictc.com/'},
+  'James J Stevinson Corp': {contacts:[{"name": "Stephanie Ellington", "phone": "209-634-4908", "email": "sme@jjsranch.com", "position": "Finance Manager"}, {"name": "Rex Barney", "phone": "(559) 696-2024", "email": "reb@jjsranch.com", "position": "CFO"}],website:''},
+  'Johnson Plumbing': {contacts:[{"name": "Greg Johnson", "phone": "(209) 723-4032", "email": "greg@johnsonplumbinginc.com", "position": ""}],website:'https://www.johnsonplumbinginc.com/'},
+  'Kirby Manufacturing': {contacts:[{"name": "Stephanie Sandoval", "phone": "(209) 723-0778", "email": "steph@kirbymfg.com", "position": ""}],website:'https://www.kirbymanufacturing.com/'},
+  'Norcal Safes & Vault': {contacts:[{"name": "Dan Engstrom", "phone": "(916) 798-8855", "email": "dan@libertynorcal.com", "position": ""}],website:'https://www.norcalsafeandvault.com/'},
+  'Love Inc': {contacts:[{"name": "Annette Macias", "phone": "(209) 761-2900", "email": "annette@loveincmerced.com", "position": "Executive Director"}],website:'https://loveincmerced.com/'},
+  'Mariposa Energy': {contacts:[{"name": "Oliver Caoili", "phone": "(209) 768-1297", "email": "o.caoili@dgc-ops.com", "position": ""}, {"name": "Fred Yarcho", "phone": "(209) 831-1401 / Mob: (209) 768-1297", "email": "f.yarcho@dgc-ops.com", "position": "O&M Manager"}],website:'https://www.dgc-us.com/'},
+  'Marvulli': {contacts:[{"name": "Tim Williams", "phone": "209-233-9474", "email": "tim@marvulli.com", "position": "Construction Manager"}, {"name": "Mia Zhang", "phone": "(315) 558-8223", "email": "mia@marvulli.com", "position": "Program Manager"}],website:'https://www.marvulli.com/'},
+  'Merced County Association of Goverment': {contacts:[{"name": "Nav Bagri", "phone": "(209) 723-3153", "email": "nav.bagri@mcagov.org", "position": "Finance Director"}, {"name": "Stephanie Jackson", "phone": "(209) 723-3153 x 110", "email": "stephanie.jackson@mcagov.org", "position": "Executive Assistant"}],website:'https://www.mcagov.org/'},
+  'Natural Vision': {contacts:[{"name": "Nara Orkusyan", "phone": "(559) 432-1000", "email": "norkusyan.naturalvision@gmail.com", "position": "Office Manager"}],website:'https://naturalvision.com/'},
+  'Note Servicing Center': {contacts:[{"name": "Thomas Standen", "phone": "559-665-3456 Ext 301", "email": "thomas@noteservicingcenter.com", "position": ""}],website:'https://noteservicingcenter.com'},
+  'Oak Tree AG': {contacts:[{"name": "Linda Torres", "phone": "(559) 665-6950", "email": "ap.linda@outlook.com", "position": ""}],website:''},
+  'Ortho Spine Advanced Health': {contacts:[{"name": "Suhail DelCastillo", "phone": "(209) 349-8429", "email": "manager@orthospine.net", "position": "Manager"}, {"name": "Daisy Luna", "phone": "209-349-8429 ext. 108", "email": "dluna@orthospine.net", "position": "Office Manager"}],website:'https://www.orthospinemerced.com/'},
+  'P & F Metals': {contacts:[{"name": "Bernadette Delgado", "phone": "(209) 252-5214", "email": "bdelgado@pfmetals.com", "position": "HR manager"}, {"name": "Garret Allison", "phone": "(209) 202-0443", "email": "gallison@pfmetals.com", "position": "Engineering manager"}],website:'https://pfmetals.com/'},
+  'PCS Concrete': {contacts:[{"name": "Breanna Esau", "phone": "(209) 357-7601/ Direct (209)643-6083", "email": "breanna@pcsconcrete.net", "position": "Office Manager"}, {"name": "Josie Essau", "phone": "", "email": "josie@pcsconcrete.net", "position": ""}],website:'https://pcsconcrete.net/'},
+  'Pacific Ultrapower Chinese Station': {contacts:[{"name": "Gen Huffman", "phone": "209-984-4660 Ext 312", "email": "ghuffman@jamestownenergy.com", "position": "Asset Manager"}, {"name": "Jarrett Highfill", "phone": "209-984-4660 Ext 318", "email": "jhighfill@jamestownenergy.com", "position": ""}],website:''},
+  'Patients First Medical Center': {contacts:[{"name": "Alyssa Heffington", "phone": "209-383-3990", "email": "aheffingtonpfmc@gmail.com", "position": ""}],website:''},
+  'Raw Farm': {contacts:[{"name": "Aaron McAfee", "phone": "(559) 977-8564", "email": "aaron.m@rawfarmusa.com", "position": ""}, {"name": "Lizbeth Valdes", "phone": "", "email": "lizbeth.v@rawfarmusa.com", "position": ""}],website:'https://rawfarmusa.com/'},
+  'Rico, Pfitzer, Pires Insurance Agency, Inc.': {contacts:[{"name": "Neelia Perry", "phone": "(209) 856-8823", "email": "nperry@rppins.com", "position": "IT Support Manager"}, {"name": "Michelle Luiz", "phone": "", "email": "mluiz@rppins.com", "position": "Office Manager/HR"}],website:'https://rppins.com/#//'},
+  'Rio Bravo Fresno': {contacts:[{"name": "Robert Crain", "phone": "(559) 977-0575", "email": "bcrain@rbfresno.com", "position": "O&M Lead   Operations"}, {"name": "Nicholas Ackley", "phone": "(559) 264-4575", "email": "nicholas.ackley@ihipower.com", "position": ""}],website:''},
+  'Salinas Valley Basin': {contacts:[{"name": "Harrison Tregenza", "phone": "(831) 471-7512 ext. 205", "email": "tregenzah@svbgsa.org", "position": "Administrative Specialist"}],website:'https://svbgsa.org/'},
+  'Serene Aesthetics & Wellness MedSpa': {contacts:[{"name": "Sal Cervantes", "phone": "(209) 523-0647", "email": "sal.cervantes.serene.awm@gmail.com", "position": ""}],website:'https://sereneaestheticsandmedspa.com/'},
+  'Shannon Pump': {contacts:[{"name": "Betty Shannon", "phone": "(209) 723-3904", "email": "betty@shannonpump.com", "position": ""}],website:''},
+  'Sierra Mountain Construction Inc': {contacts:[{"name": "Javier Guzman", "phone": "415-896-2859", "email": "javier@sierramtn.net", "position": ""}],website:'https://www.sierramtn.net/'},
+  'Spruce MultiSpeciality': {contacts:[{"name": "Carol Pantoja", "phone": "(559) 439-5757", "email": "CarolP@npimmg.com", "position": ""}, {"name": "Stephanie Gomez", "phone": "(559) 439-5757", "email": "stephanie@npimmg.com", "position": ""}],website:''},
+  'TBA Auto Parts': {contacts:[{"name": "Robert Chaney", "phone": "(209) 769-0209", "email": "bob@tbaautoparts.com", "position": ""}],website:'https://www.tbaautoparts.com/index.htm'},
+  'Ullrich Delevati': {contacts:[{"name": "Tony Delevati", "phone": "(530) 219-0752", "email": "tdelevati@udcpas.com", "position": "Managing Partner"}, {"name": "Lisa Martinez Dunham", "phone": "(530) 666-6671, Ext. 127", "email": "lmartinez@udcpas.com", "position": "Partner"}],website:'https://udcpas.com/'},
+  'Valley Cancer Medical Center': {contacts:[{"name": "Rupee Dhaliwal", "phone": "(209) 614-6204", "email": "rupee@vcmc.com", "position": ""}],website:'https://vcmc.com/'},
+  'Valley Wine Warehouse': {contacts:[{"name": "Paul Dumerauf", "phone": "(707) 927-1519", "email": "paul@valleywinewarehouse.com", "position": ""}, {"name": "Dev Sidhu", "phone": "(707) 259-0250", "email": "devs@valleywinewarehouse.com", "position": ""}],website:'https://www.valleywinewarehouse.com/'},
+  'VC1, LLC': {contacts:[{"name": "Anat Karakugli", "phone": "209-355-3303", "email": "anat@vc1llc.com", "position": "Office Manager"}, {"name": "Ed Castillo", "phone": "", "email": "Ed@vc1llc.com", "position": "Safety/Operations Manager"}, {"name": "Veronica Villa", "phone": "", "email": "Veronica@vc1llc.com", "position": "Accounts Payables"}],website:'http://www.vc1llc.com'},
+  'Vinfillment LLC': {contacts:[{"name": "Efren Aranda", "phone": "(707) 656-4467", "email": "earanda@vinfillment.com", "position": ""}],website:'https://www.vinfillment.com/'},
+  'Winton Water District': {contacts:[{"name": "Jennifer Caldera", "phone": "(209) 358-2367", "email": "Jcaldera@wintonwsd.com", "position": ""}],website:'https://wintonwsd.com/'},
+  'Wood Connection': {contacts:[{"name": "Upma Agarwala", "phone": "415-640-9769 ", "email": "upma@woodcon.com", "position": "Vice President & COO"}],website:''},
+  'Yarra, Rivas, and Associates': {contacts:[{"name": "Sonia Podilla", "phone": "(559) 441-1214 ext 121", "email": "soniap@yarrarivasassociates.com", "position": ""}],website:'https://yarralaw.com'},
+};
+
 function nameCell(c){
   const color = getClientColor(c.name);
+  const profile = clientProfiles[c.name] || {};
+  const contacts = profile.contacts || [];
+  const website = profile.website || '';
   const addr = [c.address, c.city].filter(Boolean).join(', ') || 'No address on file';
-  const nameSafe = c.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
+  let contactsHtml = contacts.filter(ct => ct.name).map(ct => {
+    const phone = ct.phone ? `<a href="tel:${ct.phone}" style="color:var(--accent);text-decoration:none">${ct.phone}</a>` : '';
+    const email = ct.email ? `<a href="mailto:${ct.email}" style="color:var(--accent);text-decoration:none;font-size:10px">${ct.email}</a>` : '';
+    const pos = ct.position ? `<span style="color:var(--text-muted);font-size:10px"> · ${ct.position}</span>` : '';
+    return `<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border)">
+      <div style="font-weight:600;color:var(--text);font-family:var(--sans)">${ct.name}${pos}</div>
+      ${phone ? `<div>${phone}</div>` : ''}
+      ${email ? `<div>${email}</div>` : ''}
+    </div>`;
+  }).join('');
+
+  const websiteHtml = website ? `<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border)"><a href="${website}" target="_blank" style="color:var(--accent);text-decoration:none;font-size:11px">🌐 ${website.replace(/https?:\/\//,'').replace(/\/$/,'')}</a></div>` : '';
+
   return `<span class="client-name-wrap">
     <button class="client-name-btn" onclick="toggleClientPopup(this)">
       <span class="client-dot" style="background:${color}"></span>${c.name}
     </button>
     <div class="client-popup">
       <strong>${c.name}</strong>
-      ${addr}
+      <div style="color:var(--text-muted);font-size:11px">${addr}</div>
+      ${contactsHtml}
+      ${websiteHtml}
     </div>
   </span>`;
 }
