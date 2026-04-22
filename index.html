@@ -676,6 +676,7 @@
       z-index: 200;
       border-top: 1px solid rgba(255,255,255,0.1);
       padding: 0;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
     }
     .sidebar-brand { display: none; }
     .sidebar-nav {
@@ -702,15 +703,19 @@
     .sidebar-footer { display: none; }
 
     /* main shifts up, padded at bottom for tab bar */
-    .main { margin-left: 0; padding-bottom: 70px; }
+    .main { margin-left: 0; padding-bottom: 100px; }
 
     /* topbar */
-    .topbar { flex-wrap: wrap; gap: 8px; padding: 12px 16px; }
+    .topbar { flex-wrap: wrap; gap: 8px; padding: 12px 16px; padding-top: max(16px, calc(env(safe-area-inset-top, 0px) + 12px)); }
+
+    /* extra bottom padding on cards so last card isn't hidden */
+    .cards-wrap { padding-bottom: 120px; }
     .topbar-title { font-size: 14px; width: 100%; }
     .search { width: 100%; }
     .search-wrap { flex: 1; }
-    .filter-select { flex: 1; font-size: 13px; }
-    .btn-add { font-size: 13px; }
+    .filter-select { flex: 1; font-size: 15px; padding: 10px 12px; min-height: 44px; }
+    .btn-add { font-size: 14px; padding: 10px 16px; min-height: 44px; }
+    .search { font-size: 15px; padding: 10px 12px 10px 32px; min-height: 44px; }
 
     /* stats */
     .stats-bar { flex-wrap: wrap; }
