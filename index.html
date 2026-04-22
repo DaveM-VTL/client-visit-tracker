@@ -1160,6 +1160,39 @@
         </div>
       </div>
       <div class="modal-section">
+        <div class="section-label">Contact 1</div>
+        <div class="field-grid">
+          <div class="field full"><label>Name</label><input id="f-ct1-name" type="text" placeholder="Full name"></div>
+          <div class="field"><label>Phone</label><input id="f-ct1-phone" type="text" placeholder="(209) 555-1234"></div>
+          <div class="field"><label>Position</label><input id="f-ct1-pos" type="text" placeholder="e.g. Office Manager"></div>
+          <div class="field full"><label>Email</label><input id="f-ct1-email" type="text" placeholder="name@company.com"></div>
+        </div>
+      </div>
+      <div class="modal-section">
+        <div class="section-label">Contact 2</div>
+        <div class="field-grid">
+          <div class="field full"><label>Name</label><input id="f-ct2-name" type="text" placeholder="Full name"></div>
+          <div class="field"><label>Phone</label><input id="f-ct2-phone" type="text" placeholder="(209) 555-1234"></div>
+          <div class="field"><label>Position</label><input id="f-ct2-pos" type="text" placeholder="e.g. Accounts Payable"></div>
+          <div class="field full"><label>Email</label><input id="f-ct2-email" type="text" placeholder="name@company.com"></div>
+        </div>
+      </div>
+      <div class="modal-section">
+        <div class="section-label">Contact 3</div>
+        <div class="field-grid">
+          <div class="field full"><label>Name</label><input id="f-ct3-name" type="text" placeholder="Full name"></div>
+          <div class="field"><label>Phone</label><input id="f-ct3-phone" type="text" placeholder="(209) 555-1234"></div>
+          <div class="field"><label>Position</label><input id="f-ct3-pos" type="text" placeholder="e.g. CFO"></div>
+          <div class="field full"><label>Email</label><input id="f-ct3-email" type="text" placeholder="name@company.com"></div>
+        </div>
+      </div>
+      <div class="modal-section">
+        <div class="section-label">Website</div>
+        <div class="field-grid">
+          <div class="field full"><label>Website URL</label><input id="f-website" type="text" placeholder="https://company.com"></div>
+        </div>
+      </div>
+      <div class="modal-section">
         <div class="section-label">Notes</div>
         <div class="field-grid">
           <div class="field full"><label>Notes</label><textarea id="f-notes" placeholder="Any notes about this client…"></textarea></div>
@@ -1886,6 +1919,16 @@ function openEdit(id){
   document.getElementById('f-rev-reviewer').value=r.reviewer||'';
   document.getElementById('f-rep-sent').value=(reportData[c.name]||{}).lastSent||'';
   document.getElementById('f-notes').value=notesData[c.name]||'';
+  const prof=clientProfiles[c.name]||{};
+  const cts=prof.contacts||[];
+  [1,2,3].forEach(i=>{
+    const ct=cts[i-1]||{};
+    document.getElementById('f-ct'+i+'-name').value=ct.name||'';
+    document.getElementById('f-ct'+i+'-phone').value=ct.phone||'';
+    document.getElementById('f-ct'+i+'-email').value=ct.email||'';
+    document.getElementById('f-ct'+i+'-pos').value=ct.position||'';
+  });
+  document.getElementById('f-website').value=prof.website||'';
   document.getElementById('modal').classList.add('open');
 }
 
@@ -1899,6 +1942,13 @@ function saveClient(){
   tbrData[name]={twice:document.getElementById('f-tbr-twice').value,tbr1:document.getElementById('f-tbr1').value||null,tbr1c:document.getElementById('f-tbr1c').value||null,tbr2:document.getElementById('f-tbr2').value||null,tbr2c:document.getElementById('f-tbr2c').value||null};
   reviewData[name]={sent:document.getElementById('f-rev-sent').value||null,person:document.getElementById('f-rev-person').value||null,reviewed:document.getElementById('f-rev-date').value||null,reviewer:document.getElementById('f-rev-reviewer').value||null};
   reportData[name]={lastSent:document.getElementById('f-rep-sent').value||null};
+  const newContacts=[1,2,3].map(i=>({
+    name:document.getElementById('f-ct'+i+'-name').value.trim(),
+    phone:document.getElementById('f-ct'+i+'-phone').value.trim(),
+    email:document.getElementById('f-ct'+i+'-email').value.trim(),
+    position:document.getElementById('f-ct'+i+'-pos').value.trim()
+  })).filter(ct=>ct.name);
+  clientProfiles[name]={contacts:newContacts,website:document.getElementById('f-website').value.trim()};
   if(editingId){const i=clients.findIndex(c=>c.id===editingId);clients[i]={...clients[i],...data};}
   else{clients.push({id:nextId++,...data});}
   closeModal();
