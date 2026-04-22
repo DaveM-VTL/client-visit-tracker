@@ -2018,6 +2018,15 @@ async function loadFromSupabase(){
 
       clients = c.map(row => {
         const local = localMap[row.name] || {};
+        // Load contacts/website back into clientProfiles
+        if(row.contacts){
+          try {
+            const cts = typeof row.contacts === 'string' ? JSON.parse(row.contacts) : row.contacts;
+            clientProfiles[row.name] = { contacts: cts, website: row.website || '' };
+          } catch(e){}
+        } else if(row.website){
+          clientProfiles[row.name] = { ...(clientProfiles[row.name]||{}), website: row.website };
+        }
         return {
           id: row.id,
           name: row.name,
@@ -2072,13 +2081,23 @@ async function saveClientToSupabase(){
   const name = document.getElementById('f-name').value.trim();
   if(!name) return;
 
+  const newContacts=[1,2,3].map(i=>({
+    name:document.getElementById('f-ct'+i+'-name').value.trim(),
+    phone:document.getElementById('f-ct'+i+'-phone').value.trim(),
+    email:document.getElementById('f-ct'+i+'-email').value.trim(),
+    position:document.getElementById('f-ct'+i+'-pos').value.trim()
+  })).filter(ct=>ct.name);
+  const newWebsite = document.getElementById('f-website').value.trim();
+
   const clientRow = {
     id: editingId || nextId,
     name,
     address: document.getElementById('f-addr').value.trim(),
     city: document.getElementById('f-city').value.trim() || 'Merced',
     last_visit: document.getElementById('f-last').value || null,
-    last_visit2: document.getElementById('f-last2').value || null
+    last_visit2: document.getElementById('f-last2').value || null,
+    contacts: JSON.stringify(newContacts),
+    website: newWebsite || null
   };
 
   const phoneRow = {
@@ -2127,6 +2146,7 @@ async function saveClientToSupabase(){
     reviewData[name] = { sent: reviewRow.sent, person: reviewRow.person, reviewed: reviewRow.reviewed, reviewer: reviewRow.reviewer };
     reportData[name] = { lastSent: repSent };
     notesData[name] = note;
+    clientProfiles[name] = { contacts: newContacts, website: newWebsite };
 
     if(editingId){ const i = clients.findIndex(c => c.id === editingId); clients[i] = { ...clients[i], ...data }; }
     else { clients.push(data); nextId++; clients.sort((a,b) => a.name.localeCompare(b.name)); }
