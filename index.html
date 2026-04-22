@@ -1661,7 +1661,8 @@ function renderCards(rows){
       details = `
         <div class="card-detail-row"><span class="card-detail-label">Last visit</span><span class="card-detail-val">${fmt(c.lastVisit)}</span></div>
         <div class="card-detail-row"><span class="card-detail-label">Second visit</span><span class="card-detail-val">${fmt(c.lastVisit2)}</span></div>
-        <div class="card-detail-row"><span class="card-detail-label">Address</span><span class="card-detail-val">${[c.address,c.city].filter(Boolean).join(', ')||'—'}</span></div>`;
+        <div class="card-detail-row"><span class="card-detail-label">Address</span><span class="card-detail-val">${[c.address,c.city].filter(Boolean).join(', ')||'—'}</span></div>
+        ${cardContacts(c.name)}`;
       return cardHTML(c, color, st, summary, details, note, noteEsc);
     } else if(currentTab==='phone'){
       const p = phoneData[c.name]||{};
@@ -1726,6 +1727,28 @@ function cardHTML(c, color, st, summary, details, note, noteEsc){
       <textarea class="card-note" placeholder="Add a note…" onblur="saveNote('${c.name.replace(/'/g,"\\'")}', this.value)">${noteEsc}</textarea>
     </div>
   </div>`;
+}
+
+function cardContacts(name){
+  const profile = clientProfiles[name] || {};
+  const contacts = (profile.contacts || []).filter(ct => ct.name);
+  const website = profile.website || '';
+  let html = '';
+  contacts.forEach(ct => {
+    html += `<div class="card-detail-row" style="flex-direction:column;align-items:flex-start;gap:2px">
+      <span class="card-detail-label">${ct.position || 'Contact'}</span>
+      <span style="font-size:13px;font-weight:500">${ct.name}</span>
+      ${ct.phone ? `<a href="tel:${ct.phone}" style="font-size:12px;color:var(--accent);text-decoration:none">${ct.phone}</a>` : ''}
+      ${ct.email ? `<a href="mailto:${ct.email}" style="font-size:11px;color:var(--accent);text-decoration:none;word-break:break-all">${ct.email}</a>` : ''}
+    </div>`;
+  });
+  if(website){
+    html += `<div class="card-detail-row">
+      <span class="card-detail-label">Website</span>
+      <a href="${website}" target="_blank" style="font-size:12px;color:var(--accent);text-decoration:none;text-align:right;word-break:break-all">${website.replace(/https?:\/\//,'').replace(/\/$/,'')}</a>
+    </div>`;
+  }
+  return html;
 }
 
 function toggleCard(id){
