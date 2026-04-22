@@ -1990,6 +1990,13 @@ async function saveClientToSupabase(){
 
 window.addEventListener('resize', () => render());
 
+// Fix cards bottom padding for mobile tab bar
+if(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)){
+  const style = document.createElement('style');
+  style.textContent = '.cards-wrap { padding-bottom: 160px !important; }';
+  document.head.appendChild(style);
+}
+
 // ── Auto refresh ──
 function updateLastUpdated(){
   const el = document.getElementById('last-updated');
