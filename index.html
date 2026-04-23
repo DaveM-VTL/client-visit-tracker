@@ -1012,6 +1012,29 @@
     margin: 0 24px;
   }
   .logout-btn:hover { border-color: rgba(255,255,255,0.4); color: #f5f3ee; }
+
+  /* ── Viewer mode ── */
+  body.viewer-mode .btn-add { display: none !important; }
+  body.viewer-mode .edit-btn { display: none !important; }
+  body.viewer-mode .note-inline { pointer-events: none; border-color: transparent !important; background: transparent !important; cursor: default; }
+  body.viewer-mode .card-edit-btn { display: none !important; }
+  body.viewer-mode .card-note { pointer-events: none; border-color: transparent !important; background: transparent !important; }
+
+  .viewer-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: var(--info-light);
+    color: var(--info);
+    border-radius: var(--radius);
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin: 0 24px 10px;
+  }
 </style>
 </head>
 <body>
@@ -1033,6 +1056,14 @@
     </div>
     <button class="login-btn" onclick="doLogin()">Sign in</button>
     <div class="login-error" id="login-error">Incorrect email or password</div>
+    <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border);text-align:center;">
+      <p style="font-size:11px;font-family:var(--mono);color:var(--text-muted);margin-bottom:12px;letter-spacing:0.05em;text-transform:uppercase;">View only access</p>
+      <div class="login-field" style="margin-bottom:8px;">
+        <input type="password" id="viewer-password" placeholder="Viewer password" onkeydown="if(event.key==='Enter')doViewerLogin()" style="text-align:center;">
+      </div>
+      <button class="login-btn" onclick="doViewerLogin()" style="background:var(--info);opacity:1;">View as read-only</button>
+      <div class="login-error" id="viewer-error">Incorrect viewer password</div>
+    </div>
   </div>
 </div>
 
@@ -1073,6 +1104,7 @@
       </button>
     </nav>
     <div class="sidebar-footer" style="display:flex;flex-direction:column;gap:10px;align-items:flex-start;">
+      <div class="viewer-badge" id="viewer-badge" style="display:none;">👁 View only</div>
       <button class="logout-btn" onclick="doLogout()">Sign out</button>
       <button class="logout-btn" onclick="manualRefresh()" id="refresh-btn">↻ Refresh</button>
       <span style="padding-left:24px;font-size:10px;" id="last-updated">Updated today</span>
@@ -2194,6 +2226,29 @@ saveClient = saveClientToSupabase;
 // ── Auth ──
 const SUPA_AUTH = SUPA_URL + '/auth/v1';
 
+// Set your viewer password here:
+const VIEWER_PASSWORD = 'viewonly2025';
+
+function enterViewerMode(){
+  sessionStorage.setItem('cvt_viewer', '1');
+  document.body.classList.add('viewer-mode');
+  document.getElementById('viewer-badge').style.display = 'inline-flex';
+}
+
+function doViewerLogin(){
+  const pw = document.getElementById('viewer-password').value;
+  const errEl = document.getElementById('viewer-error');
+  errEl.style.display = 'none';
+  if(pw === VIEWER_PASSWORD){
+    enterViewerMode();
+    document.getElementById('login-screen').style.display = 'none';
+    document.querySelector('.shell').style.display = '';
+    loadFromSupabase();
+  } else {
+    errEl.style.display = 'block';
+  }
+}
+
 async function doLogin(){
   const email = document.getElementById('login-email').value.trim();
   const password = document.getElementById('login-password').value;
@@ -2231,6 +2286,9 @@ async function doLogout(){
   }
   sessionStorage.removeItem('cvt_token');
   sessionStorage.removeItem('cvt_refresh');
+  sessionStorage.removeItem('cvt_viewer');
+  document.body.classList.remove('viewer-mode');
+  document.getElementById('viewer-badge').style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
   document.querySelector('.shell').style.display = 'none';
 }
@@ -2242,7 +2300,13 @@ function getAuthToken(){
 // Check if already logged in
 (function checkSession(){
   const token = sessionStorage.getItem('cvt_token');
+  const viewer = sessionStorage.getItem('cvt_viewer');
   if(token){
+    document.getElementById('login-screen').style.display = 'none';
+    document.querySelector('.shell').style.display = '';
+    loadFromSupabase();
+  } else if(viewer){
+    enterViewerMode();
     document.getElementById('login-screen').style.display = 'none';
     document.querySelector('.shell').style.display = '';
     loadFromSupabase();
