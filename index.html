@@ -137,6 +137,7 @@
   .dot-tbr { background: #d4a96a; }
   .dot-rev { background: #c47eb5; }
   .dot-rep { background: #7ab8d4; }
+  .dot-map { background: #e07b54; }
 
   .nav-count {
     margin-left: auto;
@@ -1013,6 +1014,34 @@
   }
   .logout-btn:hover { border-color: rgba(255,255,255,0.4); color: #f5f3ee; }
 
+  /* ── Map view ── */
+  .map-client-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    text-decoration: none;
+    color: var(--text);
+    transition: background 0.12s;
+  }
+  .map-client-item:hover { background: var(--surface2); }
+  .map-client-item:active { background: var(--accent-light); }
+  .map-client-name { font-size: 12px; font-weight: 500; line-height: 1.3; }
+  .map-client-addr { font-size: 10px; font-family: var(--mono); color: var(--text-muted); margin-top: 1px; }
+  .map-no-addr { font-size: 10px; font-family: var(--mono); color: var(--border); margin-top: 1px; font-style: italic; }
+
+  @media (max-width: 768px) {
+    #map-view { height: calc(100vh - 60px) !important; flex-direction: column !important; }
+    #map-view > div:nth-child(2) { flex-direction: column !important; }
+    #map-client-list { display: none !important; }
+    #map-client-list-mobile { display: block !important; }
+    #map-view iframe { min-height: 320px; height: 320px !important; }
+    #map-view > div:first-child { padding: 10px 16px 8px; }
+    #map-search { width: 100% !important; }
+  }
+
   /* ── Viewer mode ── */
   body.viewer-mode .btn-add { display: none !important; }
   body.viewer-mode .edit-btn { display: none !important; }
@@ -1102,6 +1131,10 @@
         Reports
         <span class="nav-count" id="cnt-rep">—</span>
       </button>
+      <button class="nav-item" onclick="switchTab('map',this)">
+        <span class="nav-dot dot-map"></span>
+        Map
+      </button>
     </nav>
     <div class="sidebar-footer" style="display:flex;flex-direction:column;gap:10px;align-items:flex-start;">
       <div class="viewer-badge" id="viewer-badge" style="display:none;">👁 View only</div>
@@ -1127,6 +1160,32 @@
     <div class="content">
       <div class="table-wrap" id="table-wrap"></div>
       <div class="cards-wrap" id="cards-wrap"></div>
+      <!-- Map view -->
+      <div id="map-view" style="display:none; flex-direction:column; height:calc(100vh - 120px);">
+        <div style="padding:16px 32px 12px; background:var(--surface); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+          <div style="flex:1;">
+            <div style="font-size:13px; font-weight:600; margin-bottom:2px;">Client Locations</div>
+            <div style="font-size:11px; color:var(--text-muted); font-family:var(--mono);">Click a client below to open their address in Google Maps</div>
+          </div>
+          <input type="text" placeholder="Filter clients..." id="map-search" oninput="renderMapList()"
+            style="padding:7px 11px; border:1px solid var(--border); border-radius:var(--radius); font-family:var(--sans); font-size:13px; background:var(--bg); color:var(--text); outline:none; width:200px;">
+        </div>
+        <div style="display:flex; flex:1; overflow:hidden; flex-direction:row;">
+          <!-- Client list panel -->
+          <div id="map-client-list" style="width:240px; flex-shrink:0; overflow-y:auto; border-right:1px solid var(--border); background:var(--surface);"></div>
+          <!-- Map iframe -->
+          <div style="flex:1; position:relative;">
+            <iframe
+              src="https://www.google.com/maps/d/u/0/embed?mid=18HEaQXBpWmMAbXBeykDS9cLQTNom8f0&ehbc=2E312F"
+              style="width:100%; height:100%; border:none; display:block;"
+              allowfullscreen
+              loading="lazy">
+            </iframe>
+          </div>
+        </div>
+        <!-- Mobile: list below map -->
+        <div id="map-client-list-mobile" style="display:none; overflow-y:auto; max-height:240px; border-top:1px solid var(--border); background:var(--surface);"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -1511,7 +1570,7 @@ const filterOptions={
   reports:['all','overdue','due-soon','on-track','not-sent'],
 };
 const filterLabels={all:'All statuses',overdue:'Overdue','due-soon':'Due soon','on-track':'On track','not-visited':'Not yet visited',pending:'Pending',completed:'Completed','not-scheduled':'Not scheduled',reviewed:'Reviewed',sent:'Awaiting review','not-sent':'Not sent'};
-const tabTitles={inperson:'In-person visits',phone:'Phone visits',tbr:'TBRs',reviews:'Google reviews',reports:'Reports'};
+const tabTitles={inperson:'In-person visits',phone:'Phone visits',tbr:'TBRs',reviews:'Google reviews',reports:'Reports',map:'Map'};
 
 function updateFilterOptions(){
   const sel=document.getElementById('filter');
@@ -1911,8 +1970,35 @@ function switchTab(tab,el){
   currentTab=tab;
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   el.classList.add('active');
-  updateFilterOptions();
-  render();
+
+  const mapView = document.getElementById('map-view');
+  const tableWrap = document.getElementById('table-wrap');
+  const cardsWrap = document.getElementById('cards-wrap');
+  const statsBar = document.getElementById('stats-bar');
+  const topbar = document.getElementById('topbar-title');
+  const searchWrap = document.querySelector('.search-wrap');
+  const filterSel = document.getElementById('filter');
+  const btnAdd = document.querySelector('.btn-add');
+
+  if(tab === 'map'){
+    mapView.style.display = 'flex';
+    tableWrap.style.display = 'none';
+    cardsWrap.style.display = 'none';
+    statsBar.style.display = 'none';
+    if(searchWrap) searchWrap.style.display = 'none';
+    if(filterSel) filterSel.style.display = 'none';
+    if(btnAdd) btnAdd.style.display = 'none';
+    if(topbar) topbar.innerHTML = 'Map <span>' + clients.length + ' clients</span>';
+    renderMapList();
+  } else {
+    mapView.style.display = 'none';
+    statsBar.style.display = '';
+    if(searchWrap) searchWrap.style.display = '';
+    if(filterSel) filterSel.style.display = '';
+    if(btnAdd) btnAdd.style.display = '';
+    updateFilterOptions();
+    render();
+  }
 }
 
 function openAdd(){
@@ -2221,6 +2307,37 @@ setInterval(() => {
 
 // Override saveClient to use Supabase
 saveClient = saveClientToSupabase;
+
+// ── Map tab ──
+function renderMapList() {
+  const query = (document.getElementById('map-search')?.value || '').toLowerCase();
+  const filtered = clients.filter(c => !query || c.name.toLowerCase().includes(query) || (c.address||'').toLowerCase().includes(query));
+
+  function makeItems() {
+    if (!filtered.length) return '<div style="padding:20px 14px;font-size:12px;font-family:var(--mono);color:var(--text-muted);">No clients match</div>';
+    return filtered.map(c => {
+      const color = getClientColor(c.name);
+      const addr = c.address ? `${c.address}, ${c.city || 'Merced'}, CA` : '';
+      const mapsUrl = addr
+        ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}`
+        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.name + ' ' + (c.city||'Merced') + ' CA')}`;
+      return `<a class="map-client-item" href="${mapsUrl}" target="_blank" rel="noopener">
+        <span style="width:9px;height:9px;border-radius:50%;background:${color};flex-shrink:0;"></span>
+        <div>
+          <div class="map-client-name">${c.name}</div>
+          ${addr ? `<div class="map-client-addr">${c.address}</div>` : `<div class="map-no-addr">No address on file</div>`}
+        </div>
+        <svg style="margin-left:auto;flex-shrink:0;color:var(--border);" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      </a>`;
+    }).join('');
+  }
+
+  const html = makeItems();
+  const d = document.getElementById('map-client-list');
+  const dm = document.getElementById('map-client-list-mobile');
+  if (d) d.innerHTML = html;
+  if (dm) dm.innerHTML = html;
+}
 
 
 // ── Auth ──
