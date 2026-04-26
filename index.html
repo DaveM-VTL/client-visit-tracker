@@ -1215,7 +1215,7 @@
 
           <!-- Route mode controls -->
           <div id="map-route-controls" style="display:none; align-items:center; gap:8px; flex:1; flex-wrap:wrap;">
-            <input type="text" placeholder="Search to add stop..." id="route-search" oninput="renderRouteSearch()"
+            <input type="text" placeholder="Filter clients..." id="route-search" oninput="renderRouteClientList()"
               style="padding:7px 11px; border:1px solid var(--border); border-radius:var(--radius); font-family:var(--sans); font-size:13px; background:var(--bg); color:var(--text); outline:none; flex:1; max-width:260px;">
             <span id="route-stop-count" style="font-family:var(--mono); font-size:11px; color:var(--text-muted); white-space:nowrap;">0 stops selected</span>
             <button onclick="openRouteInMaps()" id="route-go-btn"
@@ -1240,12 +1240,13 @@
 
             <!-- Route panel -->
             <div id="map-route-panel" style="display:none; flex-direction:column; flex:1; overflow:hidden;">
-              <!-- Search results -->
-              <div id="route-search-results" style="border-bottom:1px solid var(--border); overflow-y:auto; max-height:200px;"></div>
-              <!-- Selected stops -->
-              <div style="padding:10px 14px 6px; font-family:var(--mono); font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted); flex-shrink:0;">Route stops</div>
-              <div id="route-stop-list" style="flex:1; overflow-y:auto; padding-bottom:8px;"></div>
-              <div id="route-empty" style="padding:24px 14px; text-align:center; font-family:var(--mono); font-size:11px; color:var(--border);">Search above to add stops</div>
+              <!-- All clients — top half -->
+              <div style="padding:8px 14px 5px; font-family:var(--mono); font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted); flex-shrink:0; border-bottom:1px solid var(--border);">All clients — tap + to add</div>
+              <div id="route-client-list" style="flex:1; overflow-y:auto; border-bottom:2px solid var(--border); min-height:0;"></div>
+              <!-- Selected stops — bottom half -->
+              <div style="padding:8px 14px 5px; font-family:var(--mono); font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted); flex-shrink:0;">Route stops</div>
+              <div id="route-stop-list" style="flex:1; overflow-y:auto; padding-bottom:8px; min-height:0;"></div>
+              <div id="route-empty" style="padding:16px 14px; text-align:center; font-family:var(--mono); font-size:11px; color:var(--border);">No stops added yet</div>
             </div>
           </div>
 
@@ -1262,11 +1263,12 @@
         <!-- Mobile client list (browse mode) — shown only on mobile via CSS -->
         <div id="map-client-list-mobile" style="display:none; overflow-y:auto; max-height:220px; border-top:1px solid var(--border); background:var(--surface);"></div>
         <!-- Mobile route panel (route mode) -->
-        <div id="map-route-panel-mobile" style="display:none; flex-direction:column; max-height:280px; border-top:1px solid var(--border); background:var(--surface);">
-          <div id="route-search-results-mobile" style="border-bottom:1px solid var(--border); overflow-y:auto; max-height:130px;"></div>
-          <div style="padding:8px 14px 4px; font-family:var(--mono); font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted);">Route stops</div>
+        <div id="map-route-panel-mobile" style="display:none; flex-direction:column; max-height:300px; border-top:1px solid var(--border); background:var(--surface);">
+          <div style="padding:6px 14px 4px; font-family:var(--mono); font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted); border-bottom:1px solid var(--border);">All clients — tap + to add</div>
+          <div id="route-client-list-mobile" style="overflow-y:auto; max-height:140px; border-bottom:2px solid var(--border);"></div>
+          <div style="padding:6px 14px 4px; font-family:var(--mono); font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted);">Route stops</div>
           <div id="route-stop-list-mobile" style="overflow-y:auto; flex:1; padding-bottom:6px;"></div>
-          <div id="route-empty-mobile" style="padding:16px 14px; text-align:center; font-family:var(--mono); font-size:11px; color:var(--border);">Search above to add stops</div>
+          <div id="route-empty-mobile" style="padding:12px 14px; text-align:center; font-family:var(--mono); font-size:11px; color:var(--border);">No stops added yet</div>
         </div>
       </div>
     </div>
@@ -2428,7 +2430,7 @@ function setMapMode(mode) {
     renderMapList();
   } else {
     document.getElementById('route-search').value = '';
-    renderRouteSearch();
+    renderRouteClientList();
     renderRouteStops();
   }
 }
@@ -2463,32 +2465,34 @@ function renderMapList() {
   if (dm) dm.innerHTML = html;
 }
 
-function renderRouteSearch() {
+function renderRouteClientList() {
   const query = (document.getElementById('route-search')?.value || '').toLowerCase().trim();
   const addedNames = new Set(routeStops.map(s => s.name));
-
-  const results = query
-    ? clients.filter(c => c.name.toLowerCase().includes(query) || (c.address||'').toLowerCase().includes(query)).slice(0, 8)
-    : [];
+  const filtered = query
+    ? clients.filter(c => c.name.toLowerCase().includes(query) || (c.address||'').toLowerCase().includes(query))
+    : clients;
 
   function makeItem(c) {
     const color = getClientColor(c.name);
     const isAdded = addedNames.has(c.name);
-    return `<div class="route-search-item ${isAdded ? 'route-added' : ''}" onclick="${isAdded ? '' : `addRouteStop('${c.name.replace(/'/g,"\\'")}', '${(c.address||'').replace(/'/g,"\\'")}', '${(c.city||'Merced').replace(/'/g,"\\'")}'); this.classList.add('route-added'); this.querySelector('.add-icon').textContent='✓'`}">
+    const nameEsc = c.name.replace(/'/g,"\\'");
+    const addrEsc = (c.address||'').replace(/'/g,"\\'");
+    const cityEsc = (c.city||'Merced').replace(/'/g,"\\'");
+    return `<div class="route-search-item${isAdded ? ' route-added' : ''}" id="rci-${c.id}" onclick="${isAdded ? '' : `addRouteStop('${nameEsc}','${addrEsc}','${cityEsc}')`}">
       <span style="width:9px;height:9px;border-radius:50%;background:${color};flex-shrink:0;"></span>
       <div style="flex:1;min-width:0;">
-        <div style="font-size:12px;font-weight:500;">${c.name}</div>
+        <div style="font-size:12px;font-weight:500;line-height:1.3;">${c.name}</div>
         ${c.address ? `<div style="font-size:10px;font-family:var(--mono);color:var(--text-muted);">${c.address}</div>` : ''}
       </div>
       <span class="add-icon">${isAdded ? '✓' : '+'}</span>
     </div>`;
   }
 
-  const html = results.length
-    ? results.map(makeItem).join('')
-    : (query ? '<div style="padding:12px 14px;font-size:11px;font-family:var(--mono);color:var(--text-muted);">No matches</div>' : '');
+  const html = filtered.length
+    ? filtered.map(makeItem).join('')
+    : '<div style="padding:12px 14px;font-size:11px;font-family:var(--mono);color:var(--text-muted);">No matches</div>';
 
-  ['route-search-results','route-search-results-mobile'].forEach(id => {
+  ['route-client-list','route-client-list-mobile'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.innerHTML = html;
   });
@@ -2498,18 +2502,19 @@ function addRouteStop(name, address, city) {
   if (routeStops.find(s => s.name === name)) return;
   routeStops.push({ name, address, city });
   renderRouteStops();
+  renderRouteClientList();
 }
 
 function removeRouteStop(name) {
   routeStops = routeStops.filter(s => s.name !== name);
   renderRouteStops();
-  renderRouteSearch(); // refresh to un-check removed stop
+  renderRouteClientList();
 }
 
 function clearRoute() {
   routeStops = [];
   document.getElementById('route-search').value = '';
-  renderRouteSearch();
+  renderRouteClientList();
   renderRouteStops();
 }
 
