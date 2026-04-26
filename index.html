@@ -1062,8 +1062,11 @@
 
   @media (max-width: 768px) {
     #map-view { height: calc(100vh - 60px) !important; }
+    /* Hide the desktop left panel (sidebar with list) on mobile */
     #map-view > div:nth-child(2) > div:first-child { display: none !important; }
+    /* Show the mobile list below the map instead */
     #map-client-list-mobile { display: block !important; }
+    #map-route-panel-mobile { display: flex; }
     #map-view iframe { min-height: 260px; }
     #map-view > div:first-child { padding: 8px 12px; gap: 6px; }
     #route-search, #map-search { max-width: 100% !important; }
@@ -1256,7 +1259,7 @@
           </div>
         </div>
 
-        <!-- Mobile client list (browse mode) -->
+        <!-- Mobile client list (browse mode) — shown only on mobile via CSS -->
         <div id="map-client-list-mobile" style="display:none; overflow-y:auto; max-height:220px; border-top:1px solid var(--border); background:var(--surface);"></div>
         <!-- Mobile route panel (route mode) -->
         <div id="map-route-panel-mobile" style="display:none; flex-direction:column; max-height:280px; border-top:1px solid var(--border); background:var(--surface);">
@@ -2410,11 +2413,16 @@ function setMapMode(mode) {
   document.getElementById('map-client-list').style.display = isBrowse ? 'block' : 'none';
   document.getElementById('map-route-panel').style.display = isBrowse ? 'none' : 'flex';
 
-  // Toggle mobile panels
+  // Toggle mobile panels (only relevant on mobile, CSS handles the rest)
   const mob = document.getElementById('map-client-list-mobile');
   const mobRoute = document.getElementById('map-route-panel-mobile');
-  if (mob) mob.style.display = isBrowse ? 'block' : 'none';
-  if (mobRoute) mobRoute.style.display = isBrowse ? 'none' : 'flex';
+  if (window.innerWidth <= 768) {
+    if (mob) mob.style.display = isBrowse ? 'block' : 'none';
+    if (mobRoute) mobRoute.style.display = isBrowse ? 'none' : 'flex';
+  } else {
+    if (mob) mob.style.display = 'none';
+    if (mobRoute) mobRoute.style.display = 'none';
+  }
 
   if (isBrowse) {
     renderMapList();
