@@ -1032,14 +1032,41 @@
   .map-client-addr { font-size: 10px; font-family: var(--mono); color: var(--text-muted); margin-top: 1px; }
   .map-no-addr { font-size: 10px; font-family: var(--mono); color: var(--border); margin-top: 1px; font-style: italic; }
 
+  /* Route planner */
+  .route-search-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 14px; border-bottom: 1px solid var(--border);
+    cursor: pointer; transition: background 0.12s;
+  }
+  .route-search-item:hover { background: var(--accent-light); }
+  .route-search-item .add-icon { margin-left:auto; font-size:16px; color:var(--accent); flex-shrink:0; }
+  .route-stop-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 14px; border-bottom: 1px solid var(--border);
+  }
+  .route-stop-num {
+    width:20px; height:20px; border-radius:50%;
+    background:var(--accent); color:#fff;
+    font-family:var(--mono); font-size:10px; font-weight:500;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .route-stop-name { font-size:12px; font-weight:500; flex:1; line-height:1.3; }
+  .route-stop-addr { font-size:10px; font-family:var(--mono); color:var(--text-muted); }
+  .route-remove-btn {
+    background:none; border:none; cursor:pointer; color:var(--text-muted);
+    font-size:14px; padding:2px 4px; border-radius:3px; flex-shrink:0; transition:color 0.12s;
+  }
+  .route-remove-btn:hover { color: var(--danger); }
+  .route-added { background: var(--success-light) !important; }
+  .route-added .add-icon { color: var(--success) !important; content: '✓'; }
+
   @media (max-width: 768px) {
-    #map-view { height: calc(100vh - 60px) !important; flex-direction: column !important; }
-    #map-view > div:nth-child(2) { flex-direction: column !important; }
-    #map-client-list { display: none !important; }
+    #map-view { height: calc(100vh - 60px) !important; }
+    #map-view > div:nth-child(2) > div:first-child { display: none !important; }
     #map-client-list-mobile { display: block !important; }
-    #map-view iframe { min-height: 320px; height: 320px !important; }
-    #map-view > div:first-child { padding: 10px 16px 8px; }
-    #map-search { width: 100% !important; }
+    #map-view iframe { min-height: 260px; }
+    #map-view > div:first-child { padding: 8px 12px; gap: 6px; }
+    #route-search, #map-search { max-width: 100% !important; }
   }
 
   /* ── Viewer mode ── */
@@ -1161,30 +1188,83 @@
       <div class="table-wrap" id="table-wrap"></div>
       <div class="cards-wrap" id="cards-wrap"></div>
       <!-- Map view -->
-      <div id="map-view" style="display:none; flex-direction:column; height:calc(100vh - 120px);">
-        <div style="padding:16px 32px 12px; background:var(--surface); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-          <div style="flex:1;">
-            <div style="font-size:13px; font-weight:600; margin-bottom:2px;">Client Locations</div>
-            <div style="font-size:11px; color:var(--text-muted); font-family:var(--mono);">Click a client below to open their address in Google Maps</div>
+      <div id="map-view" style="display:none; flex-direction:column; height:calc(100vh - 57px);">
+
+        <!-- Top toolbar -->
+        <div style="padding:12px 24px; background:var(--surface); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; flex-wrap:wrap; flex-shrink:0;">
+          <!-- Mode toggle -->
+          <div style="display:flex; border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; flex-shrink:0;">
+            <button id="map-mode-browse" onclick="setMapMode('browse')"
+              style="padding:6px 14px; font-family:var(--mono); font-size:11px; letter-spacing:0.05em; border:none; cursor:pointer; background:var(--text); color:var(--bg); transition:all 0.15s;">
+              📍 Browse
+            </button>
+            <button id="map-mode-route" onclick="setMapMode('route')"
+              style="padding:6px 14px; font-family:var(--mono); font-size:11px; letter-spacing:0.05em; border:none; cursor:pointer; background:none; color:var(--text-muted); transition:all 0.15s;">
+              🗺 Route planner
+            </button>
           </div>
-          <input type="text" placeholder="Filter clients..." id="map-search" oninput="renderMapList()"
-            style="padding:7px 11px; border:1px solid var(--border); border-radius:var(--radius); font-family:var(--sans); font-size:13px; background:var(--bg); color:var(--text); outline:none; width:200px;">
+
+          <!-- Browse mode: search -->
+          <div id="map-browse-controls" style="display:flex; align-items:center; gap:8px; flex:1;">
+            <input type="text" placeholder="Filter clients..." id="map-search" oninput="renderMapList()"
+              style="padding:7px 11px; border:1px solid var(--border); border-radius:var(--radius); font-family:var(--sans); font-size:13px; background:var(--bg); color:var(--text); outline:none; flex:1; max-width:260px;">
+          </div>
+
+          <!-- Route mode controls -->
+          <div id="map-route-controls" style="display:none; align-items:center; gap:8px; flex:1; flex-wrap:wrap;">
+            <input type="text" placeholder="Search to add stop..." id="route-search" oninput="renderRouteSearch()"
+              style="padding:7px 11px; border:1px solid var(--border); border-radius:var(--radius); font-family:var(--sans); font-size:13px; background:var(--bg); color:var(--text); outline:none; flex:1; max-width:260px;">
+            <span id="route-stop-count" style="font-family:var(--mono); font-size:11px; color:var(--text-muted); white-space:nowrap;">0 stops selected</span>
+            <button onclick="openRouteInMaps()" id="route-go-btn"
+              style="padding:7px 18px; background:var(--accent); color:#fff; border:none; border-radius:var(--radius); font-family:var(--sans); font-size:13px; font-weight:500; cursor:pointer; white-space:nowrap; opacity:0.4; pointer-events:none; transition:all 0.15s;">
+              Open in Google Maps →
+            </button>
+            <button onclick="clearRoute()"
+              style="padding:7px 12px; background:none; border:1px solid var(--border); border-radius:var(--radius); font-family:var(--mono); font-size:11px; color:var(--text-muted); cursor:pointer; white-space:nowrap;">
+              Clear
+            </button>
+          </div>
         </div>
-        <div style="display:flex; flex:1; overflow:hidden; flex-direction:row;">
-          <!-- Client list panel -->
-          <div id="map-client-list" style="width:240px; flex-shrink:0; overflow-y:auto; border-right:1px solid var(--border); background:var(--surface);"></div>
+
+        <!-- Body: sidebar + map iframe -->
+        <div style="display:flex; flex:1; overflow:hidden;">
+
+          <!-- Left panel -->
+          <div style="width:260px; flex-shrink:0; display:flex; flex-direction:column; border-right:1px solid var(--border); background:var(--surface); overflow:hidden;">
+
+            <!-- Browse list -->
+            <div id="map-client-list" style="flex:1; overflow-y:auto;"></div>
+
+            <!-- Route panel -->
+            <div id="map-route-panel" style="display:none; flex-direction:column; flex:1; overflow:hidden;">
+              <!-- Search results -->
+              <div id="route-search-results" style="border-bottom:1px solid var(--border); overflow-y:auto; max-height:200px;"></div>
+              <!-- Selected stops -->
+              <div style="padding:10px 14px 6px; font-family:var(--mono); font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted); flex-shrink:0;">Route stops</div>
+              <div id="route-stop-list" style="flex:1; overflow-y:auto; padding-bottom:8px;"></div>
+              <div id="route-empty" style="padding:24px 14px; text-align:center; font-family:var(--mono); font-size:11px; color:var(--border);">Search above to add stops</div>
+            </div>
+          </div>
+
           <!-- Map iframe -->
           <div style="flex:1; position:relative;">
             <iframe
               src="https://www.google.com/maps/d/u/0/embed?mid=18HEaQXBpWmMAbXBeykDS9cLQTNom8f0&ehbc=2E312F"
               style="width:100%; height:100%; border:none; display:block;"
-              allowfullscreen
-              loading="lazy">
+              allowfullscreen loading="lazy">
             </iframe>
           </div>
         </div>
-        <!-- Mobile: list below map -->
-        <div id="map-client-list-mobile" style="display:none; overflow-y:auto; max-height:240px; border-top:1px solid var(--border); background:var(--surface);"></div>
+
+        <!-- Mobile client list (browse mode) -->
+        <div id="map-client-list-mobile" style="display:none; overflow-y:auto; max-height:220px; border-top:1px solid var(--border); background:var(--surface);"></div>
+        <!-- Mobile route panel (route mode) -->
+        <div id="map-route-panel-mobile" style="display:none; flex-direction:column; max-height:280px; border-top:1px solid var(--border); background:var(--surface);">
+          <div id="route-search-results-mobile" style="border-bottom:1px solid var(--border); overflow-y:auto; max-height:130px;"></div>
+          <div style="padding:8px 14px 4px; font-family:var(--mono); font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted);">Route stops</div>
+          <div id="route-stop-list-mobile" style="overflow-y:auto; flex:1; padding-bottom:6px;"></div>
+          <div id="route-empty-mobile" style="padding:16px 14px; text-align:center; font-family:var(--mono); font-size:11px; color:var(--border);">Search above to add stops</div>
+        </div>
       </div>
     </div>
   </div>
@@ -1716,7 +1796,7 @@ const clientProfiles = {
   'Patients First Medical Center': {contacts:[{"name": "Alyssa Heffington", "phone": "209-383-3990", "email": "aheffingtonpfmc@gmail.com", "position": ""}],website:''},
   'Raw Farm': {contacts:[{"name": "Aaron McAfee", "phone": "(559) 977-8564", "email": "aaron.m@rawfarmusa.com", "position": ""}, {"name": "Lizbeth Valdes", "phone": "", "email": "lizbeth.v@rawfarmusa.com", "position": ""}],website:'https://rawfarmusa.com/'},
   'Rico, Pfitzer, Pires Insurance Agency, Inc.': {contacts:[{"name": "Neelia Perry", "phone": "(209) 856-8823", "email": "nperry@rppins.com", "position": "IT Support Manager"}, {"name": "Michelle Luiz", "phone": "", "email": "mluiz@rppins.com", "position": "Office Manager/HR"}],website:'https://rppins.com/#//'},
-  'Rio Bravo Fresno': {contacts:[{"name": "Robert Crain", "phone": "(559) 977-0575", "email": "bcrain@rbfresno.com", "position": "O&M Lead   Operations"}, {"name": "Nicholas Ackley", "phone": "(559) 264-4575", "email": "nicholas.ackley@ihipower.com", "position": ""}],website:''},
+  'Rio Bravo Fresno': {contacts:[{"name": "Robert Crain", "phone": "(559) 977-0575", "email": "bcrain@rbfresno.com", "position": "O&M Lead � Operations"}, {"name": "Nicholas Ackley", "phone": "(559) 264-4575", "email": "nicholas.ackley@ihipower.com", "position": ""}],website:''},
   'Salinas Valley Basin': {contacts:[{"name": "Harrison Tregenza", "phone": "(831) 471-7512 ext. 205", "email": "tregenzah@svbgsa.org", "position": "Administrative Specialist"}],website:'https://svbgsa.org/'},
   'Serene Aesthetics & Wellness MedSpa': {contacts:[{"name": "Sal Cervantes", "phone": "(209) 523-0647", "email": "sal.cervantes.serene.awm@gmail.com", "position": ""}],website:'https://sereneaestheticsandmedspa.com/'},
   'Shannon Pump': {contacts:[{"name": "Betty Shannon", "phone": "(209) 723-3904", "email": "betty@shannonpump.com", "position": ""}],website:''},
@@ -1729,7 +1809,7 @@ const clientProfiles = {
   'VC1, LLC': {contacts:[{"name": "Anat Karakugli", "phone": "209-355-3303", "email": "anat@vc1llc.com", "position": "Office Manager"}, {"name": "Ed Castillo", "phone": "", "email": "Ed@vc1llc.com", "position": "Safety/Operations Manager"}, {"name": "Veronica Villa", "phone": "", "email": "Veronica@vc1llc.com", "position": "Accounts Payables"}],website:'http://www.vc1llc.com'},
   'Vinfillment LLC': {contacts:[{"name": "Efren Aranda", "phone": "(707) 656-4467", "email": "earanda@vinfillment.com", "position": ""}],website:'https://www.vinfillment.com/'},
   'Winton Water District': {contacts:[{"name": "Jennifer Caldera", "phone": "(209) 358-2367", "email": "Jcaldera@wintonwsd.com", "position": ""}],website:'https://wintonwsd.com/'},
-  'Wood Connection': {contacts:[{"name": "Upma Agarwala", "phone": "415-640-9769 ", "email": "upma@woodcon.com", "position": "Vice President & COO"}],website:''},
+  'Wood Connection': {contacts:[{"name": "Upma Agarwala", "phone": "415-640-9769�", "email": "upma@woodcon.com", "position": "Vice President & COO"}],website:''},
   'Yarra, Rivas, and Associates': {contacts:[{"name": "Sonia Podilla", "phone": "(559) 441-1214 ext 121", "email": "soniap@yarrarivasassociates.com", "position": ""}],website:'https://yarralaw.com'},
 };
 
@@ -1989,7 +2069,7 @@ function switchTab(tab,el){
     if(filterSel) filterSel.style.display = 'none';
     if(btnAdd) btnAdd.style.display = 'none';
     if(topbar) topbar.innerHTML = 'Map <span>' + clients.length + ' clients</span>';
-    renderMapList();
+    setMapMode(mapMode); // restore whatever mode was active
   } else {
     mapView.style.display = 'none';
     statsBar.style.display = '';
@@ -2309,6 +2389,42 @@ setInterval(() => {
 saveClient = saveClientToSupabase;
 
 // ── Map tab ──
+let mapMode = 'browse'; // 'browse' | 'route'
+let routeStops = []; // [{name, address, city}]
+
+function setMapMode(mode) {
+  mapMode = mode;
+  const isBrowse = mode === 'browse';
+
+  // Toggle mode buttons styling
+  document.getElementById('map-mode-browse').style.background = isBrowse ? 'var(--text)' : 'none';
+  document.getElementById('map-mode-browse').style.color = isBrowse ? 'var(--bg)' : 'var(--text-muted)';
+  document.getElementById('map-mode-route').style.background = !isBrowse ? 'var(--text)' : 'none';
+  document.getElementById('map-mode-route').style.color = !isBrowse ? 'var(--bg)' : 'var(--text-muted)';
+
+  // Toggle controls
+  document.getElementById('map-browse-controls').style.display = isBrowse ? 'flex' : 'none';
+  document.getElementById('map-route-controls').style.display = isBrowse ? 'none' : 'flex';
+
+  // Toggle panels (desktop)
+  document.getElementById('map-client-list').style.display = isBrowse ? 'block' : 'none';
+  document.getElementById('map-route-panel').style.display = isBrowse ? 'none' : 'flex';
+
+  // Toggle mobile panels
+  const mob = document.getElementById('map-client-list-mobile');
+  const mobRoute = document.getElementById('map-route-panel-mobile');
+  if (mob) mob.style.display = isBrowse ? 'block' : 'none';
+  if (mobRoute) mobRoute.style.display = isBrowse ? 'none' : 'flex';
+
+  if (isBrowse) {
+    renderMapList();
+  } else {
+    document.getElementById('route-search').value = '';
+    renderRouteSearch();
+    renderRouteStops();
+  }
+}
+
 function renderMapList() {
   const query = (document.getElementById('map-search')?.value || '').toLowerCase();
   const filtered = clients.filter(c => !query || c.name.toLowerCase().includes(query) || (c.address||'').toLowerCase().includes(query));
@@ -2323,11 +2439,11 @@ function renderMapList() {
         : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.name + ' ' + (c.city||'Merced') + ' CA')}`;
       return `<a class="map-client-item" href="${mapsUrl}" target="_blank" rel="noopener">
         <span style="width:9px;height:9px;border-radius:50%;background:${color};flex-shrink:0;"></span>
-        <div>
+        <div style="flex:1;min-width:0;">
           <div class="map-client-name">${c.name}</div>
           ${addr ? `<div class="map-client-addr">${c.address}</div>` : `<div class="map-no-addr">No address on file</div>`}
         </div>
-        <svg style="margin-left:auto;flex-shrink:0;color:var(--border);" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        <svg style="flex-shrink:0;color:var(--border);" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
       </a>`;
     }).join('');
   }
@@ -2337,6 +2453,107 @@ function renderMapList() {
   const dm = document.getElementById('map-client-list-mobile');
   if (d) d.innerHTML = html;
   if (dm) dm.innerHTML = html;
+}
+
+function renderRouteSearch() {
+  const query = (document.getElementById('route-search')?.value || '').toLowerCase().trim();
+  const addedNames = new Set(routeStops.map(s => s.name));
+
+  const results = query
+    ? clients.filter(c => c.name.toLowerCase().includes(query) || (c.address||'').toLowerCase().includes(query)).slice(0, 8)
+    : [];
+
+  function makeItem(c) {
+    const color = getClientColor(c.name);
+    const isAdded = addedNames.has(c.name);
+    return `<div class="route-search-item ${isAdded ? 'route-added' : ''}" onclick="${isAdded ? '' : `addRouteStop('${c.name.replace(/'/g,"\\'")}', '${(c.address||'').replace(/'/g,"\\'")}', '${(c.city||'Merced').replace(/'/g,"\\'")}'); this.classList.add('route-added'); this.querySelector('.add-icon').textContent='✓'`}">
+      <span style="width:9px;height:9px;border-radius:50%;background:${color};flex-shrink:0;"></span>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12px;font-weight:500;">${c.name}</div>
+        ${c.address ? `<div style="font-size:10px;font-family:var(--mono);color:var(--text-muted);">${c.address}</div>` : ''}
+      </div>
+      <span class="add-icon">${isAdded ? '✓' : '+'}</span>
+    </div>`;
+  }
+
+  const html = results.length
+    ? results.map(makeItem).join('')
+    : (query ? '<div style="padding:12px 14px;font-size:11px;font-family:var(--mono);color:var(--text-muted);">No matches</div>' : '');
+
+  ['route-search-results','route-search-results-mobile'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = html;
+  });
+}
+
+function addRouteStop(name, address, city) {
+  if (routeStops.find(s => s.name === name)) return;
+  routeStops.push({ name, address, city });
+  renderRouteStops();
+}
+
+function removeRouteStop(name) {
+  routeStops = routeStops.filter(s => s.name !== name);
+  renderRouteStops();
+  renderRouteSearch(); // refresh to un-check removed stop
+}
+
+function clearRoute() {
+  routeStops = [];
+  document.getElementById('route-search').value = '';
+  renderRouteSearch();
+  renderRouteStops();
+}
+
+function renderRouteStops() {
+  const count = routeStops.length;
+  // Update counter & button
+  const countEl = document.getElementById('route-stop-count');
+  const goBtn = document.getElementById('route-go-btn');
+  if (countEl) countEl.textContent = count + (count === 1 ? ' stop' : ' stops') + ' selected';
+  if (goBtn) {
+    const canGo = count >= 2;
+    goBtn.style.opacity = canGo ? '1' : '0.4';
+    goBtn.style.pointerEvents = canGo ? 'auto' : 'none';
+  }
+
+  const emptyMsg = count === 0
+    ? '<div style="padding:24px 14px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--border);">Search above to add stops</div>'
+    : '';
+
+  const stopsHtml = routeStops.map((s, i) => `
+    <div class="route-stop-item">
+      <span class="route-stop-num">${i + 1}</span>
+      <div style="flex:1;min-width:0;">
+        <div class="route-stop-name">${s.name}</div>
+        ${s.address ? `<div class="route-stop-addr">${s.address}</div>` : ''}
+      </div>
+      <button class="route-remove-btn" onclick="removeRouteStop('${s.name.replace(/'/g,"\\'")}')">✕</button>
+    </div>`).join('');
+
+  ['route-stop-list','route-stop-list-mobile'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = stopsHtml;
+  });
+  ['route-empty','route-empty-mobile'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = emptyMsg;
+  });
+}
+
+function openRouteInMaps() {
+  if (routeStops.length < 2) return;
+  // Build Google Maps directions URL: origin / destination / waypoints
+  const stops = routeStops.map(s => {
+    const addr = s.address ? `${s.address}, ${s.city || 'Merced'}, CA` : `${s.name}, ${s.city || 'Merced'}, CA`;
+    return encodeURIComponent(addr);
+  });
+  const origin = stops[0];
+  const destination = stops[stops.length - 1];
+  const waypoints = stops.slice(1, -1).join('|');
+  let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=driving`;
+  if (waypoints) url += `&waypoints=${waypoints}`;
+  window.open(url, '_blank');
 }
 
 
