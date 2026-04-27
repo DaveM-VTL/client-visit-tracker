@@ -2331,6 +2331,7 @@ function renderCards(rows){
         <div class="card-detail-row"><span class="card-detail-label">Visit 2 scheduled</span><span class="card-detail-val">${fmt(p.ph2)}</span></div>
         <div class="card-detail-row"><span class="card-detail-label">Visit 2 done</span><span class="card-detail-val">${fmt(p.ph2c)}</span></div>`;
       return cardHTML(c, color, st, summary, details, note, noteEsc, {tab:'phone', id:c.id});
+    } else if(currentTab==='tbr'){
       const t = tbrData[c.name]||{};
       const st = getTBRStatus(c);
       const nextUp = t.tbr1c ? fmt(t.tbr2) : fmt(t.tbr1);
@@ -2358,6 +2359,8 @@ function renderCards(rows){
       details = `
         <div class="card-detail-row"><span class="card-detail-label">Last report sent</span><span class="card-detail-val">${fmt(r.lastSent)}</span></div>`;
       return cardHTML(c, color, st, summary, details, note, noteEsc, {tab:'reports', id:c.id});
+    }
+  }).join('');
 }
 
 function cardHTML(c, color, st, summary, details, note, noteEsc, ql=null){
