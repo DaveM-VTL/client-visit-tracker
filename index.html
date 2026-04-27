@@ -1062,11 +1062,8 @@
 
   @media (max-width: 768px) {
     #map-view { height: calc(100vh - 60px) !important; }
-    /* Hide the desktop left panel (sidebar with list) on mobile */
+    /* Always hide the desktop left sidebar on mobile */
     #map-view > div:nth-child(2) > div:first-child { display: none !important; }
-    /* Show the mobile list below the map instead */
-    #map-client-list-mobile { display: block !important; }
-    #map-route-panel-mobile { display: flex; }
     #map-view iframe { min-height: 260px; }
     #map-view > div:first-child { padding: 8px 12px; gap: 6px; }
     #route-search, #map-search { max-width: 100% !important; }
@@ -2415,16 +2412,12 @@ function setMapMode(mode) {
   document.getElementById('map-client-list').style.display = isBrowse ? 'block' : 'none';
   document.getElementById('map-route-panel').style.display = isBrowse ? 'none' : 'flex';
 
-  // Toggle mobile panels (only relevant on mobile, CSS handles the rest)
+  // Toggle mobile panels — explicitly control all four to avoid bleed-through
   const mob = document.getElementById('map-client-list-mobile');
   const mobRoute = document.getElementById('map-route-panel-mobile');
-  if (window.innerWidth <= 768) {
-    if (mob) mob.style.display = isBrowse ? 'block' : 'none';
-    if (mobRoute) mobRoute.style.display = isBrowse ? 'none' : 'flex';
-  } else {
-    if (mob) mob.style.display = 'none';
-    if (mobRoute) mobRoute.style.display = 'none';
-  }
+  const isMobile = window.innerWidth <= 768;
+  if (mob) mob.style.display = (isMobile && isBrowse) ? 'block' : 'none';
+  if (mobRoute) mobRoute.style.display = (isMobile && !isBrowse) ? 'flex' : 'none';
 
   if (isBrowse) {
     renderMapList();
