@@ -1189,12 +1189,12 @@
 
   @media (max-width: 768px) {
     .cal-week-grid {
-      grid-template-columns: 40px repeat(7, 1fr);
-      font-size: 11px;
+      grid-template-columns: 36px repeat(3, 1fr);
     }
     .cal-day-header .cal-date-num { font-size: 14px; }
     .cal-time-slot span { font-size: 8px; }
-    .cal-appt { font-size: 9px; padding: 2px 3px; }
+    .cal-appt { font-size: 10px; padding: 3px 4px; left: 2px !important; right: 2px !important; }
+    .cal-appt .appt-time { font-size: 9px; }
   }
 
   .viewer-badge {
@@ -2288,9 +2288,20 @@ function calGoToday() { calWeekOffset = 0; renderCalendar(); }
 function calNav(dir) { calWeekOffset += dir; renderCalendar(); }
 
 function renderCalendar() {
-  const start = calWeekStart(calWeekOffset);
+  const mobile = window.innerWidth <= 768;
+  const dayCount = mobile ? 3 : 7;
+
+  let start;
+  if(mobile){
+    // On mobile: start from today (offset shifts by 3 days at a time)
+    start = new Date(TODAY);
+    start.setDate(TODAY.getDate() + calWeekOffset * 3);
+  } else {
+    start = calWeekStart(calWeekOffset);
+  }
+
   const days = [];
-  for(let i = 0; i < 7; i++){
+  for(let i = 0; i < dayCount; i++){
     const d = new Date(start);
     d.setDate(start.getDate() + i);
     days.push(d);
@@ -2298,18 +2309,18 @@ function renderCalendar() {
 
   // Week label
   const opts = {month:'short', day:'numeric'};
-  const end = days[6];
-  const lbl = start.toLocaleDateString('en-US',opts) + ' – ' + end.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  const end = days[days.length - 1];
+  const lbl = start.toLocaleDateString('en-US', opts) + ' – ' + end.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
   document.getElementById('cal-week-label').textContent = lbl;
 
   const DOWS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const HOURS = [];
-  for(let h = 7; h <= 18; h++) HOURS.push(h); // 7am–6pm
+  for(let h = 7; h <= 18; h++) HOURS.push(h);
 
   const todayStr = fmtISO(TODAY);
 
   // Build header row
-  let html = '<div class="cal-week-grid">';
+  let html = `<div class="cal-week-grid" style="grid-template-columns: ${mobile ? '36px' : '60px'} repeat(${dayCount}, 1fr)">`;
   html += '<div class="cal-header-corner"></div>';
   days.forEach(d => {
     const ds = fmtISO(d);
@@ -2321,22 +2332,21 @@ function renderCalendar() {
   });
 
   // Time rows
-  HOURS.forEach((h, hi) => {
+  HOURS.forEach(h => {
     const label = h === 12 ? '12p' : h > 12 ? (h-12)+'p' : h+'a';
     html += `<div class="cal-time-col"><div class="cal-time-slot"><span>${label}</span></div></div>`;
     days.forEach(d => {
       const ds = fmtISO(d);
       const isToday = ds === todayStr;
-      // Find appointments for this cell
       const cellAppts = appointments.filter(a => a.date === ds && parseInt(a.time.split(':')[0]) === h);
       let apptHtml = '';
       cellAppts.forEach((a, ai) => {
         const mins = parseInt(a.time.split(':')[1]) || 0;
         const topPct = (mins / 60) * 100;
         const shortName = a.clientName.length > 20 ? a.clientName.substring(0,18)+'…' : a.clientName;
-        const fmtTime = fmtTime12(a.time);
-        apptHtml += `<div class="cal-appt" style="top:${topPct}%;left:${3+ai*4}px;right:${3+ai*4}px" onclick="openApptModal(${a.id})">
-          <span class="appt-time">${fmtTime}</span>
+        const fmtT = fmtTime12(a.time);
+        apptHtml += `<div class="cal-appt" style="top:${topPct}%" onclick="openApptModal(${a.id})">
+          <span class="appt-time">${fmtT}</span>
           ${shortName}
         </div>`;
       });
