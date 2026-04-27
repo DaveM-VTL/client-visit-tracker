@@ -1539,9 +1539,13 @@
     <div class="modal-body">
       <div class="field-grid">
         <div class="field full">
-          <label>Client</label>
+          <label>Title <span style="font-weight:400;color:var(--text-muted);font-size:11px;">(optional if client selected)</span></label>
+          <input type="text" id="appt-title" placeholder="e.g. Pick up donuts, Team meeting…">
+        </div>
+        <div class="field full">
+          <label>Client <span style="font-weight:400;color:var(--text-muted);font-size:11px;">(optional)</span></label>
           <select id="appt-client">
-            <option value="">— select a client —</option>
+            <option value="">— none —</option>
           </select>
         </div>
         <div class="field">
@@ -2362,7 +2366,8 @@ function renderCalendar() {
       cellAppts.forEach((a, ai) => {
         const mins = parseInt(a.time.split(':')[1]) || 0;
         const topPct = (mins / 60) * 100;
-        const shortName = a.clientName.length > 20 ? a.clientName.substring(0,18)+'…' : a.clientName;
+        const displayTitle = a.title || a.clientName || 'Untitled';
+        const shortName = displayTitle.length > 20 ? displayTitle.substring(0,18)+'…' : displayTitle;
         const fmtT = fmtTime12(a.time);
         apptHtml += `<div class="cal-appt status-${a.status||'scheduled'}" style="top:${topPct}%" onclick="openApptModal(${a.id})">
           <span class="appt-time">${fmtT}</span>
@@ -2404,7 +2409,8 @@ function openApptModal(id) {
     const a = appointments.find(x => x.id === id);
     if(!a) return;
     document.getElementById('appt-modal-title').textContent = 'Edit appointment';
-    sel.value = a.clientName;
+    document.getElementById('appt-title').value = a.title || '';
+    sel.value = a.clientName || '';
     document.getElementById('appt-date').value = a.date;
     document.getElementById('appt-time').value = a.time;
     document.getElementById('appt-status').value = a.status || 'scheduled';
@@ -2412,6 +2418,7 @@ function openApptModal(id) {
     delBtn.style.display = '';
   } else {
     document.getElementById('appt-modal-title').textContent = 'Add appointment';
+    document.getElementById('appt-title').value = '';
     sel.value = '';
     document.getElementById('appt-date').value = fmtISO(TODAY);
     const nowH = new Date().getHours() + 1;
@@ -2430,21 +2437,27 @@ function closeApptModal() {
 }
 
 async function saveAppt() {
+  const title = document.getElementById('appt-title').value.trim();
   const clientName = document.getElementById('appt-client').value;
   const date = document.getElementById('appt-date').value;
   const time = document.getElementById('appt-time').value;
   const status = document.getElementById('appt-status').value;
   const notes = document.getElementById('appt-notes').value.trim();
-  if(!clientName || !date || !time) { alert('Please fill in all fields.'); return; }
+
+  if(!title && !clientName) { alert('Please enter a title or select a client.'); return; }
+  if(!date || !time) { alert('Please fill in date and time.'); return; }
+
+  // Display label: title wins, falls back to client name
+  const displayTitle = title || clientName;
 
   const id = editingApptId || nextApptId++;
-  const row = { id, client_name: clientName, date, time, status, notes: notes || null };
+  const row = { id, title: title || null, client_name: clientName || null, date, time, status, notes: notes || null };
 
   if(editingApptId) {
     const a = appointments.find(x => x.id === editingApptId);
-    if(a){ a.clientName = clientName; a.date = date; a.time = time; a.status = status; a.notes = notes; }
+    if(a){ a.title = title; a.clientName = clientName; a.date = date; a.time = time; a.status = status; a.notes = notes; a.displayTitle = displayTitle; }
   } else {
-    appointments.push({ id, clientName, date, time, status, notes });
+    appointments.push({ id, title, clientName, date, time, status, notes, displayTitle });
   }
 
   closeApptModal();
@@ -2663,11 +2676,13 @@ async function loadFromSupabase(){
     if(ap && ap.length > 0){
       appointments = ap.map(row => ({
         id: row.id,
-        clientName: row.client_name,
+        title: row.title || '',
+        clientName: row.client_name || '',
         date: row.date,
         time: row.time,
         status: row.status || 'scheduled',
-        notes: row.notes || ''
+        notes: row.notes || '',
+        displayTitle: row.title || row.client_name || 'Untitled'
       }));
       nextApptId = Math.max(...appointments.map(a => a.id)) + 1;
     }
