@@ -1221,6 +1221,45 @@
     margin: 0 24px 10px;
   }
 
+  /* ── Quick Log ── */
+  .quick-log-btn {
+    padding: 4px 9px;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    background: none;
+    font-family: var(--mono);
+    font-size: 10px;
+    cursor: pointer;
+    color: var(--accent);
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .quick-log-btn:hover { background: var(--accent); color: #fff; }
+  .quick-log-btn:active { transform: scale(0.95); }
+
+  .quick-log-toast {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--text);
+    color: var(--bg);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 10px 20px;
+    border-radius: 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    opacity: 0;
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+    z-index: 999;
+    white-space: nowrap;
+  }
+  .quick-log-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
   /* ── Global Search ── */
   .gs-overlay {
     display: none;
@@ -1458,6 +1497,9 @@
     </div>
   </div>
 </div>
+
+<!-- Quick Log Toast -->
+<div class="quick-log-toast" id="quick-log-toast"></div>
 
 <div class="shell" style="display:none">
   <!-- Sidebar -->
@@ -2277,7 +2319,7 @@ function renderCards(rows){
         <div class="card-detail-row"><span class="card-detail-label">Second visit</span><span class="card-detail-val">${fmt(c.lastVisit2)}</span></div>
         <div class="card-detail-row"><span class="card-detail-label">Address</span><span class="card-detail-val">${[c.address,c.city].filter(Boolean).join(', ')||'—'}</span></div>
         ${cardContacts(c.name)}`;
-      return cardHTML(c, color, st, summary, details, note, noteEsc);
+      return cardHTML(c, color, st, summary, details, note, noteEsc, currentTab==='inperson' ? c.id : null);
     } else if(currentTab==='phone'){
       const p = phoneData[c.name]||{};
       const st = getPhoneStatus(c);
@@ -2321,7 +2363,10 @@ function renderCards(rows){
   }).join('');
 }
 
-function cardHTML(c, color, st, summary, details, note, noteEsc){
+function cardHTML(c, color, st, summary, details, note, noteEsc, quickLogId=null){
+  const quickLogBtn = quickLogId !== null
+    ? `<button class="quick-log-btn" onclick="quickLog(${quickLogId})">✓ Visited today</button>`
+    : '';
   return `<div class="client-card" style="--client-color:${color}" id="card-${c.id}">
     <div class="card-main" onclick="toggleCard(${c.id})">
       <div class="card-left">
@@ -2336,6 +2381,7 @@ function cardHTML(c, color, st, summary, details, note, noteEsc){
     <div class="card-details">
       ${details}
       <div class="card-actions">
+        ${quickLogBtn}
         <button class="card-edit-btn" onclick="openEdit(${c.id})">✎ Edit</button>
       </div>
       <textarea class="card-note" placeholder="Add a note…" onblur="saveNote('${c.name.replace(/'/g,"\\'")}', this.value)">${noteEsc}</textarea>
@@ -2408,7 +2454,7 @@ function render(){
       const ds=st.days!==null?(st.days<0?`${Math.abs(st.days)} days ago`:`${st.days} days`):'—';
       const color=getClientColor(c.name);
       const note=notesData[c.name]||'';
-      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(c.lastVisit)}</td><td class="td-date">${st.nextDue?fmt(st.nextDue):'—'}</td><td class="td-days">${ds}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td><td><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
+      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(c.lastVisit)}</td><td class="td-date">${st.nextDue?fmt(st.nextDue):'—'}</td><td class="td-days">${ds}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td><td style="white-space:nowrap;display:flex;gap:6px;align-items:center"><button class="quick-log-btn" onclick="quickLog(${c.id})">✓ Today</button><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
     });
     html+='</tbody></table>';
   } else if(currentTab==='phone'){
@@ -3404,6 +3450,30 @@ document.addEventListener('keydown', function(e){
     }
   }
 });
+
+// ── Quick Log ──
+let toastTimer = null;
+
+function showToast(msg){
+  const el = document.getElementById('quick-log-toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  if(toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+async function quickLog(id){
+  const c = clients.find(x => x.id === id);
+  if(!c) return;
+  const today = new Date().toISOString().split('T')[0];
+  c.lastVisit = today;
+  render();
+  showToast(`✓ Logged visit for ${c.name} — ${fmt(today)}`);
+  // Save to Supabase
+  try {
+    await sbUpsert('clients', { id: c.id, name: c.name, address: c.address, city: c.city, last_visit: today, last_visit2: c.lastVisit2 || null });
+  } catch(e){ console.error('Quick log save failed', e); }
+}
 
 // ── Auth ──
 const SUPA_AUTH = SUPA_URL + '/auth/v1';
