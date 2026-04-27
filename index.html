@@ -1159,22 +1159,31 @@
     position: absolute;
     left: 3px;
     right: 3px;
-    background: var(--accent-light);
-    border-left: 3px solid var(--accent);
     border-radius: 3px;
     padding: 3px 5px;
     font-size: 11px;
     font-weight: 500;
-    color: var(--success);
     cursor: pointer;
     z-index: 2;
     overflow: hidden;
     line-height: 1.3;
-    transition: background 0.12s;
+    transition: opacity 0.12s;
     min-height: 20px;
   }
 
-  .cal-appt:hover { background: color-mix(in srgb, var(--accent) 20%, var(--surface)); }
+  .cal-appt.status-scheduled {
+    background: var(--danger-light);
+    border-left: 3px solid var(--danger);
+    color: var(--danger);
+  }
+
+  .cal-appt.status-visited {
+    background: var(--accent-light);
+    border-left: 3px solid var(--accent);
+    color: var(--success);
+  }
+
+  .cal-appt:hover { opacity: 0.8; }
 
   .cal-appt .appt-time {
     font-family: var(--mono);
@@ -1543,8 +1552,18 @@
           <label>Time</label>
           <input type="time" id="appt-time">
         </div>
+        <div class="field">
+          <label>Status</label>
+          <select id="appt-status">
+            <option value="scheduled">Scheduled</option>
+            <option value="visited">Visited</option>
+          </select>
+        </div>
+        <div class="field full">
+          <label>Notes</label>
+          <textarea id="appt-notes" placeholder="Add notes about this appointment…" style="padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);font-family:var(--sans);font-size:13px;background:var(--bg);color:var(--text);outline:none;resize:vertical;min-height:80px;line-height:1.5;transition:border-color 0.15s;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'"></textarea>
+        </div>
       </div>
-    </div>
     <div class="modal-footer">
       <button class="btn-cancel" id="appt-delete-btn" onclick="deleteAppt()" style="display:none;color:var(--danger);border-color:var(--danger-light);">Delete</button>
       <button class="btn-cancel" onclick="closeApptModal()">Cancel</button>
@@ -2345,7 +2364,7 @@ function renderCalendar() {
         const topPct = (mins / 60) * 100;
         const shortName = a.clientName.length > 20 ? a.clientName.substring(0,18)+'…' : a.clientName;
         const fmtT = fmtTime12(a.time);
-        apptHtml += `<div class="cal-appt" style="top:${topPct}%" onclick="openApptModal(${a.id})">
+        apptHtml += `<div class="cal-appt status-${a.status||'scheduled'}" style="top:${topPct}%" onclick="openApptModal(${a.id})">
           <span class="appt-time">${fmtT}</span>
           ${shortName}
         </div>`;
@@ -2388,14 +2407,17 @@ function openApptModal(id) {
     sel.value = a.clientName;
     document.getElementById('appt-date').value = a.date;
     document.getElementById('appt-time').value = a.time;
+    document.getElementById('appt-status').value = a.status || 'scheduled';
+    document.getElementById('appt-notes').value = a.notes || '';
     delBtn.style.display = '';
   } else {
     document.getElementById('appt-modal-title').textContent = 'Add appointment';
     sel.value = '';
-    // Default to today + nearest future hour
     document.getElementById('appt-date').value = fmtISO(TODAY);
     const nowH = new Date().getHours() + 1;
     document.getElementById('appt-time').value = `${String(Math.min(nowH,18)).padStart(2,'0')}:00`;
+    document.getElementById('appt-status').value = 'scheduled';
+    document.getElementById('appt-notes').value = '';
     delBtn.style.display = 'none';
   }
 
@@ -2411,16 +2433,18 @@ async function saveAppt() {
   const clientName = document.getElementById('appt-client').value;
   const date = document.getElementById('appt-date').value;
   const time = document.getElementById('appt-time').value;
+  const status = document.getElementById('appt-status').value;
+  const notes = document.getElementById('appt-notes').value.trim();
   if(!clientName || !date || !time) { alert('Please fill in all fields.'); return; }
 
   const id = editingApptId || nextApptId++;
-  const row = { id, client_name: clientName, date, time };
+  const row = { id, client_name: clientName, date, time, status, notes: notes || null };
 
   if(editingApptId) {
     const a = appointments.find(x => x.id === editingApptId);
-    if(a){ a.clientName = clientName; a.date = date; a.time = time; }
+    if(a){ a.clientName = clientName; a.date = date; a.time = time; a.status = status; a.notes = notes; }
   } else {
-    appointments.push({ id, clientName, date, time });
+    appointments.push({ id, clientName, date, time, status, notes });
   }
 
   closeApptModal();
@@ -2641,7 +2665,9 @@ async function loadFromSupabase(){
         id: row.id,
         clientName: row.client_name,
         date: row.date,
-        time: row.time
+        time: row.time,
+        status: row.status || 'scheduled',
+        notes: row.notes || ''
       }));
       nextApptId = Math.max(...appointments.map(a => a.id)) + 1;
     }
