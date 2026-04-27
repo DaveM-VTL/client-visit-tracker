@@ -2319,7 +2319,7 @@ function renderCards(rows){
         <div class="card-detail-row"><span class="card-detail-label">Second visit</span><span class="card-detail-val">${fmt(c.lastVisit2)}</span></div>
         <div class="card-detail-row"><span class="card-detail-label">Address</span><span class="card-detail-val">${[c.address,c.city].filter(Boolean).join(', ')||'—'}</span></div>
         ${cardContacts(c.name)}`;
-      return cardHTML(c, color, st, summary, details, note, noteEsc, currentTab==='inperson' ? c.id : null);
+      return cardHTML(c, color, st, summary, details, note, noteEsc, {tab:'inperson', id:c.id});
     } else if(currentTab==='phone'){
       const p = phoneData[c.name]||{};
       const st = getPhoneStatus(c);
@@ -2330,8 +2330,7 @@ function renderCards(rows){
         <div class="card-detail-row"><span class="card-detail-label">Visit 1 done</span><span class="card-detail-val">${fmt(p.ph1c)}</span></div>
         <div class="card-detail-row"><span class="card-detail-label">Visit 2 scheduled</span><span class="card-detail-val">${fmt(p.ph2)}</span></div>
         <div class="card-detail-row"><span class="card-detail-label">Visit 2 done</span><span class="card-detail-val">${fmt(p.ph2c)}</span></div>`;
-      return cardHTML(c, color, st, summary, details, note, noteEsc);
-    } else if(currentTab==='tbr'){
+      return cardHTML(c, color, st, summary, details, note, noteEsc, {tab:'phone', id:c.id});
       const t = tbrData[c.name]||{};
       const st = getTBRStatus(c);
       const nextUp = t.tbr1c ? fmt(t.tbr2) : fmt(t.tbr1);
@@ -2342,7 +2341,7 @@ function renderCards(rows){
         <div class="card-detail-row"><span class="card-detail-label">Visit 1 done</span><span class="card-detail-val">${fmt(t.tbr1c)}</span></div>
         <div class="card-detail-row"><span class="card-detail-label">Visit 2 scheduled</span><span class="card-detail-val">${fmt(t.tbr2)}</span></div>
         <div class="card-detail-row"><span class="card-detail-label">Visit 2 done</span><span class="card-detail-val">${fmt(t.tbr2c)}</span></div>`;
-      return cardHTML(c, color, st, summary, details, note, noteEsc);
+      return cardHTML(c, color, st, summary, details, note, noteEsc, {tab:'tbr', id:c.id});
     } else if(currentTab==='reviews'){
       const r = reviewData[c.name]||{};
       const st = getReviewStatus(c);
@@ -2358,15 +2357,16 @@ function renderCards(rows){
       summary = `<div class="card-due">Last sent: ${fmt(r.lastSent)||'—'}</div>`;
       details = `
         <div class="card-detail-row"><span class="card-detail-label">Last report sent</span><span class="card-detail-val">${fmt(r.lastSent)}</span></div>`;
-      return cardHTML(c, color, st, summary, details, note, noteEsc);
-    }
-  }).join('');
+      return cardHTML(c, color, st, summary, details, note, noteEsc, {tab:'reports', id:c.id});
 }
 
-function cardHTML(c, color, st, summary, details, note, noteEsc, quickLogId=null){
-  const quickLogBtn = quickLogId !== null
-    ? `<button class="quick-log-btn" onclick="quickLog(${quickLogId})">✓ Visited today</button>`
-    : '';
+function cardHTML(c, color, st, summary, details, note, noteEsc, ql=null){
+  let quickLogBtn = '';
+  if(ql){
+    const fnMap = {inperson:`quickLog(${ql.id})`, phone:`quickLogPhone(${ql.id})`, tbr:`quickLogTbr(${ql.id})`, reports:`quickLogReport(${ql.id})`};
+    const label = {inperson:'✓ Visited today', phone:'✓ Called today', tbr:'✓ TBR done today', reports:'✓ Report sent today'};
+    quickLogBtn = `<button class="quick-log-btn" onclick="${fnMap[ql.tab]}">${label[ql.tab]||'✓ Today'}</button>`;
+  }
   return `<div class="client-card" style="--client-color:${color}" id="card-${c.id}">
     <div class="card-main" onclick="toggleCard(${c.id})">
       <div class="card-left">
@@ -2463,7 +2463,7 @@ function render(){
       const p=phoneData[c.name]||{};const st=getPhoneStatus(c);
       const color=getClientColor(c.name);
       const note=notesData[c.name]||'';
-      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(p.ph1)}</td><td class="td-date">${fmt(p.ph2)}</td><td class="td-date">${fmt(p.ph1c)}</td><td class="td-date">${fmt(p.ph2c)}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td><td><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
+      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(p.ph1)}</td><td class="td-date">${fmt(p.ph2)}</td><td class="td-date">${fmt(p.ph1c)}</td><td class="td-date">${fmt(p.ph2c)}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td><td style="white-space:nowrap;display:flex;gap:6px;align-items:center"><button class="quick-log-btn" onclick="quickLogPhone(${c.id})">✓ Today</button><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
     });
     html+='</tbody></table>';
   } else if(currentTab==='tbr'){
@@ -2472,7 +2472,7 @@ function render(){
       const t=tbrData[c.name]||{};const st=getTBRStatus(c);
       const color=getClientColor(c.name);
       const note=notesData[c.name]||'';
-      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${t.twice||'No'}</td><td class="td-date">${fmt(t.tbr1)}</td><td class="td-date">${fmt(t.tbr1c)}</td><td class="td-date">${fmt(t.tbr2)}</td><td class="td-date">${fmt(t.tbr2c)}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td><td><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
+      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${t.twice||'No'}</td><td class="td-date">${fmt(t.tbr1)}</td><td class="td-date">${fmt(t.tbr1c)}</td><td class="td-date">${fmt(t.tbr2)}</td><td class="td-date">${fmt(t.tbr2c)}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td><td style="white-space:nowrap;display:flex;gap:6px;align-items:center"><button class="quick-log-btn" onclick="quickLogTbr(${c.id})">✓ Today</button><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
     });
     html+='</tbody></table>';
   } else if(currentTab==='reviews'){
@@ -2492,7 +2492,7 @@ function render(){
       const st=getReportStatus(c);
       const color=getClientColor(c.name);
       const days=r.lastSent?Math.abs(daysFrom(r.lastSent))+'d ago':'—';
-      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(r.lastSent)}</td><td class="td-days">${days}</td><td>${badge(st.cls,st.label)}</td><td class="td-edit"><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
+      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(r.lastSent)}</td><td class="td-days">${days}</td><td>${badge(st.cls,st.label)}</td><td class="td-edit" style="white-space:nowrap;display:flex;gap:6px;align-items:center"><button class="quick-log-btn" onclick="quickLogReport(${c.id})">✓ Today</button><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
     });
     html+='</tbody></table>';
   }
@@ -3469,10 +3469,56 @@ async function quickLog(id){
   c.lastVisit = today;
   render();
   showToast(`✓ Logged visit for ${c.name} — ${fmt(today)}`);
-  // Save to Supabase
   try {
     await sbUpsert('clients', { id: c.id, name: c.name, address: c.address, city: c.city, last_visit: today, last_visit2: c.lastVisit2 || null });
   } catch(e){ console.error('Quick log save failed', e); }
+}
+
+async function quickLogPhone(id){
+  const c = clients.find(x => x.id === id);
+  if(!c) return;
+  const today = new Date().toISOString().split('T')[0];
+  const p = phoneData[c.name] || {};
+  let slot = '';
+  if(!p.ph1c){ p.ph1c = today; slot = 'Visit 1'; }
+  else if(!p.ph2c){ p.ph2c = today; slot = 'Visit 2'; }
+  else { showToast(`Both phone visits already done for ${c.name}`); return; }
+  phoneData[c.name] = p;
+  render();
+  showToast(`✓ ${slot} logged for ${c.name} — ${fmt(today)}`);
+  try {
+    await sbUpsert('phone_visits', { name: c.name, ph1: p.ph1||null, ph2: p.ph2||null, ph1c: p.ph1c||null, ph2c: p.ph2c||null });
+  } catch(e){ console.error('Quick log phone save failed', e); }
+}
+
+async function quickLogTbr(id){
+  const c = clients.find(x => x.id === id);
+  if(!c) return;
+  const today = new Date().toISOString().split('T')[0];
+  const t = tbrData[c.name] || {};
+  let slot = '';
+  if(!t.tbr1c){ t.tbr1c = today; slot = 'TBR 1'; }
+  else if(!t.tbr2c){ t.tbr2c = today; slot = 'TBR 2'; }
+  else { showToast(`Both TBRs already done for ${c.name}`); return; }
+  tbrData[c.name] = t;
+  render();
+  showToast(`✓ ${slot} logged for ${c.name} — ${fmt(today)}`);
+  try {
+    await sbUpsert('tbr_visits', { name: c.name, twice: t.twice||null, tbr1: t.tbr1||null, tbr1c: t.tbr1c||null, tbr2: t.tbr2||null, tbr2c: t.tbr2c||null });
+  } catch(e){ console.error('Quick log TBR save failed', e); }
+}
+
+async function quickLogReport(id){
+  const c = clients.find(x => x.id === id);
+  if(!c) return;
+  const today = new Date().toISOString().split('T')[0];
+  if(!reportData[c.name]) reportData[c.name] = {};
+  reportData[c.name].lastSent = today;
+  render();
+  showToast(`✓ Report logged for ${c.name} — ${fmt(today)}`);
+  try {
+    await sbUpsert('report_data', { name: c.name, last_sent: today });
+  } catch(e){ console.error('Quick log report save failed', e); }
 }
 
 // ── Auth ──
