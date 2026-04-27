@@ -2397,47 +2397,43 @@ function closeApptModal() {
   editingApptId = null;
 }
 
-function saveAppt() {
+async function saveAppt() {
   const clientName = document.getElementById('appt-client').value;
   const date = document.getElementById('appt-date').value;
   const time = document.getElementById('appt-time').value;
   if(!clientName || !date || !time) { alert('Please fill in all fields.'); return; }
 
+  const id = editingApptId || nextApptId++;
+  const row = { id, client_name: clientName, date, time };
+
   if(editingApptId) {
     const a = appointments.find(x => x.id === editingApptId);
     if(a){ a.clientName = clientName; a.date = date; a.time = time; }
   } else {
-    appointments.push({ id: nextApptId++, clientName, date, time });
+    appointments.push({ id, clientName, date, time });
   }
 
-  saveApptsToStorage();
   closeApptModal();
   renderCalendar();
+  try { await sbUpsert('appointments', row); } catch(e){ console.error('Appt save failed', e); }
 }
 
-function deleteAppt() {
+async function deleteAppt() {
   if(!editingApptId) return;
-  appointments = appointments.filter(a => a.id !== editingApptId);
-  saveApptsToStorage();
+  const id = editingApptId;
+  appointments = appointments.filter(a => a.id !== id);
   closeApptModal();
   renderCalendar();
+  try { await sbDelete('appointments', 'id', id); } catch(e){ console.error('Appt delete failed', e); }
 }
 
 function saveApptsToStorage() {
-  try { localStorage.setItem('cvt_appointments', JSON.stringify(appointments)); } catch(e){}
+  // No-op: now using Supabase
 }
 
 function loadApptsFromStorage() {
-  try {
-    const raw = localStorage.getItem('cvt_appointments');
-    if(raw) {
-      appointments = JSON.parse(raw);
-      nextApptId = appointments.reduce((mx, a) => Math.max(mx, a.id+1), 1);
-    }
-  } catch(e){}
+  // No-op: now loading via loadFromSupabase
 }
-
-loadApptsFromStorage();
 
 function openAdd(){
   editingId=null;
@@ -2542,6 +2538,13 @@ async function sbUpsert(table, row){
   });
 }
 
+async function sbDelete(table, column, value){
+  await fetch(SUPA_URL + '/rest/v1/' + table + '?' + column + '=eq.' + value, {
+    method: 'DELETE',
+    headers: sbHeaders()
+  });
+}
+
 function showStatus(msg, ok=true){
   let el = document.getElementById('sync-status');
   if(!el){
@@ -2566,6 +2569,7 @@ async function loadFromSupabase(){
     ]);
     const n = await sbGet('notes').catch(() => []);
     const rp = await sbGet('report_data').catch(() => []);
+    const ap = await sbGet('appointments').catch(() => []);
 
     if(c && c.length > 0){
       // Keep hardcoded data as fallback for missing fields
@@ -2621,6 +2625,15 @@ async function loadFromSupabase(){
     }
     if(rp && rp.length > 0){
       rp.forEach(row => { reportData[row.name] = { lastSent: row.last_sent || null }; });
+    }
+    if(ap && ap.length > 0){
+      appointments = ap.map(row => ({
+        id: row.id,
+        clientName: row.client_name,
+        date: row.date,
+        time: row.time
+      }));
+      nextApptId = Math.max(...appointments.map(a => a.id)) + 1;
     }
 
     showStatus('Data loaded', true);
