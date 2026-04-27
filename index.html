@@ -138,6 +138,7 @@
   .dot-rev { background: #c47eb5; }
   .dot-rep { background: #7ab8d4; }
   .dot-map { background: #e07b54; }
+  .dot-cal { background: #9b72cf; }
 
   .nav-count {
     margin-left: auto;
@@ -1071,13 +1072,132 @@
 
   /* ── Viewer mode ── */
   body.viewer-mode .btn-add { display: none !important; }
+  body.viewer-mode #cal-add-btn { display: none !important; }
   body.viewer-mode .edit-btn { display: none !important; }
   body.viewer-mode .note-inline { pointer-events: none; border-color: transparent !important; background: transparent !important; cursor: default; }
   body.viewer-mode .card-edit-btn { display: none !important; }
   body.viewer-mode .card-note { pointer-events: none; border-color: transparent !important; background: transparent !important; }
 
+  /* ── Calendar ── */
+  .cal-week-grid {
+    display: grid;
+    grid-template-columns: 60px repeat(7, 1fr);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--border);
+    gap: 1px;
+  }
+
+  .cal-day-header {
+    background: var(--surface2);
+    padding: 8px 6px;
+    text-align: center;
+  }
+
+  .cal-day-header .cal-dow {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .cal-day-header .cal-date-num {
+    font-family: var(--mono);
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1.2;
+    margin-top: 2px;
+  }
+
+  .cal-day-header.today-col .cal-date-num {
+    color: var(--accent);
+  }
+
+  .cal-day-header.today-col {
+    background: var(--accent-light);
+  }
+
+  .cal-time-col {
+    background: var(--surface);
+  }
+
+  .cal-time-slot {
+    height: 56px;
+    display: flex;
+    align-items: flex-start;
+    padding: 4px 8px 0 0;
+    justify-content: flex-end;
+  }
+
+  .cal-time-slot span {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--border);
+    white-space: nowrap;
+  }
+
+  .cal-cell {
+    background: var(--surface);
+    position: relative;
+    min-height: 56px;
+  }
+
+  .cal-cell.today-col {
+    background: color-mix(in srgb, var(--accent) 3%, var(--surface));
+  }
+
+  .cal-hour-line {
+    height: 56px;
+    border-top: 1px solid var(--border);
+    position: relative;
+  }
+
+  .cal-appt {
+    position: absolute;
+    left: 3px;
+    right: 3px;
+    background: var(--accent-light);
+    border-left: 3px solid var(--accent);
+    border-radius: 3px;
+    padding: 3px 5px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--success);
+    cursor: pointer;
+    z-index: 2;
+    overflow: hidden;
+    line-height: 1.3;
+    transition: background 0.12s;
+    min-height: 20px;
+  }
+
+  .cal-appt:hover { background: color-mix(in srgb, var(--accent) 20%, var(--surface)); }
+
+  .cal-appt .appt-time {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text-muted);
+    display: block;
+  }
+
+  .cal-header-corner {
+    background: var(--surface2);
+  }
+
+  @media (max-width: 768px) {
+    .cal-week-grid {
+      grid-template-columns: 40px repeat(7, 1fr);
+      font-size: 11px;
+    }
+    .cal-day-header .cal-date-num { font-size: 14px; }
+    .cal-time-slot span { font-size: 8px; }
+    .cal-appt { font-size: 9px; padding: 2px 3px; }
+  }
+
   .viewer-badge {
-    display: inline-flex;
     align-items: center;
     gap: 6px;
     padding: 4px 10px;
@@ -1161,6 +1281,10 @@
       <button class="nav-item" onclick="switchTab('map',this)">
         <span class="nav-dot dot-map"></span>
         Map
+      </button>
+      <button class="nav-item" onclick="switchTab('calendar',this)">
+        <span class="nav-dot dot-cal"></span>
+        Calendar
       </button>
     </nav>
     <div class="sidebar-footer" style="display:flex;flex-direction:column;gap:10px;align-items:flex-start;">
@@ -1268,11 +1392,28 @@
           <div id="route-empty-mobile" style="padding:12px 14px; text-align:center; font-family:var(--mono); font-size:11px; color:var(--border);">No stops added yet</div>
         </div>
       </div>
+
+      <!-- Calendar view -->
+      <div id="calendar-view" style="display:none; flex-direction:column; min-height:calc(100vh - 57px);">
+
+        <!-- Calendar toolbar -->
+        <div style="padding:12px 24px; background:var(--surface); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:12px; flex-shrink:0;">
+          <button onclick="calNav(-1)" style="width:30px;height:30px;border:1px solid var(--border);border-radius:var(--radius);background:none;cursor:pointer;font-size:14px;color:var(--text-muted);display:flex;align-items:center;justify-content:center;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--text-muted)'" onmouseout="this.style.borderColor='var(--border)'">‹</button>
+          <button onclick="calNav(1)"  style="width:30px;height:30px;border:1px solid var(--border);border-radius:var(--radius);background:none;cursor:pointer;font-size:14px;color:var(--text-muted);display:flex;align-items:center;justify-content:center;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--text-muted)'" onmouseout="this.style.borderColor='var(--border)'">›</button>
+          <span id="cal-week-label" style="font-family:var(--mono);font-size:13px;font-weight:500;color:var(--text);flex:1;"></span>
+          <button onclick="calGoToday()" style="padding:6px 14px;border:1px solid var(--border);border-radius:var(--radius);background:none;font-family:var(--mono);font-size:11px;letter-spacing:0.05em;cursor:pointer;color:var(--text-muted);transition:all 0.15s;" onmouseover="this.style.borderColor='var(--text-muted)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">Today</button>
+          <button class="btn-add" onclick="openApptModal()" id="cal-add-btn">+ Add appointment</button>
+        </div>
+
+        <!-- Week grid -->
+        <div style="flex:1;overflow-y:auto;padding:24px 24px 40px;">
+          <div id="cal-grid"></div>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
-
-<!-- Modal -->
 <div class="modal-bg" id="modal">
   <div class="modal">
     <div class="modal-header">
@@ -1375,6 +1516,39 @@
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeModal()">Cancel</button>
       <button class="btn-save" onclick="saveClient()">Save changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Appointment Modal -->
+<div class="modal-bg" id="appt-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="appt-modal-title">Add appointment</h3>
+      <button class="modal-close" onclick="closeApptModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field-grid">
+        <div class="field full">
+          <label>Client</label>
+          <select id="appt-client">
+            <option value="">— select a client —</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Date</label>
+          <input type="date" id="appt-date">
+        </div>
+        <div class="field">
+          <label>Time</label>
+          <input type="time" id="appt-time">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" id="appt-delete-btn" onclick="deleteAppt()" style="display:none;color:var(--danger);border-color:var(--danger-light);">Delete</button>
+      <button class="btn-cancel" onclick="closeApptModal()">Cancel</button>
+      <button class="btn-save" onclick="saveAppt()">Save</button>
     </div>
   </div>
 </div>
@@ -1652,7 +1826,7 @@ const filterOptions={
   reports:['all','overdue','due-soon','on-track','not-sent'],
 };
 const filterLabels={all:'All statuses',overdue:'Overdue','due-soon':'Due soon','on-track':'On track','not-visited':'Not yet visited',pending:'Pending',completed:'Completed','not-scheduled':'Not scheduled',reviewed:'Reviewed',sent:'Awaiting review','not-sent':'Not sent'};
-const tabTitles={inperson:'In-person visits',phone:'Phone visits',tbr:'TBRs',reviews:'Google reviews',reports:'Reports',map:'Map'};
+const tabTitles={inperson:'In-person visits',phone:'Phone visits',tbr:'TBRs',reviews:'Google reviews',reports:'Reports',map:'Map',calendar:'Calendar'};
 
 function updateFilterOptions(){
   const sel=document.getElementById('filter');
@@ -2054,6 +2228,7 @@ function switchTab(tab,el){
   el.classList.add('active');
 
   const mapView = document.getElementById('map-view');
+  const calView = document.getElementById('calendar-view');
   const tableWrap = document.getElementById('table-wrap');
   const cardsWrap = document.getElementById('cards-wrap');
   const statsBar = document.getElementById('stats-bar');
@@ -2064,6 +2239,7 @@ function switchTab(tab,el){
 
   if(tab === 'map'){
     mapView.style.display = 'flex';
+    calView.style.display = 'none';
     tableWrap.style.display = 'none';
     cardsWrap.style.display = 'none';
     statsBar.style.display = 'none';
@@ -2071,9 +2247,21 @@ function switchTab(tab,el){
     if(filterSel) filterSel.style.display = 'none';
     if(btnAdd) btnAdd.style.display = 'none';
     if(topbar) topbar.innerHTML = 'Map <span>' + clients.length + ' clients</span>';
-    setMapMode(mapMode); // restore whatever mode was active
+    setMapMode(mapMode);
+  } else if(tab === 'calendar'){
+    mapView.style.display = 'none';
+    calView.style.display = 'flex';
+    tableWrap.style.display = 'none';
+    cardsWrap.style.display = 'none';
+    statsBar.style.display = 'none';
+    if(searchWrap) searchWrap.style.display = 'none';
+    if(filterSel) filterSel.style.display = 'none';
+    if(btnAdd) btnAdd.style.display = 'none';
+    if(topbar) topbar.innerHTML = 'Calendar <span>scheduled visits</span>';
+    renderCalendar();
   } else {
     mapView.style.display = 'none';
+    calView.style.display = 'none';
     statsBar.style.display = '';
     if(searchWrap) searchWrap.style.display = '';
     if(filterSel) filterSel.style.display = '';
@@ -2082,6 +2270,174 @@ function switchTab(tab,el){
     render();
   }
 }
+
+// ── Calendar ──
+let calWeekOffset = 0; // 0 = current week
+let appointments = []; // {id, clientName, date:'YYYY-MM-DD', time:'HH:MM'}
+let editingApptId = null;
+let nextApptId = 1;
+
+function calWeekStart(offset) {
+  const d = new Date(TODAY);
+  const dow = d.getDay(); // 0=Sun
+  d.setDate(d.getDate() - dow + offset * 7);
+  return d;
+}
+
+function calGoToday() { calWeekOffset = 0; renderCalendar(); }
+function calNav(dir) { calWeekOffset += dir; renderCalendar(); }
+
+function renderCalendar() {
+  const start = calWeekStart(calWeekOffset);
+  const days = [];
+  for(let i = 0; i < 7; i++){
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    days.push(d);
+  }
+
+  // Week label
+  const opts = {month:'short', day:'numeric'};
+  const end = days[6];
+  const lbl = start.toLocaleDateString('en-US',opts) + ' – ' + end.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  document.getElementById('cal-week-label').textContent = lbl;
+
+  const DOWS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const HOURS = [];
+  for(let h = 7; h <= 18; h++) HOURS.push(h); // 7am–6pm
+
+  const todayStr = fmtISO(TODAY);
+
+  // Build header row
+  let html = '<div class="cal-week-grid">';
+  html += '<div class="cal-header-corner"></div>';
+  days.forEach(d => {
+    const ds = fmtISO(d);
+    const isToday = ds === todayStr;
+    html += `<div class="cal-day-header${isToday?' today-col':''}">
+      <div class="cal-dow">${DOWS[d.getDay()]}</div>
+      <div class="cal-date-num">${d.getDate()}</div>
+    </div>`;
+  });
+
+  // Time rows
+  HOURS.forEach((h, hi) => {
+    const label = h === 12 ? '12p' : h > 12 ? (h-12)+'p' : h+'a';
+    html += `<div class="cal-time-col"><div class="cal-time-slot"><span>${label}</span></div></div>`;
+    days.forEach(d => {
+      const ds = fmtISO(d);
+      const isToday = ds === todayStr;
+      // Find appointments for this cell
+      const cellAppts = appointments.filter(a => a.date === ds && parseInt(a.time.split(':')[0]) === h);
+      let apptHtml = '';
+      cellAppts.forEach((a, ai) => {
+        const mins = parseInt(a.time.split(':')[1]) || 0;
+        const topPct = (mins / 60) * 100;
+        const shortName = a.clientName.length > 20 ? a.clientName.substring(0,18)+'…' : a.clientName;
+        const fmtTime = fmtTime12(a.time);
+        apptHtml += `<div class="cal-appt" style="top:${topPct}%;left:${3+ai*4}px;right:${3+ai*4}px" onclick="openApptModal(${a.id})">
+          <span class="appt-time">${fmtTime}</span>
+          ${shortName}
+        </div>`;
+      });
+      html += `<div class="cal-cell${isToday?' today-col':''}"><div class="cal-hour-line" style="position:relative">${apptHtml}</div></div>`;
+    });
+  });
+
+  html += '</div>';
+  document.getElementById('cal-grid').innerHTML = html;
+}
+
+function fmtISO(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+
+function fmtTime12(t) {
+  if(!t) return '';
+  const [h, m] = t.split(':').map(Number);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  return `${h12}:${String(m).padStart(2,'0')} ${ampm}`;
+}
+
+function openApptModal(id) {
+  editingApptId = id || null;
+  const sel = document.getElementById('appt-client');
+  sel.innerHTML = '<option value="">— select a client —</option>' +
+    clients.map(c => `<option value="${c.name.replace(/"/g,'&quot;')}">${c.name}</option>`).join('');
+
+  const delBtn = document.getElementById('appt-delete-btn');
+
+  if(id) {
+    const a = appointments.find(x => x.id === id);
+    if(!a) return;
+    document.getElementById('appt-modal-title').textContent = 'Edit appointment';
+    sel.value = a.clientName;
+    document.getElementById('appt-date').value = a.date;
+    document.getElementById('appt-time').value = a.time;
+    delBtn.style.display = '';
+  } else {
+    document.getElementById('appt-modal-title').textContent = 'Add appointment';
+    sel.value = '';
+    // Default to today + nearest future hour
+    document.getElementById('appt-date').value = fmtISO(TODAY);
+    const nowH = new Date().getHours() + 1;
+    document.getElementById('appt-time').value = `${String(Math.min(nowH,18)).padStart(2,'0')}:00`;
+    delBtn.style.display = 'none';
+  }
+
+  document.getElementById('appt-modal').classList.add('open');
+}
+
+function closeApptModal() {
+  document.getElementById('appt-modal').classList.remove('open');
+  editingApptId = null;
+}
+
+function saveAppt() {
+  const clientName = document.getElementById('appt-client').value;
+  const date = document.getElementById('appt-date').value;
+  const time = document.getElementById('appt-time').value;
+  if(!clientName || !date || !time) { alert('Please fill in all fields.'); return; }
+
+  if(editingApptId) {
+    const a = appointments.find(x => x.id === editingApptId);
+    if(a){ a.clientName = clientName; a.date = date; a.time = time; }
+  } else {
+    appointments.push({ id: nextApptId++, clientName, date, time });
+  }
+
+  saveApptsToStorage();
+  closeApptModal();
+  renderCalendar();
+}
+
+function deleteAppt() {
+  if(!editingApptId) return;
+  appointments = appointments.filter(a => a.id !== editingApptId);
+  saveApptsToStorage();
+  closeApptModal();
+  renderCalendar();
+}
+
+function saveApptsToStorage() {
+  try { localStorage.setItem('cvt_appointments', JSON.stringify(appointments)); } catch(e){}
+}
+
+function loadApptsFromStorage() {
+  try {
+    const raw = localStorage.getItem('cvt_appointments');
+    if(raw) {
+      appointments = JSON.parse(raw);
+      nextApptId = appointments.reduce((mx, a) => Math.max(mx, a.id+1), 1);
+    }
+  } catch(e){}
+}
+
+loadApptsFromStorage();
 
 function openAdd(){
   editingId=null;
