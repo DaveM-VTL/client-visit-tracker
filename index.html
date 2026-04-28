@@ -3147,14 +3147,18 @@ async function pullFromTeams(token) {
 
   const res = await fetch(
     `https://graph.microsoft.com/v1.0/me/calendarView?startDateTime=${start}&endDateTime=${endStr}&$select=id,subject,start,end&$top=100`,
-    { headers: { Authorization: 'Bearer ' + token, 'Prefer': 'outlook.timezone="America/Los_Angeles"' } }
+    { headers: { Authorization: 'Bearer ' + token } }
   );
   const data = await res.json();
   if(!data.value) return;
 
   for(const evt of data.value) {
-    const date = evt.start.dateTime.substring(0, 10);
-    const time = evt.start.dateTime.substring(11, 16);
+    console.log('Teams event:', evt.subject, 'raw start:', evt.start.dateTime, 'timeZone:', evt.start.timeZone);
+    const utcStr = evt.start.dateTime.endsWith('Z') ? evt.start.dateTime : evt.start.dateTime + 'Z';
+    const localDate = new Date(utcStr).toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' }); // YYYY-MM-DD
+    const localTime = new Date(utcStr).toLocaleTimeString('en-US', { timeZone: 'America/Los_Angeles', hour: '2-digit', minute: '2-digit', hour12: false });
+    const date = localDate;
+    const time = localTime;
     const existing = appointments.find(a => a.teamsId === evt.id);
     if(!existing) {
       const id = nextApptId++;
