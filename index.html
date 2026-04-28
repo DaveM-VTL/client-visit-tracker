@@ -1544,8 +1544,8 @@
           <div class="field full"><label>Client name</label><input id="f-name" type="text"></div>
           <div class="field full"><label>Address</label><input id="f-addr" type="text"></div>
           <div class="field"><label>City</label><input id="f-city" type="text"></div>
-          <div class="field"><label>Area</label>
-            <select id="f-area">
+          <div class="field"><label>Area <span style="font-weight:400;color:var(--text-muted);font-size:10px;">(set up in Map → 🗂 Areas)</span></label>
+            <select id="f-area" style="width:100%;">
               <option value="">— No area —</option>
             </select>
           </div>
@@ -2952,9 +2952,13 @@ function populateAreaSelect() {
   const sel = document.getElementById('f-area');
   if (!sel) return;
   const current = sel.value;
-  sel.innerHTML = '<option value="">— No area —</option>' +
-    areaList.map(a => `<option value="${a.name.replace(/"/g,'&quot;')}">${a.name}</option>`).join('');
-  if (current && areaList.find(x => x.name === current)) sel.value = current;
+  if (!areaList.length) {
+    sel.innerHTML = '<option value="">— No areas yet (create in Map tab) —</option>';
+  } else {
+    sel.innerHTML = '<option value="">— No area —</option>' +
+      areaList.map(a => `<option value="${a.name.replace(/"/g,'&quot;')}">${a.name}</option>`).join('');
+    if (current && areaList.find(x => x.name === current)) sel.value = current;
+  }
 }
 
 function renderAreaTags() {
