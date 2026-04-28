@@ -3153,13 +3153,11 @@ async function pullFromTeams(token) {
   if(!data.value) return;
 
   for(const evt of data.value) {
-    console.log('Teams event:', evt.subject, 'raw start:', evt.start.dateTime, 'timeZone:', evt.start.timeZone);
     // Teams returns UTC without Z — trim microseconds and force Z suffix
     const rawStart = evt.start.dateTime.substring(0, 19) + 'Z';
     const utcDate = new Date(rawStart);
     const localDate = utcDate.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
     const localTime = utcDate.toLocaleTimeString('en-US', { timeZone: 'America/Los_Angeles', hour: '2-digit', minute: '2-digit', hour12: false });
-    console.log('rawStart:', rawStart, 'utcDate:', utcDate.toString(), 'localDate:', localDate, 'localTime:', localTime);
     const date = localDate;
     const time = localTime;
     const existing = appointments.find(a => a.teamsId === evt.id);
