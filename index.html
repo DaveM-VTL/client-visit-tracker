@@ -3083,33 +3083,51 @@ function renderAreasGrouped() {
   el.innerHTML = html;
 }
 
+const LS_AREAS_KEY = 'cvt_areas';
+const LS_CLIENT_AREAS_KEY = 'cvt_client_areas';
+
 async function saveAreasToSupabase() {
+  // Primary: localStorage — always works, instant
   try {
-    // Save all areas as a single JSON blob under key 'areas'
+    localStorage.setItem(LS_AREAS_KEY, JSON.stringify(areaList));
+    localStorage.setItem(LS_CLIENT_AREAS_KEY, JSON.stringify(clientAreaData));
+  } catch(e) { console.warn('localStorage save failed', e); }
+  // Secondary: Supabase (requires app_settings table — optional)
+  try {
     await sbUpsert('app_settings', { key: 'areas', value: JSON.stringify(areaList) });
-    // Save client->area assignments as JSON blob
     await sbUpsert('app_settings', { key: 'client_areas', value: JSON.stringify(clientAreaData) });
-  } catch(e) { console.warn('Could not save areas', e); }
+  } catch(e) { /* table may not exist — localStorage covers us */ }
 }
 
 async function loadAreasFromSupabase() {
+  // Try Supabase first (syncs across devices if table exists)
+  let loadedFromCloud = false;
   try {
-    const rows = await sbGet('app_settings').catch(() => []);
-    if (!rows || !rows.length) return;
-    const areasRow = rows.find(r => r.key === 'areas');
-    const caRow = rows.find(r => r.key === 'client_areas');
-    if (areasRow && areasRow.value) {
-      try { areaList = JSON.parse(areasRow.value); } catch(e) {}
+    const rows = await sbGet('app_settings').catch(() => null);
+    if (rows && rows.length) {
+      const areasRow = rows.find(r => r.key === 'areas');
+      const caRow = rows.find(r => r.key === 'client_areas');
+      if (areasRow && areasRow.value) {
+        try { areaList = JSON.parse(areasRow.value); loadedFromCloud = true; } catch(e) {}
+      }
+      if (caRow && caRow.value) {
+        try { Object.assign(clientAreaData, JSON.parse(caRow.value)); } catch(e) {}
+      }
     }
-    if (caRow && caRow.value) {
-      try {
-        const parsed = JSON.parse(caRow.value);
-        Object.assign(clientAreaData, parsed);
-      } catch(e) {}
-    }
-    populateAreaSelect();
-    renderAreaTags();
-  } catch(e) { console.warn('Could not load areas', e); }
+  } catch(e) { /* ignore */ }
+
+  // Fall back to localStorage if cloud had nothing
+  if (!loadedFromCloud) {
+    try {
+      const sa = localStorage.getItem(LS_AREAS_KEY);
+      const sca = localStorage.getItem(LS_CLIENT_AREAS_KEY);
+      if (sa) areaList = JSON.parse(sa);
+      if (sca) Object.assign(clientAreaData, JSON.parse(sca));
+    } catch(e) { console.warn('localStorage load failed', e); }
+  }
+
+  populateAreaSelect();
+  renderAreaTags();
 }
 
 // ── Map tab ──
