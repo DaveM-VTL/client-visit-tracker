@@ -1221,7 +1221,15 @@
     margin: 0 24px 10px;
   }
 </style>
-<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+<script>
+// Load MSAL dynamically
+(function(){
+  const s = document.createElement('script');
+  s.src = 'https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js';
+  s.crossOrigin = 'anonymous';
+  document.head.appendChild(s);
+})();
+</script>
 </head>
 <body>
 
@@ -3074,12 +3082,29 @@ let msalInstance = null;
 let msalAccount = null;
 
 function getMsal() {
-  if(!msalInstance) msalInstance = new msal.PublicClientApplication(MSAL_CONFIG);
-  return msalInstance;
+  return new Promise((resolve, reject) => {
+    if(window.msal) { 
+      if(!msalInstance) msalInstance = new window.msal.PublicClientApplication(MSAL_CONFIG);
+      resolve(msalInstance);
+      return;
+    }
+    let attempts = 0;
+    const check = setInterval(() => {
+      attempts++;
+      if(window.msal) {
+        clearInterval(check);
+        if(!msalInstance) msalInstance = new window.msal.PublicClientApplication(MSAL_CONFIG);
+        resolve(msalInstance);
+      } else if(attempts > 20) {
+        clearInterval(check);
+        reject(new Error('MSAL library failed to load. Check your internet connection.'));
+      }
+    }, 250);
+  });
 }
 
 async function getTeamsToken() {
-  const app = getMsal();
+  const app = await getMsal();
   await app.initialize();
   const accounts = app.getAllAccounts();
   if(accounts.length > 0) msalAccount = accounts[0];
@@ -3185,4 +3210,4 @@ async function pushToTeams(token) {
 
 </script>
 </body>
-</html>  
+</html>
