@@ -1070,6 +1070,70 @@
     #route-search, #map-search { max-width: 100% !important; }
   }
 
+  /* ── Area styles ── */
+  .area-manage-panel {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 16px;
+  }
+
+  .area-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    color: #fff;
+    cursor: default;
+    white-space: nowrap;
+  }
+
+  .area-tag-del {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.7);
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1;
+    padding: 0;
+    margin-left: 2px;
+  }
+
+  .area-tag-del:hover { color: #fff; }
+
+  .area-group-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 14px 5px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 600;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--surface);
+  }
+
+  .area-group-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .area-group-count {
+    margin-left: auto;
+    font-size: 10px;
+    color: var(--text-muted);
+    font-weight: 400;
+  }
+
   /* ── Viewer mode ── */
   body.viewer-mode .btn-add { display: none !important; }
   body.viewer-mode #cal-add-btn { display: none !important; }
@@ -1344,12 +1408,25 @@
               style="padding:6px 14px; font-family:var(--mono); font-size:11px; letter-spacing:0.05em; border:none; cursor:pointer; background:none; color:var(--text-muted); transition:all 0.15s;">
               🗺 Route planner
             </button>
+            <button id="map-mode-areas" onclick="setMapMode('areas')"
+              style="padding:6px 14px; font-family:var(--mono); font-size:11px; letter-spacing:0.05em; border:none; cursor:pointer; background:none; color:var(--text-muted); transition:all 0.15s;">
+              🗂 Areas
+            </button>
           </div>
 
           <!-- Browse mode: search -->
           <div id="map-browse-controls" style="display:flex; align-items:center; gap:8px; flex:1;">
             <input type="text" placeholder="Filter clients..." id="map-search" oninput="renderMapList()"
               style="padding:7px 11px; border:1px solid var(--border); border-radius:var(--radius); font-family:var(--sans); font-size:13px; background:var(--bg); color:var(--text); outline:none; flex:1; max-width:260px;">
+          </div>
+
+          <!-- Areas mode controls -->
+          <div id="map-areas-controls" style="display:none; align-items:center; gap:8px; flex:1; flex-wrap:wrap;">
+            <span style="font-family:var(--mono);font-size:11px;color:var(--text-muted);">Clients grouped by area</span>
+            <button onclick="toggleAreaManage()" id="area-manage-btn"
+              style="padding:6px 14px; border:1px solid var(--border); border-radius:var(--radius); background:none; font-family:var(--mono); font-size:11px; color:var(--text-muted); cursor:pointer; white-space:nowrap; transition:all 0.15s;">
+              ⚙ Manage areas
+            </button>
           </div>
 
           <!-- Route mode controls -->
@@ -1376,6 +1453,27 @@
 
             <!-- Browse list -->
             <div id="map-client-list" style="flex:1; overflow-y:auto;"></div>
+
+            <!-- Areas panel -->
+            <div id="map-areas-panel" style="display:none; flex-direction:column; flex:1; overflow:hidden;">
+              <!-- Manage area panel (hidden by default) -->
+              <div id="area-manage-section" style="display:none; border-bottom:2px solid var(--border);">
+                <div class="area-manage-panel">
+                  <div style="font-family:var(--mono);font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px;">Your areas</div>
+                  <div id="area-tags-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;min-height:24px;"></div>
+                  <div style="display:flex;gap:6px;">
+                    <input type="text" id="area-new-input" placeholder="New area name…"
+                      style="flex:1;padding:6px 9px;border:1px solid var(--border);border-radius:var(--radius);font-family:var(--sans);font-size:12px;background:var(--bg);color:var(--text);outline:none;"
+                      onkeydown="if(event.key==='Enter')addArea()"
+                      onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+                    <button onclick="addArea()"
+                      style="padding:6px 12px;background:var(--text);color:var(--bg);border:none;border-radius:var(--radius);font-family:var(--mono);font-size:11px;cursor:pointer;">Add</button>
+                  </div>
+                </div>
+              </div>
+              <!-- Grouped client list -->
+              <div id="map-areas-list" style="flex:1;overflow-y:auto;"></div>
+            </div>
 
             <!-- Route panel -->
             <div id="map-route-panel" style="display:none; flex-direction:column; flex:1; overflow:hidden;">
@@ -1446,6 +1544,11 @@
           <div class="field full"><label>Client name</label><input id="f-name" type="text"></div>
           <div class="field full"><label>Address</label><input id="f-addr" type="text"></div>
           <div class="field"><label>City</label><input id="f-city" type="text"></div>
+          <div class="field"><label>Area</label>
+            <select id="f-area">
+              <option value="">— No area —</option>
+            </select>
+          </div>
         </div>
       </div>
       <div class="modal-section">
@@ -2498,6 +2601,8 @@ function openAdd(){
   ['f-name','f-addr','f-city','f-last','f-last2','f-ph1','f-ph2','f-ph1c','f-ph2c','f-tbr1','f-tbr1c','f-tbr2','f-tbr2c','f-rev-sent','f-rev-person','f-rev-date','f-rev-reviewer','f-rep-sent'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
   document.getElementById('f-tbr-twice').value='No';
   document.getElementById('f-notes').value='';
+  populateAreaSelect();
+  document.getElementById('f-area').value='';
   document.getElementById('modal').classList.add('open');
 }
 
@@ -2538,6 +2643,8 @@ function openEdit(id){
     document.getElementById('f-ct'+i+'-pos').value=ct.position||'';
   });
   document.getElementById('f-website').value=prof.website||'';
+  populateAreaSelect();
+  document.getElementById('f-area').value=clientAreaData[c.name]||'';
   document.getElementById('modal').classList.add('open');
 }
 
@@ -2700,6 +2807,7 @@ async function loadFromSupabase(){
 
     showStatus('Data loaded', true);
     updateLastUpdated();
+    await loadAreasFromSupabase();
   } catch(e){
     console.error(e);
     showStatus('Could not connect to database', false);
@@ -2758,6 +2866,7 @@ async function saveClientToSupabase(){
 
   const note = document.getElementById('f-notes').value.trim();
   const repSent = document.getElementById('f-rep-sent').value || null;
+  const selectedArea = document.getElementById('f-area').value || null;
 
   try {
     showStatus('Saving...', true);
@@ -2778,6 +2887,11 @@ async function saveClientToSupabase(){
     reportData[name] = { lastSent: repSent };
     notesData[name] = note;
     clientProfiles[name] = { contacts: newContacts, website: newWebsite };
+
+    // Save area assignment
+    if (selectedArea) clientAreaData[name] = selectedArea;
+    else delete clientAreaData[name];
+    await saveAreasToSupabase();
 
     if(editingId){ const i = clients.findIndex(c => c.id === editingId); clients[i] = { ...clients[i], ...data }; }
     else { clients.push(data); nextId++; clients.sort((a,b) => a.name.localeCompare(b.name)); }
@@ -2821,6 +2935,179 @@ setInterval(() => {
 // Override saveClient to use Supabase
 saveClient = saveClientToSupabase;
 
+// ── Area data ──
+const AREA_COLORS = [
+  '#e07b54','#5ba3c9','#6db88a','#9b7ec8','#d4a843',
+  '#c9607a','#4faa9e','#6e8fcb','#c2855a','#b56db8'
+];
+let areaList = []; // [{name: 'North', color: '#e07b54'}]
+const clientAreaData = {}; // clientName -> areaName
+
+function getAreaColor(areaName) {
+  const a = areaList.find(x => x.name === areaName);
+  return a ? a.color : '#aaaaaa';
+}
+
+function populateAreaSelect() {
+  const sel = document.getElementById('f-area');
+  if (!sel) return;
+  const current = sel.value;
+  sel.innerHTML = '<option value="">— No area —</option>' +
+    areaList.map(a => `<option value="${a.name.replace(/"/g,'&quot;')}">${a.name}</option>`).join('');
+  if (current && areaList.find(x => x.name === current)) sel.value = current;
+}
+
+function renderAreaTags() {
+  const el = document.getElementById('area-tags-list');
+  if (!el) return;
+  if (!areaList.length) {
+    el.innerHTML = '<span style="font-family:var(--mono);font-size:11px;color:var(--border);">No areas yet</span>';
+    return;
+  }
+  el.innerHTML = areaList.map(a => `
+    <span class="area-tag" style="background:${a.color};">
+      ${a.name}
+      <button class="area-tag-del" onclick="deleteArea('${a.name.replace(/'/g,"\\'")}')">✕</button>
+    </span>`).join('');
+}
+
+function addArea() {
+  const inp = document.getElementById('area-new-input');
+  const name = inp.value.trim();
+  if (!name || areaList.find(a => a.name.toLowerCase() === name.toLowerCase())) {
+    inp.value = '';
+    return;
+  }
+  const color = AREA_COLORS[areaList.length % AREA_COLORS.length];
+  areaList.push({ name, color });
+  inp.value = '';
+  renderAreaTags();
+  populateAreaSelect();
+  renderAreasGrouped();
+  saveAreasToSupabase();
+}
+
+function deleteArea(name) {
+  areaList = areaList.filter(a => a.name !== name);
+  // Unassign clients from this area
+  Object.keys(clientAreaData).forEach(k => { if (clientAreaData[k] === name) delete clientAreaData[k]; });
+  renderAreaTags();
+  populateAreaSelect();
+  renderAreasGrouped();
+  saveAreasToSupabase();
+}
+
+function toggleAreaManage() {
+  const sec = document.getElementById('area-manage-section');
+  const btn = document.getElementById('area-manage-btn');
+  const isOpen = sec.style.display !== 'none';
+  sec.style.display = isOpen ? 'none' : 'block';
+  btn.style.background = isOpen ? 'none' : 'var(--text)';
+  btn.style.color = isOpen ? 'var(--text-muted)' : 'var(--bg)';
+  btn.style.borderColor = isOpen ? 'var(--border)' : 'var(--text)';
+}
+
+function renderAreasGrouped() {
+  const el = document.getElementById('map-areas-list');
+  if (!el) return;
+
+  // Group clients by area
+  const groups = {};
+  areaList.forEach(a => { groups[a.name] = []; });
+  groups['_unassigned'] = [];
+
+  clients.forEach(c => {
+    const area = clientAreaData[c.name];
+    if (area && groups[area]) groups[area].push(c);
+    else groups['_unassigned'].push(c);
+  });
+
+  let html = '';
+
+  areaList.forEach(a => {
+    const cls = groups[a.name];
+    html += `<div class="area-group-header" style="border-left:4px solid ${a.color};">
+      <span class="area-group-dot" style="background:${a.color};"></span>
+      <span style="color:${a.color};">${a.name}</span>
+      <span class="area-group-count">${cls.length} client${cls.length !== 1 ? 's' : ''}</span>
+    </div>`;
+    if (!cls.length) {
+      html += `<div style="padding:8px 14px;font-size:11px;font-family:var(--mono);color:var(--border);">No clients in this area</div>`;
+    } else {
+      cls.forEach(c => {
+        const addr = c.address ? `${c.address}, ${c.city||'Merced'}, CA` : '';
+        const mapsUrl = addr
+          ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}`
+          : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.name+' '+(c.city||'Merced')+' CA')}`;
+        html += `<a class="map-client-item" href="${mapsUrl}" target="_blank" rel="noopener" style="border-left:3px solid ${a.color};">
+          <div style="flex:1;min-width:0;">
+            <div class="map-client-name">${c.name}</div>
+            ${addr ? `<div class="map-client-addr">${c.address}</div>` : `<div class="map-no-addr">No address on file</div>`}
+          </div>
+          <svg style="flex-shrink:0;color:var(--border);" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        </a>`;
+      });
+    }
+  });
+
+  // Unassigned
+  if (groups['_unassigned'].length) {
+    html += `<div class="area-group-header" style="border-left:4px solid var(--border);">
+      <span class="area-group-dot" style="background:var(--border);"></span>
+      <span style="color:var(--text-muted);">Unassigned</span>
+      <span class="area-group-count">${groups['_unassigned'].length}</span>
+    </div>`;
+    groups['_unassigned'].forEach(c => {
+      const addr = c.address ? `${c.address}, ${c.city||'Merced'}, CA` : '';
+      const mapsUrl = addr
+        ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}`
+        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.name+' '+(c.city||'Merced')+' CA')}`;
+      html += `<a class="map-client-item" href="${mapsUrl}" target="_blank" rel="noopener">
+        <div style="flex:1;min-width:0;">
+          <div class="map-client-name">${c.name}</div>
+          ${addr ? `<div class="map-client-addr">${c.address}</div>` : `<div class="map-no-addr">No address on file</div>`}
+        </div>
+        <svg style="flex-shrink:0;color:var(--border);" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      </a>`;
+    });
+  }
+
+  if (!html) {
+    html = '<div style="padding:24px 14px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--border);">No areas set up yet.<br>Click ⚙ Manage areas to add one.</div>';
+  }
+
+  el.innerHTML = html;
+}
+
+async function saveAreasToSupabase() {
+  try {
+    // Save all areas as a single JSON blob under key 'areas'
+    await sbUpsert('app_settings', { key: 'areas', value: JSON.stringify(areaList) });
+    // Save client->area assignments as JSON blob
+    await sbUpsert('app_settings', { key: 'client_areas', value: JSON.stringify(clientAreaData) });
+  } catch(e) { console.warn('Could not save areas', e); }
+}
+
+async function loadAreasFromSupabase() {
+  try {
+    const rows = await sbGet('app_settings').catch(() => []);
+    if (!rows || !rows.length) return;
+    const areasRow = rows.find(r => r.key === 'areas');
+    const caRow = rows.find(r => r.key === 'client_areas');
+    if (areasRow && areasRow.value) {
+      try { areaList = JSON.parse(areasRow.value); } catch(e) {}
+    }
+    if (caRow && caRow.value) {
+      try {
+        const parsed = JSON.parse(caRow.value);
+        Object.assign(clientAreaData, parsed);
+      } catch(e) {}
+    }
+    populateAreaSelect();
+    renderAreaTags();
+  } catch(e) { console.warn('Could not load areas', e); }
+}
+
 // ── Map tab ──
 let mapMode = 'browse'; // 'browse' | 'route'
 let routeStops = []; // [{name, address, city}]
@@ -2828,34 +3115,44 @@ let routeStops = []; // [{name, address, city}]
 function setMapMode(mode) {
   mapMode = mode;
   const isBrowse = mode === 'browse';
+  const isRoute = mode === 'route';
+  const isAreas = mode === 'areas';
 
   // Toggle mode buttons styling
-  document.getElementById('map-mode-browse').style.background = isBrowse ? 'var(--text)' : 'none';
-  document.getElementById('map-mode-browse').style.color = isBrowse ? 'var(--bg)' : 'var(--text-muted)';
-  document.getElementById('map-mode-route').style.background = !isBrowse ? 'var(--text)' : 'none';
-  document.getElementById('map-mode-route').style.color = !isBrowse ? 'var(--bg)' : 'var(--text-muted)';
+  ['browse','route','areas'].forEach(m => {
+    const btn = document.getElementById('map-mode-' + m);
+    if (!btn) return;
+    const active = mode === m;
+    btn.style.background = active ? 'var(--text)' : 'none';
+    btn.style.color = active ? 'var(--bg)' : 'var(--text-muted)';
+  });
 
   // Toggle controls
   document.getElementById('map-browse-controls').style.display = isBrowse ? 'flex' : 'none';
-  document.getElementById('map-route-controls').style.display = isBrowse ? 'none' : 'flex';
+  document.getElementById('map-route-controls').style.display = isRoute ? 'flex' : 'none';
+  document.getElementById('map-areas-controls').style.display = isAreas ? 'flex' : 'none';
 
   // Toggle panels (desktop)
   document.getElementById('map-client-list').style.display = isBrowse ? 'block' : 'none';
-  document.getElementById('map-route-panel').style.display = isBrowse ? 'none' : 'flex';
+  document.getElementById('map-route-panel').style.display = isRoute ? 'flex' : 'none';
+  document.getElementById('map-areas-panel').style.display = isAreas ? 'flex' : 'none';
 
-  // Toggle mobile panels — explicitly control all four to avoid bleed-through
+  // Toggle mobile panels
   const mob = document.getElementById('map-client-list-mobile');
   const mobRoute = document.getElementById('map-route-panel-mobile');
   const isMobile = window.innerWidth <= 768;
   if (mob) mob.style.display = (isMobile && isBrowse) ? 'block' : 'none';
-  if (mobRoute) mobRoute.style.display = (isMobile && !isBrowse) ? 'flex' : 'none';
+  if (mobRoute) mobRoute.style.display = (isMobile && isRoute) ? 'flex' : 'none';
 
   if (isBrowse) {
     renderMapList();
-  } else {
+  } else if (isRoute) {
     document.getElementById('route-search').value = '';
     renderRouteClientList();
     renderRouteStops();
+  } else if (isAreas) {
+    renderAreaTags();
+    renderAreasGrouped();
   }
 }
 
