@@ -1966,6 +1966,7 @@ const tabTitles={inperson:'In-person visits',phone:'Phone visits',tbr:'TBRs',rev
 
 function updateFilterOptions(){
   const sel=document.getElementById('filter');
+  if(!filterOptions[currentTab]){ sel.innerHTML=''; return; }
   sel.innerHTML=filterOptions[currentTab].map(v=>`<option value="${v}">${filterLabels[v]}</option>`).join('');
 }
 
@@ -3083,24 +3084,23 @@ function renderAreasGrouped() {
   el.innerHTML = html;
 }
 
-const LS_AREAS_KEY = 'cvt_areas';
-const LS_CLIENT_AREAS_KEY = 'cvt_client_areas';
-
 async function saveAreasToSupabase() {
-  // Primary: localStorage — always works, instant
-  try {
-    localStorage.setItem(LS_AREAS_KEY, JSON.stringify(areaList));
-    localStorage.setItem(LS_CLIENT_AREAS_KEY, JSON.stringify(clientAreaData));
-  } catch(e) { console.warn('localStorage save failed', e); }
-  // Secondary: Supabase (requires app_settings table — optional)
   try {
     await sbUpsert('app_settings', { key: 'areas', value: JSON.stringify(areaList) });
     await sbUpsert('app_settings', { key: 'client_areas', value: JSON.stringify(clientAreaData) });
-  } catch(e) { /* table may not exist — localStorage covers us */ }
+    localStorage.setItem('cvt_areas', JSON.stringify(areaList));
+    localStorage.setItem('cvt_client_areas', JSON.stringify(clientAreaData));
+  } catch(e) {
+    console.warn('Supabase area save failed', e);
+    try {
+      localStorage.setItem('cvt_areas', JSON.stringify(areaList));
+      localStorage.setItem('cvt_client_areas', JSON.stringify(clientAreaData));
+    } catch(e2) {}
+    showStatus('Areas saved locally only — check Supabase connection', false);
+  }
 }
 
 async function loadAreasFromSupabase() {
-  // Try Supabase first (syncs across devices if table exists)
   let loadedFromCloud = false;
   try {
     const rows = await sbGet('app_settings').catch(() => null);
@@ -3114,16 +3114,15 @@ async function loadAreasFromSupabase() {
         try { Object.assign(clientAreaData, JSON.parse(caRow.value)); } catch(e) {}
       }
     }
-  } catch(e) { /* ignore */ }
+  } catch(e) { console.warn('Could not load areas from Supabase', e); }
 
-  // Fall back to localStorage if cloud had nothing
   if (!loadedFromCloud) {
     try {
-      const sa = localStorage.getItem(LS_AREAS_KEY);
-      const sca = localStorage.getItem(LS_CLIENT_AREAS_KEY);
+      const sa = localStorage.getItem('cvt_areas');
+      const sca = localStorage.getItem('cvt_client_areas');
       if (sa) areaList = JSON.parse(sa);
       if (sca) Object.assign(clientAreaData, JSON.parse(sca));
-    } catch(e) { console.warn('localStorage load failed', e); }
+    } catch(e) {}
   }
 
   populateAreaSelect();
