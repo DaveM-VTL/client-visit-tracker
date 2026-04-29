@@ -1287,6 +1287,291 @@
     text-transform: uppercase;
     margin: 0 24px 10px;
   }
+
+  /* ── Expandable rows ── */
+  tr.client-main-row { cursor: pointer; }
+  tr.client-main-row:hover td { background: var(--surface2); }
+  tr.client-main-row.row-expanded td { background: color-mix(in srgb, var(--accent) 5%, var(--surface)); }
+  .expand-chevron {
+    display: inline-block;
+    font-size: 10px;
+    color: var(--text-muted);
+    transition: transform 0.2s;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+  tr.row-expanded .expand-chevron { transform: rotate(90deg); }
+
+  tr.visit-log-row td {
+    padding: 0;
+    background: var(--bg);
+    border-bottom: 2px solid var(--accent);
+  }
+
+  .visit-log-panel {
+    padding: 16px 32px 20px;
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+  }
+
+  .visit-log-list {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .visit-log-title {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+
+  .visit-entry {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+  }
+  .visit-entry:last-child { border-bottom: none; }
+
+  .visit-type-badge {
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    flex-shrink: 0;
+  }
+  .vt-formal { background: var(--accent-light); color: var(--accent); }
+  .vt-adhoc  { background: var(--info-light);   color: var(--info); }
+  .vt-phone  { background: var(--warning-light); color: var(--warning); }
+
+  .visit-date-lbl { font-family: var(--mono); font-size: 11px; color: var(--text-muted); flex-shrink: 0; }
+  .visit-note-lbl { color: var(--text); flex: 1; }
+  .visit-del-btn {
+    background: none; border: none; cursor: pointer;
+    color: var(--border); font-size: 13px; padding: 0 2px;
+    transition: color 0.12s; flex-shrink: 0;
+  }
+  .visit-del-btn:hover { color: var(--danger); }
+
+  .visit-empty {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--border);
+    padding: 8px 0;
+  }
+
+  /* Visit form (right side of panel) */
+  .visit-form {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    min-width: 280px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .visit-form-title {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+  }
+
+  .visit-form-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .visit-form select, .visit-form input[type=date], .visit-form input[type=text] {
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: var(--sans);
+    font-size: 12px;
+    background: var(--bg);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .visit-form select:focus, .visit-form input:focus { border-color: var(--accent); }
+
+  .visit-form select { flex: 1; }
+  .visit-form input[type=date] { flex: 1; }
+  .visit-form input[type=text] { width: 100%; }
+
+  .visit-next-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: var(--mono);
+  }
+  .visit-next-row input[type=date] { flex: 1; font-size: 11px; }
+
+  .btn-log-visit {
+    padding: 7px 14px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.15s;
+    width: 100%;
+    margin-top: 2px;
+  }
+  .btn-log-visit:hover { opacity: 0.85; }
+
+  /* Visit log summary badge in table */
+  .visit-count-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+  .vcb-f { color: var(--accent); font-weight: 600; }
+  .vcb-a { color: var(--info); font-weight: 600; }
+
+  /* ── Custom columns ── */
+  th.th-custom { position: relative; }
+  th.th-add-col {
+    cursor: pointer;
+    color: var(--accent);
+    padding: 10px 12px;
+    white-space: nowrap;
+  }
+  th.th-add-col:hover { background: var(--accent-light); }
+
+  .custom-col-popup {
+    display: none;
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    z-index: 100;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+    padding: 14px;
+    min-width: 220px;
+    gap: 8px;
+    flex-direction: column;
+  }
+  .custom-col-popup.open { display: flex; }
+
+  .custom-col-popup input {
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: var(--sans);
+    font-size: 13px;
+    background: var(--bg);
+    color: var(--text);
+    outline: none;
+    width: 100%;
+  }
+  .custom-col-popup input:focus { border-color: var(--accent); }
+
+  .custom-col-popup select {
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: var(--sans);
+    font-size: 13px;
+    background: var(--bg);
+    color: var(--text);
+    outline: none;
+    width: 100%;
+  }
+
+  .btn-add-col {
+    padding: 7px 14px;
+    background: var(--text);
+    color: var(--bg);
+    border: none;
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-family: var(--sans);
+    cursor: pointer;
+    font-weight: 500;
+    transition: opacity 0.15s;
+  }
+  .btn-add-col:hover { opacity: 0.85; }
+
+  .custom-col-list { display: flex; flex-direction: column; gap: 4px; }
+  .custom-col-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    padding: 4px 6px;
+    border-radius: 3px;
+    background: var(--surface2);
+  }
+  .custom-col-del {
+    background: none; border: none; cursor: pointer;
+    color: var(--border); font-size: 12px; padding: 0 2px;
+    transition: color 0.12s;
+  }
+  .custom-col-del:hover { color: var(--danger); }
+
+  td.td-custom-cell {
+    min-width: 110px;
+  }
+  td.td-custom-cell input {
+    width: 100%;
+    min-width: 90px;
+    padding: 4px 6px;
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+    font-family: var(--sans);
+    font-size: 12px;
+    background: transparent;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  td.td-custom-cell input:hover { border-color: var(--border); background: var(--surface); }
+  td.td-custom-cell input:focus { border-color: var(--accent); background: var(--surface); }
+
+  td.td-custom-cell select {
+    width: 100%;
+    padding: 4px 6px;
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+    font-family: var(--sans);
+    font-size: 12px;
+    background: transparent;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s, background 0.15s;
+    cursor: pointer;
+  }
+  td.td-custom-cell select:hover { border-color: var(--border); background: var(--surface); }
+  td.td-custom-cell select:focus { border-color: var(--accent); background: var(--surface); }
 </style>
 <script>
 // Load MSAL dynamically
@@ -2313,51 +2598,71 @@ function render(){
 
   let html='';
   if(currentTab==='inperson'){
-    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>Last visit</th><th>Next due</th><th>Days until due</th><th>Status</th><th>Notes</th><th></th></tr></thead><tbody>`;
+    const customThCells = getCustomCols('inperson').map(col=>`<th class="th-custom">${col.label}</th>`).join('');
+    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>Last visit</th><th>Next due</th><th>Days until due</th><th>Status</th><th>Visits</th><th>Notes</th>${customThCells}${renderAddColTh('inperson')}<th></th></tr></thead><tbody>`;
     rows.forEach((c,i)=>{
       const st=getIPStatus(c);
       const ds=st.days!==null?(st.days<0?`${Math.abs(st.days)} days ago`:`${st.days} days`):'—';
       const color=getClientColor(c.name);
       const note=notesData[c.name]||'';
-      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(c.lastVisit)}</td><td class="td-date">${st.nextDue?fmt(st.nextDue):'—'}</td><td class="td-days">${ds}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td><td><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
+      const isExp=expandedRows.has(c.id);
+      html+=`<tr class="has-color client-main-row${isExp?' row-expanded':''}" style="--client-color:${color}" onclick="toggleRow(${c.id})">
+        <td class="td-num">${i+1}</td>
+        <td class="td-name"><span class="expand-chevron">▶</span>${nameCell(c)}</td>
+        <td class="td-city">${c.city}</td>
+        <td class="td-date">${fmt(c.lastVisit)}</td>
+        <td class="td-date">${st.nextDue?fmt(st.nextDue):'—'}</td>
+        <td class="td-days">${ds}</td>
+        <td>${badge(st.cls,st.label)}</td>
+        <td>${renderVisitCountBadge(c.name)}</td>
+        <td class="notes-cell" onclick="event.stopPropagation()">${renderNote(c.name,note)}</td>
+        ${renderCustomCells('inperson',c.name)}
+        <td></td>
+        <td onclick="event.stopPropagation()"><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td>
+      </tr>`;
+      if(isExp) html += renderVisitLogPanel(c);
     });
     html+='</tbody></table>';
   } else if(currentTab==='phone'){
-    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>Visit 1 scheduled</th><th>Visit 2 scheduled</th><th>Visit 1 done</th><th>Visit 2 done</th><th>Status</th><th>Notes</th><th></th></tr></thead><tbody>`;
+    const customThCells = getCustomCols('phone').map(col=>`<th class="th-custom">${col.label}</th>`).join('');
+    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>Visit 1 scheduled</th><th>Visit 2 scheduled</th><th>Visit 1 done</th><th>Visit 2 done</th><th>Status</th><th>Notes</th>${customThCells}${renderAddColTh('phone')}<th></th></tr></thead><tbody>`;
     rows.forEach((c,i)=>{
       const p=phoneData[c.name]||{};const st=getPhoneStatus(c);
       const color=getClientColor(c.name);
       const note=notesData[c.name]||'';
-      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(p.ph1)}</td><td class="td-date">${fmt(p.ph2)}</td><td class="td-date">${fmt(p.ph1c)}</td><td class="td-date">${fmt(p.ph2c)}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td><td><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
+      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(p.ph1)}</td><td class="td-date">${fmt(p.ph2)}</td><td class="td-date">${fmt(p.ph1c)}</td><td class="td-date">${fmt(p.ph2c)}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td>${renderCustomCells('phone',c.name)}<td></td><td><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
     });
     html+='</tbody></table>';
   } else if(currentTab==='tbr'){
-    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>Twice/year</th><th>Visit 1 scheduled</th><th>Visit 1 done</th><th>Visit 2 scheduled</th><th>Visit 2 done</th><th>Status</th><th>Notes</th><th></th></tr></thead><tbody>`;
+    const customThCells = getCustomCols('tbr').map(col=>`<th class="th-custom">${col.label}</th>`).join('');
+    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>Twice/year</th><th>Visit 1 scheduled</th><th>Visit 1 done</th><th>Visit 2 scheduled</th><th>Visit 2 done</th><th>Status</th><th>Notes</th>${customThCells}${renderAddColTh('tbr')}<th></th></tr></thead><tbody>`;
     rows.forEach((c,i)=>{
       const t=tbrData[c.name]||{};const st=getTBRStatus(c);
       const color=getClientColor(c.name);
       const note=notesData[c.name]||'';
-      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${t.twice||'No'}</td><td class="td-date">${fmt(t.tbr1)}</td><td class="td-date">${fmt(t.tbr1c)}</td><td class="td-date">${fmt(t.tbr2)}</td><td class="td-date">${fmt(t.tbr2c)}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td><td><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
+      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${t.twice||'No'}</td><td class="td-date">${fmt(t.tbr1)}</td><td class="td-date">${fmt(t.tbr1c)}</td><td class="td-date">${fmt(t.tbr2)}</td><td class="td-date">${fmt(t.tbr2c)}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td>${renderCustomCells('tbr',c.name)}<td></td><td><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
     });
     html+='</tbody></table>';
   } else if(currentTab==='reviews'){
-    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>Email sent</th><th>Person sent to</th><th>Date reviewed</th><th>Reviewer</th><th>Status</th><th>Notes</th><th class="th-edit"></th></tr></thead><tbody>`;
+    const customThCells = getCustomCols('reviews').map(col=>`<th class="th-custom">${col.label}</th>`).join('');
+    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>Email sent</th><th>Person sent to</th><th>Date reviewed</th><th>Reviewer</th><th>Status</th><th>Notes</th>${customThCells}${renderAddColTh('reviews')}<th class="th-edit"></th></tr></thead><tbody>`;
     rows.forEach((c,i)=>{
       const r=reviewData[c.name]||{};const st=getReviewStatus(c);
       const color=getClientColor(c.name);
       const note=notesData[c.name]||'';
-      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(r.sent)}</td><td>${r.person||'—'}</td><td class="td-date">${fmt(r.reviewed)}</td><td>${r.reviewer||'—'}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td><td class="td-edit"><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
+      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(r.sent)}</td><td>${r.person||'—'}</td><td class="td-date">${fmt(r.reviewed)}</td><td>${r.reviewer||'—'}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td>${renderCustomCells('reviews',c.name)}<td></td><td class="td-edit"><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
     });
     html+='</tbody></table>';
   } else {
     // Reports tab
-    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>Last report sent</th><th>Days since</th><th>Status</th><th class="th-edit"></th></tr></thead><tbody>`;
+    const customThCells = getCustomCols('reports').map(col=>`<th class="th-custom">${col.label}</th>`).join('');
+    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>Last report sent</th><th>Days since</th><th>Status</th>${customThCells}${renderAddColTh('reports')}<th class="th-edit"></th></tr></thead><tbody>`;
     rows.forEach((c,i)=>{
       const r=reportData[c.name]||{};
       const st=getReportStatus(c);
       const color=getClientColor(c.name);
       const days=r.lastSent?Math.abs(daysFrom(r.lastSent))+'d ago':'—';
-      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(r.lastSent)}</td><td class="td-days">${days}</td><td>${badge(st.cls,st.label)}</td><td class="td-edit"><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
+      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(r.lastSent)}</td><td class="td-days">${days}</td><td>${badge(st.cls,st.label)}</td>${renderCustomCells('reports',c.name)}<td></td><td class="td-edit"><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
     });
     html+='</tbody></table>';
   }
@@ -2817,6 +3122,7 @@ async function loadFromSupabase(){
     showStatus('Data loaded', true);
     updateLastUpdated();
     await loadAreasFromSupabase();
+    await loadVisitLog();
   } catch(e){
     console.error(e);
     showStatus('Could not connect to database', false);
@@ -3377,6 +3683,263 @@ async function loadAreasFromSupabase() {
   renderAreaTags();
 }
 
+// ── Visit Log ──
+// visitLog[clientName] = [{id, date, type:'formal'|'adhoc'|'phone', note, nextDue}]
+let visitLog = {};
+let expandedRows = new Set();
+
+function getVisitLog(name){ return visitLog[name] || []; }
+
+function visitCounts(name){
+  const log = getVisitLog(name);
+  return {
+    formal: log.filter(v => v.type === 'formal').length,
+    adhoc:  log.filter(v => v.type === 'adhoc').length,
+    phone:  log.filter(v => v.type === 'phone').length,
+  };
+}
+
+function renderVisitCountBadge(name){
+  const c = visitCounts(name);
+  if(c.formal + c.adhoc + c.phone === 0) return `<span class="visit-count-badge">no visits logged</span>`;
+  let parts = [];
+  if(c.formal) parts.push(`<span class="vcb-f">${c.formal}F</span>`);
+  if(c.adhoc)  parts.push(`<span class="vcb-a">${c.adhoc}A</span>`);
+  if(c.phone)  parts.push(`<span style="color:var(--warning);font-weight:600;">${c.phone}P</span>`);
+  return `<span class="visit-count-badge">${parts.join(' · ')}</span>`;
+}
+
+function toggleRow(clientId){
+  if(expandedRows.has(clientId)) expandedRows.delete(clientId);
+  else expandedRows.add(clientId);
+  render();
+}
+
+function renderVisitLogPanel(c){
+  const log = getVisitLog(c.name).slice().sort((a,b) => (b.date||'').localeCompare(a.date||''));
+  const nameEsc = c.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+
+  let entriesHtml = log.length === 0
+    ? `<div class="visit-empty">No visits logged yet.</div>`
+    : log.map(v => {
+        const typeLabel = v.type === 'formal' ? 'Formal' : v.type === 'phone' ? 'Phone' : 'Ad hoc';
+        const typeCls = v.type === 'formal' ? 'vt-formal' : v.type === 'phone' ? 'vt-phone' : 'vt-adhoc';
+        const nextPart = v.nextDue ? ` · <span style="color:var(--accent)">Next: ${fmt(v.nextDue)}</span>` : '';
+        const noteEsc = (v.note||'').replace(/</g,'&lt;');
+        return `<div class="visit-entry">
+          <span class="visit-type-badge ${typeCls}">${typeLabel}</span>
+          <span class="visit-date-lbl">${fmt(v.date)}</span>
+          <span class="visit-note-lbl">${noteEsc}${nextPart}</span>
+          <button class="visit-del-btn" onclick="deleteVisit('${nameEsc}','${v.id}');event.stopPropagation();" title="Delete">✕</button>
+        </div>`;
+      }).join('');
+
+  return `<tr class="visit-log-row" id="vrow-${c.id}">
+    <td colspan="999">
+      <div class="visit-log-panel">
+        <div class="visit-log-list">
+          <div class="visit-log-title">Visit history — ${c.name}</div>
+          ${entriesHtml}
+        </div>
+        <div class="visit-form">
+          <div class="visit-form-title">Log a visit</div>
+          <div class="visit-form-row">
+            <select id="vf-type-${c.id}">
+              <option value="formal">Formal</option>
+              <option value="adhoc">Ad hoc</option>
+              <option value="phone">Phone</option>
+            </select>
+            <input type="date" id="vf-date-${c.id}" value="${fmtISO(TODAY)}">
+          </div>
+          <input type="text" id="vf-note-${c.id}" placeholder="Note (optional)">
+          <div class="visit-next-row">
+            <span>Next visit due:</span>
+            <input type="date" id="vf-next-${c.id}">
+          </div>
+          <button class="btn-log-visit" onclick="logVisit(${c.id});event.stopPropagation();">Log visit</button>
+        </div>
+      </div>
+    </td>
+  </tr>`;
+}
+
+async function logVisit(clientId){
+  const c = clients.find(x => x.id === clientId);
+  if(!c) return;
+  const type = document.getElementById('vf-type-'+clientId).value;
+  const date = document.getElementById('vf-date-'+clientId).value;
+  const note = document.getElementById('vf-note-'+clientId).value.trim();
+  const nextDue = document.getElementById('vf-next-'+clientId).value || null;
+  if(!date){ alert('Please select a date.'); return; }
+  const id = Date.now() + '_' + Math.random().toString(36).slice(2,7);
+  if(!visitLog[c.name]) visitLog[c.name] = [];
+  visitLog[c.name].push({id, date, type, note, nextDue});
+  // Also update lastVisit on client if this is formal
+  if(type === 'formal'){
+    c.lastVisit = date;
+    try { await sbUpsert('clients', {id: c.id, name: c.name, address: c.address, city: c.city, last_visit: date, last_visit2: c.lastVisit2 || null}); } catch(e){}
+  }
+  try { await sbUpsert('visit_log', {id, client_name: c.name, date, type, note: note||null, next_due: nextDue}); } catch(e){ console.warn('visit_log save failed (table may not exist yet)', e); }
+  render();
+}
+
+async function deleteVisit(name, visitId){
+  if(!visitLog[name]) return;
+  visitLog[name] = visitLog[name].filter(v => v.id !== visitId);
+  try { await sbDelete('visit_log', 'id', visitId); } catch(e){}
+  render();
+}
+
+// Load visit log from Supabase
+async function loadVisitLog(){
+  try {
+    const rows = await sbGet('visit_log').catch(() => null);
+    if(rows && rows.length){
+      rows.forEach(r => {
+        if(!visitLog[r.client_name]) visitLog[r.client_name] = [];
+        visitLog[r.client_name].push({id: r.id, date: r.date, type: r.type||'adhoc', note: r.note||'', nextDue: r.next_due||null});
+      });
+    }
+  } catch(e){ console.warn('Could not load visit_log', e); }
+}
+
+// ── Custom Columns ──
+// customCols[tab] = [{id, label, type:'text'|'select', options:[]}]
+// customColData[tab][clientName][colId] = value
+let customCols = {};
+let customColData = {};
+let colPopupOpen = false;
+
+const TABS_WITH_COLS = ['inperson','phone','tbr','reviews','reports'];
+
+function getCustomCols(tab){ return customCols[tab] || []; }
+function getColData(tab, name, colId){ return (customColData[tab]||{})[name]?.[colId] || ''; }
+
+function setColData(tab, name, colId, value){
+  if(!customColData[tab]) customColData[tab] = {};
+  if(!customColData[tab][name]) customColData[tab][name] = {};
+  customColData[tab][name][colId] = value;
+  saveCustomColsLocal();
+}
+
+function saveCustomColsLocal(){
+  try {
+    localStorage.setItem('cvt_custom_cols', JSON.stringify(customCols));
+    localStorage.setItem('cvt_custom_col_data', JSON.stringify(customColData));
+  } catch(e){}
+}
+
+function loadCustomColsLocal(){
+  try {
+    const cc = localStorage.getItem('cvt_custom_cols');
+    const cd = localStorage.getItem('cvt_custom_col_data');
+    if(cc) customCols = JSON.parse(cc);
+    if(cd) customColData = JSON.parse(cd);
+  } catch(e){}
+}
+
+function openColPopup(tab){
+  colPopupOpen = true;
+  // Re-render to show popup
+  render();
+  setTimeout(() => {
+    const el = document.getElementById('col-popup-'+tab);
+    if(el){ el.classList.add('open'); }
+    const inp = document.getElementById('col-name-input-'+tab);
+    if(inp) inp.focus();
+  }, 0);
+}
+
+function closeColPopup(tab){
+  const el = document.getElementById('col-popup-'+tab);
+  if(el) el.classList.remove('open');
+  colPopupOpen = false;
+}
+
+function addCustomCol(tab){
+  const nameEl = document.getElementById('col-name-input-'+tab);
+  const typeEl = document.getElementById('col-type-input-'+tab);
+  const optsEl = document.getElementById('col-opts-input-'+tab);
+  if(!nameEl) return;
+  const label = nameEl.value.trim();
+  if(!label) return;
+  const type = typeEl ? typeEl.value : 'text';
+  const options = (optsEl && optsEl.value.trim())
+    ? optsEl.value.split(',').map(s=>s.trim()).filter(Boolean)
+    : [];
+  if(!customCols[tab]) customCols[tab] = [];
+  const id = 'col_'+Date.now();
+  customCols[tab].push({id, label, type, options});
+  saveCustomColsLocal();
+  closeColPopup(tab);
+  render();
+}
+
+function deleteCustomCol(tab, colId){
+  if(!customCols[tab]) return;
+  customCols[tab] = customCols[tab].filter(c => c.id !== colId);
+  saveCustomColsLocal();
+  render();
+}
+
+function renderAddColTh(tab){
+  const cols = getCustomCols(tab);
+  const existingList = cols.length
+    ? `<div class="custom-col-list">${cols.map(col=>`
+        <div class="custom-col-item">
+          <span>${col.label} <span style="opacity:0.5;">(${col.type})</span></span>
+          <button class="custom-col-del" onclick="deleteCustomCol('${tab}','${col.id}');event.stopPropagation();">✕</button>
+        </div>`).join('')}</div>
+        <hr style="border:none;border-top:1px solid var(--border);margin:4px 0;">`
+    : '';
+
+  return `<th class="th-add-col" style="position:relative;" onclick="event.stopPropagation();">
+    <span onclick="openColPopup('${tab}')">+ col</span>
+    <div class="custom-col-popup" id="col-popup-${tab}">
+      ${existingList}
+      <div style="font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:2px;">Column name</div>
+      <input id="col-name-input-${tab}" type="text" placeholder="e.g. Priority" onkeydown="if(event.key==='Enter')addCustomCol('${tab}')">
+      <div style="font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);margin:4px 0 2px;">Type</div>
+      <select id="col-type-input-${tab}" onchange="
+        var o=document.getElementById('col-opts-wrap-${tab}');
+        if(o) o.style.display=this.value==='select'?'flex':'none';">
+        <option value="text">Text</option>
+        <option value="select">Dropdown</option>
+      </select>
+      <div id="col-opts-wrap-${tab}" style="display:none;flex-direction:column;gap:4px;">
+        <div style="font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);">Options (comma-separated)</div>
+        <input id="col-opts-input-${tab}" type="text" placeholder="e.g. High, Medium, Low">
+      </div>
+      <button class="btn-add-col" onclick="addCustomCol('${tab}')">Add column</button>
+      <button onclick="closeColPopup('${tab}')" style="background:none;border:none;font-size:11px;color:var(--text-muted);cursor:pointer;font-family:var(--mono);padding:2px;">Cancel</button>
+    </div>
+  </th>`;
+}
+
+function renderCustomCells(tab, clientName){
+  const cols = getCustomCols(tab);
+  if(!cols.length) return '';
+  return cols.map(col => {
+    const val = getColData(tab, clientName, col.id);
+    const nameEsc = clientName.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    if(col.type === 'select'){
+      const opts = ['', ...col.options].map(o =>
+        `<option value="${o.replace(/"/g,'&quot;')}"${o===val?' selected':''}>${o||'—'}</option>`).join('');
+      return `<td class="td-custom-cell"><select onchange="setColData('${tab}','${nameEsc}','${col.id}',this.value)">${opts}</select></td>`;
+    }
+    return `<td class="td-custom-cell"><input type="text" value="${val.replace(/"/g,'&quot;')}" placeholder="—"
+      onblur="setColData('${tab}','${nameEsc}','${col.id}',this.value)"
+      onkeydown="if(event.key==='Enter')this.blur()"></td>`;
+  }).join('');
+}
+
+// close col popup when clicking outside
+document.addEventListener('click', function(e){
+  if(!e.target.closest('.th-add-col')){
+    document.querySelectorAll('.custom-col-popup.open').forEach(p => p.classList.remove('open'));
+  }
+});
+
 // ── Microsoft Teams Calendar Sync ──
 const MSAL_CONFIG = {
   auth: {
@@ -3507,6 +4070,7 @@ async function pushToTeams(token) {
 
 
 (function checkSession(){
+  loadCustomColsLocal();
   const token = sessionStorage.getItem('cvt_token');
   const viewer = sessionStorage.getItem('cvt_viewer');
   if(token){
