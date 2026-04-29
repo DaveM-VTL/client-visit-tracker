@@ -1024,14 +1024,15 @@
     border-bottom: 1px solid var(--border);
     cursor: pointer;
     text-decoration: none;
-    color: var(--text);
+    color: var(--text) !important;
+    -webkit-text-fill-color: var(--text);
     transition: background 0.12s;
   }
   .map-client-item:hover { background: var(--surface2); }
   .map-client-item:active { background: var(--accent-light); }
-  .map-client-name { font-size: 12px; font-weight: 500; line-height: 1.3; }
-  .map-client-addr { font-size: 10px; font-family: var(--mono); color: var(--text-muted); margin-top: 1px; }
-  .map-no-addr { font-size: 10px; font-family: var(--mono); color: var(--border); margin-top: 1px; font-style: italic; }
+  .map-client-name { font-size: 12px; font-weight: 500; line-height: 1.3; color: var(--text) !important; -webkit-text-fill-color: var(--text); }
+  .map-client-addr { font-size: 10px; font-family: var(--mono); color: var(--text-muted) !important; -webkit-text-fill-color: var(--text-muted); margin-top: 1px; }
+  .map-no-addr { font-size: 10px; font-family: var(--mono); color: var(--border) !important; margin-top: 1px; font-style: italic; }
 
   /* Route planner */
   .route-search-item {
@@ -1065,9 +1066,12 @@
     #map-view { height: calc(100vh - 60px) !important; }
     /* Always hide the desktop left sidebar on mobile */
     #map-view > div:nth-child(2) > div:first-child { display: none !important; }
-    #map-view iframe { min-height: 260px; }
+    #map-view iframe { min-height: 200px; max-height: 220px; }
     #map-view > div:first-child { padding: 8px 12px; gap: 6px; }
     #route-search, #map-search { max-width: 100% !important; }
+    #map-client-list-mobile { max-height: calc(100vh - 380px) !important; min-height: 160px; }
+    #map-route-panel-mobile { max-height: calc(100vh - 380px) !important; }
+    #map-areas-mobile { max-height: calc(100vh - 380px) !important; min-height: 160px; }
   }
 
   /* ── Area styles ── */
@@ -1119,6 +1123,7 @@
     top: 0;
     z-index: 2;
     background: var(--surface);
+    color: var(--text);
   }
 
   .area-group-dot {
@@ -1488,10 +1493,10 @@
           </div>
 
           <!-- Map iframe -->
-          <div style="flex:1; position:relative;">
+          <div style="flex:1; position:relative; min-height:0;">
             <iframe
               src="https://www.google.com/maps/d/u/0/embed?mid=18HEaQXBpWmMAbXBeykDS9cLQTNom8f0&ehbc=2E312F"
-              style="width:100%; height:100%; border:none; display:block;"
+              style="width:100%; height:100%; min-height:200px; max-height:220px; border:none; display:block;"
               allowfullscreen loading="lazy">
             </iframe>
           </div>
@@ -1506,6 +1511,10 @@
           <div style="padding:6px 14px 4px; font-family:var(--mono); font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted);">Route stops</div>
           <div id="route-stop-list-mobile" style="overflow-y:auto; flex:1; padding-bottom:6px;"></div>
           <div id="route-empty-mobile" style="padding:12px 14px; text-align:center; font-family:var(--mono); font-size:11px; color:var(--border);">No stops added yet</div>
+        </div>
+        <!-- Mobile areas panel -->
+        <div id="map-areas-mobile" style="display:none; flex-direction:column; flex:1; overflow:hidden; border-top:1px solid var(--border); background:var(--surface);">
+          <div id="map-areas-list-mobile" style="overflow-y:auto; flex:1;"></div>
         </div>
       </div>
 
@@ -2967,9 +2976,11 @@ function setMapMode(mode) {
   // Toggle mobile panels
   const mob = document.getElementById('map-client-list-mobile');
   const mobRoute = document.getElementById('map-route-panel-mobile');
+  const mobAreas = document.getElementById('map-areas-mobile');
   const isMobile = window.innerWidth <= 768;
   if (mob) mob.style.display = (isMobile && isBrowse) ? 'block' : 'none';
   if (mobRoute) mobRoute.style.display = (isMobile && isRoute) ? 'flex' : 'none';
+  if (mobAreas) mobAreas.style.display = (isMobile && isAreas) ? 'flex' : 'none';
 
   if (isBrowse) {
     renderMapList();
@@ -3325,6 +3336,9 @@ function renderAreasGrouped() {
     html = '<div style="padding:24px 14px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--border);">No areas set up yet.<br>Click ⚙ Manage areas to add one.</div>';
   }
   el.innerHTML = html;
+  // Also render into mobile panel if it exists
+  const mobEl = document.getElementById('map-areas-list-mobile');
+  if (mobEl) mobEl.innerHTML = html;
 }
 
 async function saveAreasToSupabase() {
