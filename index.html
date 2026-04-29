@@ -1064,15 +1064,12 @@
 
   @media (max-width: 768px) {
     #map-view { height: calc(100vh - 60px) !important; }
-    #map-body { flex-direction: column; }
-    /* Always hide the desktop left sidebar on mobile */
-    #map-view > div:nth-child(2) > div:first-child { display: none !important; }
-    #map-view iframe { min-height: 200px; max-height: 220px; }
+    #map-left-panel { display: none !important; }
+    #map-body { flex-direction: column; flex-shrink: 0; }
+    #map-iframe-wrap { height: 220px; flex: none; }
+    #map-mobile-panels { display: flex !important; }
     #map-view > div:first-child { padding: 8px 12px; gap: 6px; }
     #route-search, #map-search { max-width: 100% !important; }
-    #map-client-list-mobile { max-height: calc(100vh - 380px) !important; min-height: 160px; }
-    #map-route-panel-mobile { max-height: calc(100vh - 380px) !important; }
-    #map-areas-mobile { max-height: calc(100vh - 380px) !important; min-height: 160px; }
   }
 
   /* ── Area styles ── */
@@ -1454,8 +1451,8 @@
         <!-- Body: sidebar + map iframe -->
         <div id="map-body" style="display:flex; flex:1; overflow:hidden;">
 
-          <!-- Left panel -->
-          <div style="width:260px; flex-shrink:0; display:flex; flex-direction:column; border-right:1px solid var(--border); background:var(--surface); overflow:hidden;">
+          <!-- Left panel (desktop only) -->
+          <div id="map-left-panel" style="width:260px; flex-shrink:0; display:flex; flex-direction:column; border-right:1px solid var(--border); background:var(--surface); overflow:hidden;">
 
             <!-- Browse list -->
             <div id="map-client-list" style="flex:1; overflow-y:auto;"></div>
@@ -1483,39 +1480,40 @@
 
             <!-- Route panel -->
             <div id="map-route-panel" style="display:none; flex-direction:column; flex:1; overflow:hidden;">
-              <!-- All clients — top half -->
               <div style="padding:8px 14px 5px; font-family:var(--mono); font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted); flex-shrink:0; border-bottom:1px solid var(--border);">All clients — tap + to add</div>
               <div id="route-client-list" style="flex:1; overflow-y:auto; border-bottom:2px solid var(--border); min-height:0;"></div>
-              <!-- Selected stops — bottom half -->
               <div style="padding:8px 14px 5px; font-family:var(--mono); font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted); flex-shrink:0;">Route stops</div>
               <div id="route-stop-list" style="flex:1; overflow-y:auto; padding-bottom:8px; min-height:0;"></div>
               <div id="route-empty" style="padding:16px 14px; text-align:center; font-family:var(--mono); font-size:11px; color:var(--border);">No stops added yet</div>
             </div>
           </div>
 
-          <!-- Map iframe -->
-          <div style="flex-shrink:0; position:relative; height:220px;">
+          <!-- Map iframe (takes remaining width on desktop, full width on mobile) -->
+          <div id="map-iframe-wrap" style="flex:1; position:relative; min-width:0;">
             <iframe
               src="https://www.google.com/maps/d/u/0/embed?mid=18HEaQXBpWmMAbXBeykDS9cLQTNom8f0&ehbc=2E312F"
-              style="width:100%; height:220px; border:none; display:block;"
+              style="width:100%; height:100%; border:none; display:block;"
               allowfullscreen loading="lazy">
             </iframe>
           </div>
         </div>
 
-        <!-- Mobile client list (browse mode) — shown only on mobile via CSS -->
-        <div id="map-client-list-mobile" style="display:none; overflow-y:auto; flex:1; border-top:1px solid var(--border); background:var(--surface);"></div>
-        <!-- Mobile route panel (route mode) -->
-        <div id="map-route-panel-mobile" style="display:none; flex-direction:column; flex:1; overflow:hidden; border-top:1px solid var(--border); background:var(--surface);">
-          <div style="padding:6px 14px 4px; font-family:var(--mono); font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted); border-bottom:1px solid var(--border);">All clients — tap + to add</div>
-          <div id="route-client-list-mobile" style="overflow-y:auto; max-height:140px; border-bottom:2px solid var(--border);"></div>
-          <div style="padding:6px 14px 4px; font-family:var(--mono); font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted);">Route stops</div>
-          <div id="route-stop-list-mobile" style="overflow-y:auto; flex:1; padding-bottom:6px;"></div>
-          <div id="route-empty-mobile" style="padding:12px 14px; text-align:center; font-family:var(--mono); font-size:11px; color:var(--border);">No stops added yet</div>
-        </div>
-        <!-- Mobile areas panel -->
-        <div id="map-areas-mobile" style="display:none; flex-direction:column; flex:1; overflow:hidden; border-top:1px solid var(--border); background:var(--surface);">
-          <div id="map-areas-list-mobile" style="overflow-y:auto; flex:1;"></div>
+        <!-- Mobile panels (stacked below map on mobile) -->
+        <div id="map-mobile-panels" style="display:none; flex-direction:column; flex:1; overflow:hidden;">
+          <!-- Mobile browse list -->
+          <div id="map-client-list-mobile" style="display:none; overflow-y:auto; flex:1; background:var(--surface);"></div>
+          <!-- Mobile route panel -->
+          <div id="map-route-panel-mobile" style="display:none; flex-direction:column; flex:1; overflow:hidden; background:var(--surface);">
+            <div style="padding:6px 14px 4px; font-family:var(--mono); font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted); border-bottom:1px solid var(--border); flex-shrink:0;">All clients — tap + to add</div>
+            <div id="route-client-list-mobile" style="overflow-y:auto; flex:1; border-bottom:2px solid var(--border); min-height:0;"></div>
+            <div style="padding:6px 14px 4px; font-family:var(--mono); font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted); flex-shrink:0;">Route stops</div>
+            <div id="route-stop-list-mobile" style="overflow-y:auto; flex:1; padding-bottom:6px; min-height:0;"></div>
+            <div id="route-empty-mobile" style="padding:12px 14px; text-align:center; font-family:var(--mono); font-size:11px; color:var(--border);">No stops added yet</div>
+          </div>
+          <!-- Mobile areas panel -->
+          <div id="map-areas-mobile" style="display:none; flex-direction:column; flex:1; overflow:hidden; background:var(--surface);">
+            <div id="map-areas-list-mobile" style="overflow-y:auto; flex:1;"></div>
+          </div>
         </div>
       </div>
 
@@ -2982,7 +2980,6 @@ function setMapMode(mode) {
   if (mob) mob.style.display = (isMobile && isBrowse) ? 'block' : 'none';
   if (mobRoute) mobRoute.style.display = (isMobile && isRoute) ? 'flex' : 'none';
   if (mobAreas) mobAreas.style.display = (isMobile && isAreas) ? 'flex' : 'none';
-
   if (isBrowse) {
     renderMapList();
   } else if (isRoute) {
