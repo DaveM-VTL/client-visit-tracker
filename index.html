@@ -2943,34 +2943,43 @@ let routeStops = []; // [{name, address, city}]
 function setMapMode(mode) {
   mapMode = mode;
   const isBrowse = mode === 'browse';
+  const isRoute = mode === 'route';
+  const isAreas = mode === 'areas';
 
   // Toggle mode buttons styling
-  document.getElementById('map-mode-browse').style.background = isBrowse ? 'var(--text)' : 'none';
-  document.getElementById('map-mode-browse').style.color = isBrowse ? 'var(--bg)' : 'var(--text-muted)';
-  document.getElementById('map-mode-route').style.background = !isBrowse ? 'var(--text)' : 'none';
-  document.getElementById('map-mode-route').style.color = !isBrowse ? 'var(--bg)' : 'var(--text-muted)';
+  ['browse','route','areas'].forEach(m => {
+    const btn = document.getElementById('map-mode-' + m);
+    if (!btn) return;
+    btn.style.background = mode === m ? 'var(--text)' : 'none';
+    btn.style.color = mode === m ? 'var(--bg)' : 'var(--text-muted)';
+  });
 
   // Toggle controls
   document.getElementById('map-browse-controls').style.display = isBrowse ? 'flex' : 'none';
-  document.getElementById('map-route-controls').style.display = isBrowse ? 'none' : 'flex';
+  document.getElementById('map-route-controls').style.display = isRoute ? 'flex' : 'none';
+  document.getElementById('map-areas-controls').style.display = isAreas ? 'flex' : 'none';
 
   // Toggle panels (desktop)
   document.getElementById('map-client-list').style.display = isBrowse ? 'block' : 'none';
-  document.getElementById('map-route-panel').style.display = isBrowse ? 'none' : 'flex';
+  document.getElementById('map-route-panel').style.display = isRoute ? 'flex' : 'none';
+  document.getElementById('map-areas-panel').style.display = isAreas ? 'flex' : 'none';
 
-  // Toggle mobile panels — explicitly control all four to avoid bleed-through
+  // Toggle mobile panels
   const mob = document.getElementById('map-client-list-mobile');
   const mobRoute = document.getElementById('map-route-panel-mobile');
   const isMobile = window.innerWidth <= 768;
   if (mob) mob.style.display = (isMobile && isBrowse) ? 'block' : 'none';
-  if (mobRoute) mobRoute.style.display = (isMobile && !isBrowse) ? 'flex' : 'none';
+  if (mobRoute) mobRoute.style.display = (isMobile && isRoute) ? 'flex' : 'none';
 
   if (isBrowse) {
     renderMapList();
-  } else {
+  } else if (isRoute) {
     document.getElementById('route-search').value = '';
     renderRouteClientList();
     renderRouteStops();
+  } else if (isAreas) {
+    renderAreaTags();
+    renderAreasGrouped();
   }
 }
 
