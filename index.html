@@ -3124,6 +3124,7 @@ async function loadFromSupabase(){
     const n = await sbGet('notes').catch(() => []);
     const rp = await sbGet('report_data').catch(() => []);
     const ap = await sbGet('appointments').catch(() => []);
+    const vl = await sbGet('visit_log').catch(() => []);
 
     if(c && c.length > 0){
       // Keep hardcoded data as fallback for missing fields
@@ -3195,10 +3196,18 @@ async function loadFromSupabase(){
       nextApptId = Math.max(...appointments.map(a => a.id)) + 1;
     }
 
+    // Visit log
+    visitLog = {};
+    if(vl && vl.length > 0){
+      vl.forEach(r => {
+        if(!visitLog[r.client_name]) visitLog[r.client_name] = [];
+        visitLog[r.client_name].push({id: r.id, date: r.date, type: r.type||'adhoc', note: r.note||'', nextDue: r.next_due||null});
+      });
+    }
+
     showStatus('Data loaded', true);
     updateLastUpdated();
     await loadAreasFromSupabase();
-    await loadVisitLog();
   } catch(e){
     console.error(e);
     showStatus('Could not connect to database', false);
@@ -3947,8 +3956,9 @@ async function deleteVisit(name, visitId){
 
 // Load visit log from Supabase
 async function loadVisitLog(){
+  visitLog = {}; // always clear first to avoid duplicates on refresh
   try {
-    const rows = await sbGet('visit_log').catch(() => null);
+    const rows = await sbGet('visit_log');
     if(rows && rows.length){
       rows.forEach(r => {
         if(!visitLog[r.client_name]) visitLog[r.client_name] = [];
