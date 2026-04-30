@@ -1362,6 +1362,82 @@
   }
   .visit-del-btn:hover { color: var(--danger); }
 
+  .visit-edit-btn {
+    background: none; border: none; cursor: pointer;
+    color: var(--border); font-size: 11px; padding: 0 2px;
+    transition: color 0.12s; flex-shrink: 0;
+    font-family: var(--mono);
+  }
+  .visit-edit-btn:hover { color: var(--accent); }
+
+  .visit-entry.editing {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    padding: 10px;
+    margin: 4px 0;
+  }
+
+  .visit-edit-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .visit-edit-row select,
+  .visit-edit-row input[type=date],
+  .visit-edit-row input[type=text] {
+    padding: 5px 7px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: var(--sans);
+    font-size: 12px;
+    background: var(--bg);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .visit-edit-row select:focus,
+  .visit-edit-row input:focus { border-color: var(--accent); }
+  .visit-edit-row input[type=text] { flex: 1; }
+
+  .visit-edit-actions {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-end;
+    margin-top: 2px;
+  }
+
+  .btn-visit-save {
+    padding: 5px 12px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 11px;
+    font-family: var(--sans);
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .btn-visit-save:hover { opacity: 0.85; }
+
+  .btn-visit-cancel {
+    padding: 5px 10px;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-visit-cancel:hover { border-color: var(--text-muted); color: var(--text); }
+
   .visit-empty {
     font-family: var(--mono);
     font-size: 11px;
@@ -3687,6 +3763,7 @@ async function loadAreasFromSupabase() {
 // visitLog[clientName] = [{id, date, type:'formal'|'adhoc'|'phone', note, nextDue}]
 let visitLog = {};
 let expandedRows = new Set();
+let editingVisitId = null; // track which visit entry is being edited
 
 function getVisitLog(name){ return visitLog[name] || []; }
 
@@ -3712,6 +3789,52 @@ function renderVisitCountBadge(name){
 function toggleRow(clientId){
   if(expandedRows.has(clientId)) expandedRows.delete(clientId);
   else expandedRows.add(clientId);
+  editingVisitId = null;
+  render();
+}
+
+function startEditVisit(visitId){
+  editingVisitId = visitId;
+  render();
+}
+
+function cancelEditVisit(){
+  editingVisitId = null;
+  render();
+}
+
+async function saveEditVisit(clientName, visitId){
+  const log = visitLog[clientName];
+  if(!log) return;
+  const entry = log.find(v => v.id === visitId);
+  if(!entry) return;
+
+  const typeEl = document.getElementById('ve-type-'+visitId);
+  const dateEl = document.getElementById('ve-date-'+visitId);
+  const noteEl = document.getElementById('ve-note-'+visitId);
+  const nextEl = document.getElementById('ve-next-'+visitId);
+
+  if(!dateEl || !dateEl.value){ alert('Please select a date.'); return; }
+
+  const oldType = entry.type;
+  entry.type    = typeEl.value;
+  entry.date    = dateEl.value;
+  entry.note    = noteEl.value.trim();
+  entry.nextDue = nextEl.value || null;
+
+  // If changed to/from formal, update client's lastVisit
+  const c = clients.find(x => x.name === clientName);
+  if(c && (entry.type === 'formal' || oldType === 'formal')){
+    const formalDates = log.filter(v => v.type === 'formal').map(v => v.date).sort().reverse();
+    c.lastVisit = formalDates[0] || null;
+    try { await sbUpsert('clients', {id: c.id, name: c.name, address: c.address, city: c.city, last_visit: c.lastVisit, last_visit2: c.lastVisit2 || null}); } catch(e){}
+  }
+
+  try {
+    await sbUpsert('visit_log', {id: visitId, client_name: clientName, date: entry.date, type: entry.type, note: entry.note||null, next_due: entry.nextDue||null});
+  } catch(e){ console.warn('visit_log update failed', e); }
+
+  editingVisitId = null;
   render();
 }
 
@@ -3719,20 +3842,52 @@ function renderVisitLogPanel(c){
   const log = getVisitLog(c.name).slice().sort((a,b) => (b.date||'').localeCompare(a.date||''));
   const nameEsc = c.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
 
-  let entriesHtml = log.length === 0
-    ? `<div class="visit-empty">No visits logged yet.</div>`
-    : log.map(v => {
-        const typeLabel = v.type === 'formal' ? 'Formal' : v.type === 'phone' ? 'Phone' : 'Ad hoc';
-        const typeCls = v.type === 'formal' ? 'vt-formal' : v.type === 'phone' ? 'vt-phone' : 'vt-adhoc';
-        const nextPart = v.nextDue ? ` · <span style="color:var(--accent)">Next: ${fmt(v.nextDue)}</span>` : '';
-        const noteEsc = (v.note||'').replace(/</g,'&lt;');
-        return `<div class="visit-entry">
-          <span class="visit-type-badge ${typeCls}">${typeLabel}</span>
-          <span class="visit-date-lbl">${fmt(v.date)}</span>
-          <span class="visit-note-lbl">${noteEsc}${nextPart}</span>
-          <button class="visit-del-btn" onclick="deleteVisit('${nameEsc}','${v.id}');event.stopPropagation();" title="Delete">✕</button>
+  let entriesHtml = '';
+  if(log.length === 0){
+    entriesHtml = `<div class="visit-empty">No visits logged yet.</div>`;
+  } else {
+    entriesHtml = log.map(v => {
+      const typeLabel = v.type === 'formal' ? 'Formal' : v.type === 'phone' ? 'Phone' : 'Ad hoc';
+      const typeCls   = v.type === 'formal' ? 'vt-formal' : v.type === 'phone' ? 'vt-phone' : 'vt-adhoc';
+      const vidEsc = v.id.replace(/'/g,"\\'");
+
+      if(editingVisitId === v.id){
+        // Inline edit form
+        return `<div class="visit-entry editing">
+          <div class="visit-edit-row">
+            <select id="ve-type-${v.id}">
+              <option value="formal"${v.type==='formal'?' selected':''}>Formal</option>
+              <option value="adhoc"${v.type==='adhoc'?' selected':''}>Ad hoc</option>
+              <option value="phone"${v.type==='phone'?' selected':''}>Phone</option>
+            </select>
+            <input type="date" id="ve-date-${v.id}" value="${v.date||''}">
+          </div>
+          <div class="visit-edit-row">
+            <input type="text" id="ve-note-${v.id}" value="${(v.note||'').replace(/"/g,'&quot;')}" placeholder="Note (optional)">
+          </div>
+          <div class="visit-next-row">
+            <span>Next visit due:</span>
+            <input type="date" id="ve-next-${v.id}" value="${v.nextDue||''}">
+          </div>
+          <div class="visit-edit-actions">
+            <button class="btn-visit-cancel" onclick="cancelEditVisit();event.stopPropagation();">Cancel</button>
+            <button class="btn-visit-save" onclick="saveEditVisit('${nameEsc}','${vidEsc}');event.stopPropagation();">Save</button>
+          </div>
         </div>`;
-      }).join('');
+      }
+
+      // Normal read row
+      const nextPart = v.nextDue ? ` · <span style="color:var(--accent)">Next: ${fmt(v.nextDue)}</span>` : '';
+      const noteEsc = (v.note||'').replace(/</g,'&lt;');
+      return `<div class="visit-entry">
+        <span class="visit-type-badge ${typeCls}">${typeLabel}</span>
+        <span class="visit-date-lbl">${fmt(v.date)}</span>
+        <span class="visit-note-lbl">${noteEsc}${nextPart}</span>
+        <button class="visit-edit-btn" onclick="startEditVisit('${vidEsc}');event.stopPropagation();" title="Edit">✎</button>
+        <button class="visit-del-btn" onclick="deleteVisit('${nameEsc}','${vidEsc}');event.stopPropagation();" title="Delete">✕</button>
+      </div>`;
+    }).join('');
+  }
 
   return `<tr class="visit-log-row" id="vrow-${c.id}">
     <td colspan="999">
