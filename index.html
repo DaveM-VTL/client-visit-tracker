@@ -1614,6 +1614,113 @@
   }
   .custom-col-del:hover { color: var(--danger); }
 
+  /* ── Clients directory tab ── */
+  .dot-cli { background: #a78bfa; }
+
+  #clients-view { display: none; flex-direction: column; }
+
+  .clients-table-wrap { overflow-x: auto; }
+
+  tr.client-dir-row {
+    cursor: pointer;
+  }
+  tr.client-dir-row:hover td { background: var(--surface2); }
+  tr.client-dir-row.dir-expanded td {
+    background: color-mix(in srgb, var(--accent) 5%, var(--surface));
+  }
+
+  tr.client-dir-detail td {
+    padding: 0;
+    background: var(--bg);
+    border-bottom: 2px solid var(--accent);
+  }
+
+  .client-dir-panel {
+    padding: 16px 32px 20px 64px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .dir-contacts-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .dir-contact-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    min-width: 220px;
+    flex: 1 1 220px;
+    max-width: 340px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .dir-contact-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .dir-contact-pos {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .dir-contact-links {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: 4px;
+  }
+
+  .dir-contact-links a {
+    font-size: 12px;
+    color: var(--accent);
+    text-decoration: none;
+    font-family: var(--mono);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .dir-contact-links a:hover { text-decoration: underline; }
+
+  .dir-website-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-top: 6px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    font-family: var(--mono);
+  }
+
+  .dir-website-row a {
+    color: var(--accent);
+    text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .dir-website-row a:hover { text-decoration: underline; }
+
+  /* mobile cards for clients tab */
+  @media (max-width: 768px) {
+    #clients-view .clients-table-wrap table { display: none; }
+    .client-dir-panel { padding: 12px 14px 14px; }
+    .dir-contact-card { max-width: 100%; }
+  }
+
   td.td-custom-cell {
     min-width: 110px;
   }
@@ -1698,6 +1805,12 @@
       <p>55 clients</p>
     </div>
     <nav class="sidebar-nav">
+      <div class="nav-label">Directory</div>
+      <button class="nav-item" onclick="switchTab('clients',this)">
+        <span class="nav-dot dot-cli"></span>
+        Clients
+        <span class="nav-count" id="cnt-cli">—</span>
+      </button>
       <div class="nav-label">Trackers</div>
       <button class="nav-item active" onclick="switchTab('inperson',this)">
         <span class="nav-dot dot-ip"></span>
@@ -1747,7 +1860,7 @@
       <div class="topbar-title" id="topbar-title">In-person visits <span>all clients</span></div>
       <div class="search-wrap">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        <input class="search" type="text" placeholder="Search clients..." oninput="render()" id="search">
+        <input class="search" type="text" placeholder="Search clients..." oninput="currentTab==='clients'?renderClients():render()" id="search">
       </div>
       <select class="filter-select" onchange="render()" id="filter"></select>
       <button class="btn-add" onclick="openAdd()">+ Add client</button>
@@ -1876,6 +1989,12 @@
             <div id="map-areas-list-mobile" style="overflow-y:auto; flex:1;"></div>
           </div>
         </div>
+      </div>
+
+      <!-- Clients directory view -->
+      <div id="clients-view">
+        <div class="clients-table-wrap" id="clients-table-wrap"></div>
+        <div class="cards-wrap" id="clients-cards-wrap" style="display:none;"></div>
       </div>
 
       <!-- Calendar view -->
@@ -2331,7 +2450,7 @@ const filterOptions={
   reports:['all','overdue','due-soon','on-track','not-sent'],
 };
 const filterLabels={all:'All statuses',overdue:'Overdue','due-soon':'Due soon','on-track':'On track','not-visited':'Not yet visited',pending:'Pending',completed:'Completed','not-scheduled':'Not scheduled',reviewed:'Reviewed',sent:'Awaiting review','not-sent':'Not sent'};
-const tabTitles={inperson:'In-person visits',phone:'Phone visits',tbr:'TBRs',reviews:'Google reviews',reports:'Reports',map:'Map',calendar:'Calendar'};
+const tabTitles={clients:'Clients',inperson:'In-person visits',phone:'Phone visits',tbr:'TBRs',reviews:'Google reviews',reports:'Reports',map:'Map',calendar:'Calendar'};
 
 function updateFilterOptions(){
   const sel=document.getElementById('filter');
@@ -2340,6 +2459,7 @@ function updateFilterOptions(){
 }
 
 function updateSidebarCounts(){
+  document.getElementById('cnt-cli').textContent = clients.length;
   const ipOverdue=clients.filter(c=>getIPStatus(c).cls==='overdue').length;
   const phOverdue=clients.filter(c=>getPhoneStatus(c).cls==='overdue').length;
   const tbrPending=clients.filter(c=>['overdue','pending'].includes(getTBRStatus(c).cls)).length;
@@ -2748,11 +2868,143 @@ function render(){
   document.getElementById('cards-wrap').style.display = isMobile() ? 'flex' : 'none';
 }
 
+// ── Clients directory ──
+let expandedClientIds = new Set();
+
+function toggleClientDir(id) {
+  if(expandedClientIds.has(id)) expandedClientIds.delete(id);
+  else expandedClientIds.add(id);
+  renderClients();
+}
+
+function renderClients() {
+  const q = (document.getElementById('search').value || '').toLowerCase();
+  const rows = clients.filter(c => !q || c.name.toLowerCase().includes(q) || (c.city||'').toLowerCase().includes(q));
+
+  // Desktop table
+  let html = `<table>
+    <thead>
+      <tr>
+        <th style="padding-left:32px;">#</th>
+        <th>Client</th>
+        <th>City</th>
+        <th>Contacts</th>
+        <th>Website</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>`;
+
+  rows.forEach((c, i) => {
+    const color = getClientColor(c.name);
+    const profile = clientProfiles[c.name] || {};
+    const contacts = profile.contacts || [];
+    const website = profile.website || '';
+    const isExp = expandedClientIds.has(c.id);
+    const contactSummary = contacts.filter(ct=>ct.name).map(ct=>ct.name).join(', ') || '—';
+    const colCount = 6;
+
+    html += `<tr class="client-dir-row${isExp?' dir-expanded':''} has-color" style="--client-color:${color}" onclick="toggleClientDir(${c.id})">
+      <td class="td-num" style="padding-left:32px;">${i+1}</td>
+      <td class="td-name">
+        <span class="expand-chevron">▶</span>
+        <span class="client-dot" style="background:${color}"></span>${c.name}
+      </td>
+      <td class="td-city">${c.city||'—'}</td>
+      <td style="font-size:12px;color:var(--text-muted);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${contactSummary}</td>
+      <td style="font-size:11px;font-family:var(--mono);">${website ? `<a href="${website}" target="_blank" style="color:var(--accent);text-decoration:none;" onclick="event.stopPropagation()">🌐 ${website.replace(/https?:\/\//,'').replace(/\/$/,'').substring(0,30)}</a>` : '<span style="color:var(--border)">—</span>'}</td>
+      <td style="padding-right:32px;"><button class="edit-btn" onclick="event.stopPropagation();openEdit(${c.id})">edit</button></td>
+    </tr>`;
+
+    if(isExp) {
+      const contactCards = contacts.filter(ct=>ct.name).map(ct => {
+        const phoneLink = ct.phone ? `<a href="tel:${ct.phone}">📞 ${ct.phone}</a>` : '';
+        const emailLink = ct.email ? `<a href="mailto:${ct.email}">✉ ${ct.email}</a>` : '';
+        return `<div class="dir-contact-card">
+          <div class="dir-contact-name">${ct.name}</div>
+          ${ct.position ? `<div class="dir-contact-pos">${ct.position}</div>` : ''}
+          <div class="dir-contact-links">
+            ${phoneLink}
+            ${emailLink}
+          </div>
+        </div>`;
+      }).join('');
+
+      const websiteRow = website ? `<div class="dir-website-row">
+        <span style="font-family:var(--mono);font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">Website</span>
+        <a href="${website}" target="_blank">${website.replace(/https?:\/\//,'')}</a>
+      </div>` : '';
+
+      const addr = [c.address, c.city].filter(Boolean).join(', ');
+      const addrRow = addr ? `<div style="font-family:var(--mono);font-size:11px;color:var(--text-muted);">📍 ${addr}</div>` : '';
+
+      html += `<tr class="client-dir-detail">
+        <td colspan="${colCount}">
+          <div class="client-dir-panel">
+            ${addrRow}
+            <div class="dir-contacts-grid">${contactCards || '<span style="font-family:var(--mono);font-size:11px;color:var(--border)">No contacts on file</span>'}</div>
+            ${websiteRow}
+          </div>
+        </td>
+      </tr>`;
+    }
+  });
+
+  html += '</tbody></table>';
+  document.getElementById('clients-table-wrap').innerHTML = html;
+
+  // Mobile cards
+  const mobileWrap = document.getElementById('clients-cards-wrap');
+  mobileWrap.innerHTML = rows.map(c => {
+    const color = getClientColor(c.name);
+    const profile = clientProfiles[c.name] || {};
+    const contacts = profile.contacts || [];
+    const website = profile.website || '';
+    const isExp = expandedClientIds.has(c.id);
+
+    const contactCards = contacts.filter(ct=>ct.name).map(ct => {
+      const phoneLink = ct.phone ? `<a href="tel:${ct.phone}" style="color:var(--accent);display:block;font-size:12px;font-family:var(--mono);">📞 ${ct.phone}</a>` : '';
+      const emailLink = ct.email ? `<a href="mailto:${ct.email}" style="color:var(--accent);display:block;font-size:11px;font-family:var(--mono);overflow:hidden;text-overflow:ellipsis;">✉ ${ct.email}</a>` : '';
+      return `<div class="dir-contact-card" style="max-width:100%;">
+        <div class="dir-contact-name">${ct.name}</div>
+        ${ct.position ? `<div class="dir-contact-pos">${ct.position}</div>` : ''}
+        ${phoneLink}${emailLink}
+      </div>`;
+    }).join('');
+
+    const wsRow = website ? `<div style="padding-top:8px;border-top:1px solid var(--border);"><a href="${website}" target="_blank" style="color:var(--accent);font-size:11px;font-family:var(--mono);">🌐 ${website.replace(/https?:\/\//,'').replace(/\/$/,'')}</a></div>` : '';
+    const addr = [c.address, c.city].filter(Boolean).join(', ');
+
+    return `<div class="client-card" style="--client-color:${color}" id="cdir-${c.id}">
+      <div class="card-main" onclick="toggleClientDir(${c.id})">
+        <div class="card-left">
+          <div class="card-name"><span class="client-dot" style="background:${color}"></span>${c.name}</div>
+          <div class="card-due">${addr||'No address'}</div>
+        </div>
+        <div class="card-right">
+          <span style="font-size:11px;color:var(--text-muted);font-family:var(--mono);">${contacts.filter(ct=>ct.name).length} contact${contacts.filter(ct=>ct.name).length!==1?'s':''}</span>
+          <span class="card-chevron">▼</span>
+        </div>
+      </div>
+      ${isExp ? `<div class="card-details" style="display:block;padding:0 14px 14px;">
+        <div style="display:flex;flex-direction:column;gap:10px;padding-top:12px;">
+          ${contactCards || '<span style="font-family:var(--mono);font-size:11px;color:var(--border)">No contacts on file</span>'}
+          ${wsRow}
+        </div>
+        <div class="card-actions">
+          <button class="card-edit-btn" onclick="openEdit(${c.id})">Edit client</button>
+        </div>
+      </div>` : ''}
+    </div>`;
+  }).join('');
+}
+
 function switchTab(tab,el){
   currentTab=tab;
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   el.classList.add('active');
 
+  const clientsView = document.getElementById('clients-view');
   const mapView = document.getElementById('map-view');
   const calView = document.getElementById('calendar-view');
   const tableWrap = document.getElementById('table-wrap');
@@ -2763,7 +3015,23 @@ function switchTab(tab,el){
   const filterSel = document.getElementById('filter');
   const btnAdd = document.querySelector('.btn-add');
 
-  if(tab === 'map'){
+  if(tab === 'clients'){
+    clientsView.style.display = 'flex';
+    mapView.style.display = 'none';
+    calView.style.display = 'none';
+    tableWrap.style.display = 'none';
+    cardsWrap.style.display = 'none';
+    statsBar.style.display = 'none';
+    if(searchWrap) searchWrap.style.display = '';
+    if(filterSel) filterSel.style.display = 'none';
+    if(btnAdd) btnAdd.style.display = '';
+    if(topbar) topbar.innerHTML = 'Clients <span>' + clients.length + ' total</span>';
+    // show correct sub-wraps
+    document.getElementById('clients-table-wrap').style.display = isMobile() ? 'none' : '';
+    document.getElementById('clients-cards-wrap').style.display = isMobile() ? 'flex' : 'none';
+    renderClients();
+  } else if(tab === 'map'){
+    clientsView.style.display = 'none';
     mapView.style.display = 'flex';
     calView.style.display = 'none';
     tableWrap.style.display = 'none';
@@ -2775,6 +3043,7 @@ function switchTab(tab,el){
     if(topbar) topbar.innerHTML = 'Map <span>' + clients.length + ' clients</span>';
     setMapMode(mapMode);
   } else if(tab === 'calendar'){
+    clientsView.style.display = 'none';
     mapView.style.display = 'none';
     calView.style.display = 'flex';
     tableWrap.style.display = 'none';
@@ -2786,6 +3055,7 @@ function switchTab(tab,el){
     if(topbar) topbar.innerHTML = 'Calendar <span>scheduled visits</span>';
     renderCalendar();
   } else {
+    clientsView.style.display = 'none';
     mapView.style.display = 'none';
     calView.style.display = 'none';
     statsBar.style.display = '';
