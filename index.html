@@ -3124,7 +3124,7 @@ async function loadFromSupabase(){
     const n = await sbGet('notes').catch(() => []);
     const rp = await sbGet('report_data').catch(() => []);
     const ap = await sbGet('appointments').catch(() => []);
-    const vl = await sbGet('visit_log').catch(() => []);
+    const vl = await sbGet('visit_log').catch((e) => { console.error('visit_log fetch error:', e); return []; });
 
     if(c && c.length > 0){
       // Keep hardcoded data as fallback for missing fields
@@ -3198,6 +3198,7 @@ async function loadFromSupabase(){
 
     // Visit log
     visitLog = {};
+    console.log('visit_log rows from Supabase:', vl);
     if(vl && vl.length > 0){
       vl.forEach(r => {
         if(!visitLog[r.client_name]) visitLog[r.client_name] = [];
@@ -3943,7 +3944,15 @@ async function logVisit(clientId){
     c.lastVisit = date;
     try { await sbUpsert('clients', {id: c.id, name: c.name, address: c.address, city: c.city, last_visit: date, last_visit2: c.lastVisit2 || null}); } catch(e){}
   }
-  try { await sbUpsert('visit_log', {id, client_name: c.name, date, type, note: note||null, next_due: nextDue}); } catch(e){ console.warn('visit_log save failed (table may not exist yet)', e); }
+  try {
+    const res = await fetch(SUPA_URL + '/rest/v1/visit_log', {
+      method: 'POST',
+      headers: { ...sbHeaders(), 'Prefer': 'resolution=merge-duplicates,return=representation' },
+      body: JSON.stringify({id, client_name: c.name, date, type, note: note||null, next_due: nextDue})
+    });
+    const resJson = await res.json();
+    console.log('visit_log save response:', res.status, resJson);
+  } catch(e){ console.warn('visit_log save failed:', e); }
   render();
 }
 
