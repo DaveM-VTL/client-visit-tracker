@@ -1902,6 +1902,7 @@
       <div class="viewer-badge" id="viewer-badge" style="display:none;">👁 View only</div>
       <button class="logout-btn" onclick="doLogout()">Sign out</button>
       <button class="logout-btn" onclick="manualRefresh()" id="refresh-btn">↻ Refresh</button>
+      <button class="logout-btn" onclick="exportCSV()" title="Export all client data to CSV">⬇ Export CSV</button>
       <span style="padding-left:24px;font-size:10px;" id="last-updated">Updated today</span>
     </div>
   </aside>
@@ -1916,7 +1917,6 @@
       </div>
       <select class="filter-select" onchange="render()" id="filter"></select>
       <button class="btn-add" onclick="openAdd()">+ Add client</button>
-      <button class="logout-btn" onclick="exportCSV()" style="margin-left:4px;" title="Export all client data to CSV">⬇ Export CSV</button>
     </div>
 
     <div class="stats-bar" id="stats-bar"></div>
