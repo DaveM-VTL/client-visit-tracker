@@ -139,6 +139,7 @@
   .dot-rep { background: #7ab8d4; }
   .dot-map { background: #e07b54; }
   .dot-cal { background: #9b72cf; }
+  .dot-ai  { background: #e8a045; }
 
   .nav-count {
     margin-left: auto;
@@ -910,6 +911,249 @@
   }
 
   .card-note:focus { border-color: var(--accent); }
+
+  /* ── AI Assistant ── */
+  #ai-view {
+    display: none;
+    flex-direction: column;
+    height: calc(100vh - 57px);
+    background: var(--bg);
+  }
+  .ai-setup-banner {
+    background: var(--warning-light);
+    border-bottom: 1px solid #e8d5a0;
+    padding: 10px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+    font-size: 12px;
+    font-family: var(--mono);
+    color: var(--warning);
+  }
+  .ai-setup-banner a {
+    color: var(--warning);
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: underline;
+  }
+  .ai-chat-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .ai-message {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-width: 720px;
+  }
+  .ai-message.user { align-self: flex-end; align-items: flex-end; }
+  .ai-message.assistant { align-self: flex-start; align-items: flex-start; }
+  .ai-bubble {
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .ai-message.user .ai-bubble {
+    background: var(--text);
+    color: var(--bg);
+    border-radius: 10px 10px 3px 10px;
+  }
+  .ai-message.assistant .ai-bubble {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px 10px 10px 3px;
+    color: var(--text);
+  }
+  .ai-message-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    padding: 0 4px;
+  }
+  .ai-thinking .ai-bubble {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-style: italic;
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+  .ai-input-bar {
+    flex-shrink: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+  }
+  .ai-input-bar textarea {
+    flex: 1;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: var(--sans);
+    font-size: 13px;
+    background: var(--bg);
+    color: var(--text);
+    resize: none;
+    height: 42px;
+    max-height: 120px;
+    line-height: 1.5;
+    outline: none;
+    transition: border-color 0.15s;
+    overflow-y: auto;
+  }
+  .ai-input-bar textarea:focus { border-color: var(--accent); }
+  .ai-send-btn {
+    padding: 10px 18px;
+    background: var(--text);
+    color: var(--bg);
+    border: none;
+    border-radius: var(--radius);
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.15s;
+    height: 42px;
+  }
+  .ai-send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .ai-send-btn:not(:disabled):hover { opacity: 0.85; }
+  .ai-clear-conv-btn {
+    width: 42px; height: 42px;
+    flex-shrink: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: none;
+    font-size: 16px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ai-clear-conv-btn:hover { border-color: var(--text-muted); color: var(--text); }
+  .ai-suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 0 32px 16px;
+    flex-shrink: 0;
+  }
+  .ai-suggestion-btn {
+    padding: 7px 12px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    background: var(--surface);
+    font-family: var(--sans);
+    font-size: 12px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .ai-suggestion-btn:hover { border-color: var(--text-muted); color: var(--text); }
+  .ai-key-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(26,24,20,0.5);
+    z-index: 400;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .ai-key-modal.open { display: flex; }
+  .ai-key-box {
+    background: var(--surface);
+    border-radius: 10px;
+    width: 100%;
+    max-width: 440px;
+    border: 1px solid var(--border);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+    padding: 28px;
+  }
+  .ai-key-box h3 {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .ai-key-box p {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+    line-height: 1.5;
+    font-family: var(--mono);
+  }
+  .ai-key-box input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: var(--mono);
+    font-size: 12px;
+    background: var(--bg);
+    color: var(--text);
+    outline: none;
+    margin-bottom: 12px;
+    transition: border-color 0.15s;
+  }
+  .ai-key-box input:focus { border-color: var(--accent); }
+  .ai-key-actions { display: flex; gap: 8px; justify-content: flex-end; }
+  .ai-clear-btn {
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: none;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--danger);
+    cursor: pointer;
+    margin-right: auto;
+  }
+  .ai-welcome {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 32px;
+    color: var(--text-muted);
+    text-align: center;
+    gap: 12px;
+  }
+  .ai-welcome-icon {
+    font-size: 36px;
+    margin-bottom: 4px;
+  }
+  .ai-welcome h2 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    font-family: var(--sans);
+  }
+  .ai-welcome p {
+    font-size: 12px;
+    font-family: var(--mono);
+    max-width: 360px;
+    line-height: 1.6;
+  }
+  @media (max-width: 768px) {
+    #ai-view { height: calc(100vh - 160px); }
+    .ai-chat-area { padding: 16px; }
+    .ai-input-bar { padding: 12px 16px; padding-bottom: max(16px, env(safe-area-inset-bottom, 0px)); }
+    .ai-suggestions { padding: 0 16px 12px; }
+    .ai-setup-banner { padding: 10px 16px; font-size: 11px; }
+  }
 </style>
 
 <style>
@@ -1897,6 +2141,11 @@
         <span class="nav-dot dot-cal"></span>
         Calendar
       </button>
+      <div class="nav-label">Assistant</div>
+      <button class="nav-item" onclick="switchTab('ai',this)">
+        <span class="nav-dot dot-ai"></span>
+        Ask Claude
+      </button>
     </nav>
     <div class="sidebar-footer" style="display:flex;flex-direction:column;gap:10px;align-items:flex-start;">
       <div class="viewer-badge" id="viewer-badge" style="display:none;">👁 View only</div>
@@ -2072,9 +2321,50 @@
         </div>
       </div>
 
+      <!-- AI Assistant view -->
+      <div id="ai-view">
+        <div class="ai-setup-banner" id="ai-setup-banner" style="display:none;">
+          ⚠ No API key set. <a onclick="openAiKeyModal()">Click here to add your Anthropic API key</a> to enable the assistant.
+        </div>
+        <div id="ai-chat-area" class="ai-chat-area">
+          <div class="ai-welcome" id="ai-welcome">
+            <div class="ai-welcome-icon">🤖</div>
+            <h2>Ask Claude</h2>
+            <p>Ask anything about your clients — visit history, overdue accounts, notes, contacts, or request a summary. Claude has full access to your live client data.</p>
+          </div>
+        </div>
+        <div class="ai-suggestions" id="ai-suggestions">
+          <button class="ai-suggestion-btn" onclick="aiSuggest('Which clients are overdue for an in-person visit?')">Who\'s overdue for a visit?</button>
+          <button class="ai-suggestion-btn" onclick="aiSuggest('Which clients haven\'t had a phone visit completed yet?')">Incomplete phone visits</button>
+          <button class="ai-suggestion-btn" onclick="aiSuggest('Which clients are waiting on a Google review response?')">Awaiting Google reviews</button>
+          <button class="ai-suggestion-btn" onclick="aiSuggest('Give me a summary of all client statuses this month.')">Monthly status summary</button>
+          <button class="ai-suggestion-btn" onclick="aiSuggest('Which clients do I have the most notes for?')">Clients with most notes</button>
+        </div>
+        <div class="ai-input-bar">
+          <button class="ai-clear-conv-btn" id="ai-clear-conv-btn" onclick="clearAiConversation()" title="Clear conversation">↺</button>
+          <textarea id="ai-input" placeholder="Ask about your clients…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAiMessage();}" oninput="this.style.height='42px';this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
+          <button class="ai-send-btn" id="ai-send-btn" onclick="sendAiMessage()">Send</button>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
+
+<!-- AI Key Modal -->
+<div class="ai-key-modal" id="ai-key-modal">
+  <div class="ai-key-box">
+    <h3>🔑 Anthropic API Key</h3>
+    <p>Your key is stored only in this browser's localStorage — it never leaves your device. Get a key at console.anthropic.com.</p>
+    <input type="password" id="ai-key-input" placeholder="sk-ant-api03-..." autocomplete="off">
+    <div class="ai-key-actions">
+      <button class="ai-clear-btn" onclick="clearAiKey()">Remove key</button>
+      <button class="btn-cancel" onclick="closeAiKeyModal()" style="padding:8px 16px;border:1px solid var(--border);border-radius:var(--radius);background:none;font-family:var(--sans);font-size:13px;cursor:pointer;color:var(--text-muted);">Cancel</button>
+      <button class="btn-save" onclick="saveAiKey()">Save key</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="modal">
   <div class="modal">
     <div class="modal-header">
@@ -3075,6 +3365,7 @@ function switchTab(tab,el){
     clientsView.style.display = 'flex';
     mapView.style.display = 'none';
     calView.style.display = 'none';
+    document.getElementById('ai-view').style.display = 'none';
     tableWrap.style.display = 'none';
     cardsWrap.style.display = 'none';
     statsBar.style.display = 'none';
@@ -3090,6 +3381,7 @@ function switchTab(tab,el){
     clientsView.style.display = 'none';
     mapView.style.display = 'flex';
     calView.style.display = 'none';
+    document.getElementById('ai-view').style.display = 'none';
     tableWrap.style.display = 'none';
     cardsWrap.style.display = 'none';
     statsBar.style.display = 'none';
@@ -3102,6 +3394,7 @@ function switchTab(tab,el){
     clientsView.style.display = 'none';
     mapView.style.display = 'none';
     calView.style.display = 'flex';
+    document.getElementById('ai-view').style.display = 'none';
     tableWrap.style.display = 'none';
     cardsWrap.style.display = 'none';
     statsBar.style.display = 'none';
@@ -3110,10 +3403,24 @@ function switchTab(tab,el){
     if(btnAdd) btnAdd.style.display = 'none';
     if(topbar) topbar.innerHTML = 'Calendar <span>scheduled visits</span>';
     renderCalendar();
+  } else if(tab === 'ai'){
+    clientsView.style.display = 'none';
+    mapView.style.display = 'none';
+    calView.style.display = 'none';
+    tableWrap.style.display = 'none';
+    cardsWrap.style.display = 'none';
+    statsBar.style.display = 'none';
+    if(searchWrap) searchWrap.style.display = 'none';
+    if(filterSel) filterSel.style.display = 'none';
+    if(btnAdd) btnAdd.style.display = 'none';
+    document.getElementById('ai-view').style.display = 'flex';
+    if(topbar) topbar.innerHTML = 'Ask Claude <span>AI assistant</span>';
+    initAiView();
   } else {
     clientsView.style.display = 'none';
     mapView.style.display = 'none';
     calView.style.display = 'none';
+    document.getElementById('ai-view').style.display = 'none';
     statsBar.style.display = '';
     if(searchWrap) searchWrap.style.display = '';
     if(filterSel) filterSel.style.display = '';
@@ -4600,6 +4907,291 @@ async function pushToTeams(token) {
   }
 }
 
+
+// ── AI Assistant ──
+let aiMessages = []; // {role, content, id}
+let aiIsLoading = false;
+let aiHistoryLoaded = false;
+
+function getAiKey(){
+  return localStorage.getItem('cvt_ai_key') || '';
+}
+
+function openAiKeyModal(){
+  const modal = document.getElementById('ai-key-modal');
+  const inp = document.getElementById('ai-key-input');
+  inp.value = getAiKey();
+  modal.classList.add('open');
+  setTimeout(()=>inp.focus(),100);
+}
+
+function closeAiKeyModal(){
+  document.getElementById('ai-key-modal').classList.remove('open');
+}
+
+function saveAiKey(){
+  const val = document.getElementById('ai-key-input').value.trim();
+  if(!val){ alert('Please enter an API key.'); return; }
+  localStorage.setItem('cvt_ai_key', val);
+  closeAiKeyModal();
+  document.getElementById('ai-setup-banner').style.display = 'none';
+}
+
+function clearAiKey(){
+  if(!confirm('Remove your API key from this browser?')) return;
+  localStorage.removeItem('cvt_ai_key');
+  closeAiKeyModal();
+  document.getElementById('ai-setup-banner').style.display = '';
+}
+
+async function initAiView(){
+  const hasKey = !!getAiKey();
+  document.getElementById('ai-setup-banner').style.display = hasKey ? 'none' : '';
+  if(!aiHistoryLoaded){
+    aiHistoryLoaded = true;
+    await loadAiHistory();
+  }
+}
+
+// ── Supabase persistence for AI chat ──
+async function saveAiMessageToSupabase(msg){
+  try {
+    await fetch(SUPA_URL + '/rest/v1/ai_conversations', {
+      method: 'POST',
+      headers: { ...sbHeaders(), 'Prefer': 'resolution=merge-duplicates' },
+      body: JSON.stringify({ id: msg.id, role: msg.role, content: msg.content })
+    });
+  } catch(e){ console.warn('AI message save failed', e); }
+}
+
+async function pruneAiHistory(){
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 30);
+  const cutoffStr = cutoff.toISOString();
+  try {
+    await fetch(SUPA_URL + '/rest/v1/ai_conversations?created_at=lt.' + encodeURIComponent(cutoffStr), {
+      method: 'DELETE',
+      headers: sbHeaders()
+    });
+  } catch(e){ console.warn('AI history prune failed', e); }
+}
+
+async function loadAiHistory(){
+  const area = document.getElementById('ai-chat-area');
+  const welcome = document.getElementById('ai-welcome');
+  if(welcome) welcome.style.display = 'none';
+  area.innerHTML = '<div style="padding:32px;text-align:center;font-family:var(--mono);font-size:12px;color:var(--text-muted);">Loading conversation history…</div>';
+  await pruneAiHistory();
+  try {
+    const res = await fetch(SUPA_URL + '/rest/v1/ai_conversations?select=*&order=created_at.asc&limit=200', {
+      headers: sbHeaders()
+    });
+    const rows = await res.json();
+    if(rows && rows.length){
+      aiMessages = rows.map(r => ({ id: r.id, role: r.role, content: r.content }));
+    } else {
+      aiMessages = [];
+    }
+  } catch(e){
+    console.warn('Could not load AI history', e);
+    aiMessages = [];
+  }
+  aiRenderMessages();
+}
+
+async function clearAiConversation(){
+  if(!confirm('Clear all conversation history? This cannot be undone.')) return;
+  aiMessages = [];
+  // Delete all rows from Supabase
+  try {
+    await fetch(SUPA_URL + '/rest/v1/ai_conversations?id=neq.___none___', {
+      method: 'DELETE',
+      headers: sbHeaders()
+    });
+  } catch(e){ console.warn('AI history delete failed', e); }
+  aiRenderMessages();
+  document.getElementById('ai-suggestions').style.display = '';
+}
+
+function buildClientContext(){
+  const today = fmtISO(TODAY);
+  let ctx = `Today's date: ${today}\n`;
+  ctx += `Total clients: ${clients.length}\n\n`;
+  ctx += `=== CLIENT DATA ===\n`;
+
+  clients.forEach(c => {
+    ctx += `\nClient: ${c.name}\n`;
+    if(c.address) ctx += `  Address: ${c.address}, ${c.city||''}, CA\n`;
+
+    const ipSt = getIPStatus(c);
+    ctx += `  In-person status: ${ipSt.label}`;
+    if(c.lastVisit) ctx += ` (last visit: ${c.lastVisit})`;
+    if(c.lastVisit2) ctx += ` (2nd visit: ${c.lastVisit2})`;
+    ctx += '\n';
+
+    const ph = phoneData[c.name];
+    if(ph && (ph.ph1||ph.ph2)){
+      ctx += `  Phone visit 1 scheduled: ${ph.ph1||'—'}, completed: ${ph.ph1c||'—'}\n`;
+      ctx += `  Phone visit 2 scheduled: ${ph.ph2||'—'}, completed: ${ph.ph2c||'—'}\n`;
+    } else {
+      ctx += `  Phone visits: not scheduled\n`;
+    }
+
+    const tbr = tbrData[c.name];
+    if(tbr){
+      ctx += `  TBR: scheduled ${tbr.tbr1||'—'}, completed ${tbr.tbr1c||'—'}`;
+      if(tbr.twice==='Yes') ctx += `, 2nd: scheduled ${tbr.tbr2||'—'}, completed ${tbr.tbr2c||'—'}`;
+      ctx += '\n';
+    } else {
+      ctx += `  TBR: not scheduled\n`;
+    }
+
+    const rev = reviewData[c.name];
+    if(rev){
+      ctx += `  Google review: email sent ${rev.sent||'—'} to ${rev.person||'—'}`;
+      if(rev.reviewed) ctx += `, reviewed ${rev.reviewed} by ${rev.reviewer||'—'}`;
+      ctx += '\n';
+    }
+
+    const note = notesData[c.name];
+    if(note) ctx += `  Note: ${note}\n`;
+
+    const log = getVisitLog(c.name);
+    if(log.length){
+      ctx += `  Visit log (${log.length} entries):\n`;
+      log.slice().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5).forEach(v=>{
+        ctx += `    - ${v.type} on ${v.date}${v.note?' — '+v.note:''}\n`;
+      });
+    }
+
+    const profile = clientProfiles[c.name];
+    if(profile){
+      for(let i=1;i<=3;i++){
+        const ct = profile['contact'+i];
+        if(ct && ct.name) ctx += `  Contact ${i}: ${ct.name}${ct.position?' ('+ct.position+')':''}${ct.phone?' '+ct.phone:''}${ct.email?' '+ct.email:''}\n`;
+      }
+      if(profile.website) ctx += `  Website: ${profile.website}\n`;
+    }
+  });
+
+  return ctx;
+}
+
+function aiRenderMessages(){
+  const area = document.getElementById('ai-chat-area');
+  const welcome = document.getElementById('ai-welcome');
+
+  if(aiMessages.length === 0){
+    area.innerHTML = '';
+    if(welcome){
+      welcome.style.display = '';
+      area.appendChild(welcome);
+    }
+    document.getElementById('ai-suggestions').style.display = '';
+    return;
+  }
+
+  if(welcome) welcome.style.display = 'none';
+
+  let html = '';
+  aiMessages.forEach(m => {
+    const isUser = m.role === 'user';
+    const label = isUser ? 'You' : 'Claude';
+    const escaped = m.content.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    html += `<div class="ai-message ${isUser?'user':'assistant'}">
+      <div class="ai-message-label">${label}</div>
+      <div class="ai-bubble">${escaped}</div>
+    </div>`;
+  });
+
+  if(aiIsLoading){
+    html += `<div class="ai-message assistant ai-thinking">
+      <div class="ai-message-label">Claude</div>
+      <div class="ai-bubble">Thinking…</div>
+    </div>`;
+  }
+
+  area.innerHTML = html;
+  area.scrollTop = area.scrollHeight;
+}
+
+async function sendAiMessage(){
+  const inp = document.getElementById('ai-input');
+  const text = (inp.value||'').trim();
+  if(!text || aiIsLoading) return;
+
+  const key = getAiKey();
+  if(!key){
+    openAiKeyModal();
+    return;
+  }
+
+  inp.value = '';
+  inp.style.height = '42px';
+
+  const userMsg = { id: Date.now() + '_u_' + Math.random().toString(36).slice(2,6), role: 'user', content: text };
+  aiMessages.push(userMsg);
+  saveAiMessageToSupabase(userMsg);
+
+  aiIsLoading = true;
+  document.getElementById('ai-send-btn').disabled = true;
+  document.getElementById('ai-suggestions').style.display = 'none';
+  aiRenderMessages();
+
+  const systemPrompt = `You are a helpful assistant embedded in a client visit tracking app used by a business development representative at Valley Techlogic. You have access to live data for all ${clients.length} clients. Be concise, practical, and data-driven. Format lists clearly. When asked about specific clients, include relevant dates and statuses. Today is ${fmtISO(TODAY)}.
+
+Here is the full client data snapshot:
+${buildClientContext()}`;
+
+  // Send only role+content to API (no id field)
+  const apiMessages = aiMessages.map(m => ({ role: m.role, content: m.content }));
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1024,
+        system: systemPrompt,
+        messages: apiMessages
+      })
+    });
+
+    const data = await res.json();
+    let replyText;
+
+    if(data.error){
+      replyText = '⚠ Error: ' + (data.error.message || 'API error');
+    } else {
+      replyText = (data.content||[]).map(b=>b.text||'').join('');
+    }
+
+    const assistantMsg = { id: Date.now() + '_a_' + Math.random().toString(36).slice(2,6), role: 'assistant', content: replyText };
+    aiMessages.push(assistantMsg);
+    saveAiMessageToSupabase(assistantMsg);
+
+  } catch(e){
+    const errMsg = { id: Date.now() + '_e_' + Math.random().toString(36).slice(2,6), role: 'assistant', content: '⚠ Network error: ' + (e.message||e) };
+    aiMessages.push(errMsg);
+    saveAiMessageToSupabase(errMsg);
+  }
+
+  aiIsLoading = false;
+  document.getElementById('ai-send-btn').disabled = false;
+  aiRenderMessages();
+}
+
+function aiSuggest(text){
+  const inp = document.getElementById('ai-input');
+  inp.value = text;
+  sendAiMessage();
+}
 
 (function checkSession(){
   loadCustomColsLocal();
