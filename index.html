@@ -3822,6 +3822,8 @@ async function loadFromSupabase(){
     if(rp && rp.length > 0){
       rp.forEach(row => { reportData[row.name] = { lastSent: row.last_sent || null }; });
     }
+    // Always clear reportHistory before loading to prevent duplicates on auto-refresh
+    Object.keys(reportHistory).forEach(k => delete reportHistory[k]);
     if(rh && rh.length > 0){
       rh.forEach(row => {
         if(!reportHistory[row.client_name]) reportHistory[row.client_name] = [];
