@@ -245,8 +245,6 @@
   }
 
   .btn-add:hover { opacity: 0.85; }
-
-  /* Mobile overflow menu — hidden on desktop */
   .mobile-menu-btn { display: none; }
   .mobile-menu-dropdown { display: none; }
 
@@ -674,7 +672,10 @@
   .btn-save:hover { opacity: 0.85; }
 
   @media (max-width: 768px) {
-    /* sidebar becomes a horizontal tab bar at the bottom */
+    /* ── Tab bar height variable ── */
+    :root { --tab-bar-h: 60px; }
+
+    /* sidebar becomes a compact horizontal tab bar at the bottom */
     .shell { grid-template-columns: 1fr; }
     .sidebar {
       position: fixed;
@@ -682,8 +683,8 @@
       left: 0; right: 0;
       width: 100%;
       height: auto !important;
-      max-height: none;
       min-height: 0;
+      max-height: none;
       overflow: visible !important;
       flex-direction: row;
       align-items: stretch;
@@ -727,54 +728,60 @@
     .topbar-title { font-size: 14px; width: 100%; }
     .search { width: 100%; }
     .search-wrap { flex: 1; }
+    .filter-select { flex: 1; font-size: 15px; padding: 10px 12px; min-height: 44px; }
+    .btn-add { font-size: 14px; padding: 10px 16px; min-height: 44px; }
+    .search { font-size: 15px; padding: 10px 12px 10px 32px; min-height: 44px; }
+
     /* Mobile overflow menu */
     .mobile-menu-btn {
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 36px; height: 36px;
+      width: 40px; height: 40px;
       border: 1px solid var(--border);
       border-radius: var(--radius);
       background: none;
-      font-size: 20px;
+      font-size: 22px;
+      line-height: 1;
+      padding-bottom: 3px;
       cursor: pointer;
       color: var(--text-muted);
       flex-shrink: 0;
-      line-height: 1;
-      padding-bottom: 4px;
     }
     .mobile-menu-dropdown {
-      display: none;
       position: fixed;
-      top: auto;
       right: 12px;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-      z-index: 300;
-      min-width: 160px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      z-index: 500;
+      min-width: 170px;
       overflow: hidden;
+      display: none;
     }
     .mobile-menu-dropdown.open { display: block; }
     .mobile-menu-dropdown button {
       display: block;
       width: 100%;
-      padding: 12px 16px;
+      padding: 14px 18px;
       text-align: left;
       background: none;
       border: none;
       border-bottom: 1px solid var(--border);
       font-family: var(--sans);
-      font-size: 14px;
+      font-size: 15px;
       color: var(--text);
       cursor: pointer;
     }
     .mobile-menu-dropdown button:last-child { border-bottom: none; }
     .mobile-menu-dropdown button:active { background: var(--surface2); }
-    .filter-select { flex: 1; font-size: 15px; padding: 10px 12px; min-height: 44px; }
-    .btn-add { font-size: 14px; padding: 10px 16px; min-height: 44px; }
-    .search { font-size: 15px; padding: 10px 12px 10px 32px; min-height: 44px; }
+
+    /* Full-height tab views must stop above the tab bar */
+    .tab-sized-view {
+      height: calc(100vh - 57px - var(--tab-bar-h) - env(safe-area-inset-bottom, 0px)) !important;
+      min-height: 0 !important;
+    }
 
     /* stats */
     .stats-bar { flex-wrap: wrap; }
@@ -813,7 +820,7 @@
       position: static;
       flex-direction: column;
       padding: 12px 16px;
-      padding-bottom: max(80px, calc(env(safe-area-inset-bottom, 0px) + 70px));
+      padding-bottom: max(20px, env(safe-area-inset-bottom, 0px));
       gap: 8px;
       background: var(--surface);
       border-top: 1px solid var(--border);
@@ -1118,7 +1125,7 @@
   .route-added .add-icon { color: var(--success) !important; content: '✓'; }
 
   @media (max-width: 768px) {
-    #map-view { height: calc(100vh - 60px) !important; }
+    #map-view { height: calc(100vh - 60px - var(--tab-bar-h, 60px) - env(safe-area-inset-bottom, 0px)) !important; }
     #map-left-panel { display: none !important; }
     #map-body { flex-direction: column; flex-shrink: 0; }
     #map-iframe-wrap { height: 220px; flex: none; }
@@ -1879,7 +1886,7 @@
   #ai-send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
   #ai-send-btn:not(:disabled):hover { opacity: 0.85; }
   @media (max-width: 768px) {
-    #ai-view { height: calc(100vh - 160px) !important; }
+    #ai-view { height: calc(100vh - 160px - var(--tab-bar-h, 60px) - env(safe-area-inset-bottom, 0px)) !important; }
     #ai-chat-area { padding: 16px !important; }
   }
 
@@ -2115,12 +2122,11 @@
       </div>
       <select class="filter-select" onchange="render()" id="filter"></select>
       <button class="btn-add" onclick="openAdd()">+ Add client</button>
-      <!-- Mobile overflow menu -->
-      <button class="mobile-menu-btn" id="mobile-menu-btn" onclick="toggleMobileMenu()" title="More options">⋯</button>
+      <button class="mobile-menu-btn" id="mobile-menu-btn" onclick="toggleMobileMenu(event)">⋯</button>
       <div class="mobile-menu-dropdown" id="mobile-menu-dropdown">
         <button onclick="manualRefresh();closeMobileMenu()">↻ Refresh</button>
         <button onclick="exportCSV();closeMobileMenu()">⬇ Export CSV</button>
-        <button onclick="doLogout();closeMobileMenu()">Sign out</button>
+        <button onclick="doLogout()">Sign out</button>
       </div>
     </div>
 
@@ -2129,7 +2135,7 @@
       <div class="table-wrap" id="table-wrap"></div>
       <div class="cards-wrap" id="cards-wrap"></div>
       <!-- Map view -->
-      <div id="map-view" style="display:none; flex-direction:column; height:calc(100vh - 57px);">
+      <div id="map-view" style="display:none; flex-direction:column; height:calc(100vh - 57px);" class="tab-sized-view">
 
         <!-- Top toolbar -->
         <div style="padding:12px 24px; background:var(--surface); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; flex-wrap:wrap; flex-shrink:0;">
@@ -2260,7 +2266,7 @@
       </div>
 
       <!-- Calendar view -->
-      <div id="calendar-view" style="display:none; flex-direction:column; min-height:calc(100vh - 57px);">
+      <div id="calendar-view" style="display:none; flex-direction:column; min-height:calc(100vh - 57px);" class="tab-sized-view">
 
         <!-- Calendar toolbar -->
         <div style="padding:12px 24px; background:var(--surface); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:12px; flex-shrink:0;">
@@ -2280,7 +2286,7 @@
 
 
       <!-- AI Assistant view -->
-      <div id="ai-view" style="display:none;flex-direction:column;height:calc(100vh - 57px);background:var(--bg);">
+      <div id="ai-view" style="display:none;flex-direction:column;height:calc(100vh - 57px);background:var(--bg);" class="tab-sized-view">
         <div class="ai-setup-banner" id="ai-setup-banner" style="display:none;background:var(--warning-light);border-bottom:1px solid #e8d5a0;padding:10px 24px;align-items:center;gap:12px;flex-shrink:0;font-size:12px;font-family:var(--mono);color:var(--warning);">
           ⚠ No API key set. <a style="color:var(--warning);font-weight:600;cursor:pointer;text-decoration:underline;" onclick="openAiKeyModal()">Click here to add your Anthropic API key</a> to enable the assistant.
         </div>
@@ -3588,18 +3594,19 @@ function loadApptsFromStorage() {
   // No-op: now loading via loadFromSupabase
 }
 
-function toggleMobileMenu() {
+function toggleMobileMenu(e) {
+  e.stopPropagation();
   const dd = document.getElementById('mobile-menu-dropdown');
   const btn = document.getElementById('mobile-menu-btn');
-  if (!dd) return;
+  if (!dd || !btn) return;
   const isOpen = dd.classList.contains('open');
-  dd.classList.toggle('open', !isOpen);
-  // Position dropdown just above the topbar row it's in
   if (!isOpen) {
-    const btnRect = btn.getBoundingClientRect();
-    dd.style.top = (btnRect.bottom + 4) + 'px';
-    dd.style.right = (window.innerWidth - btnRect.right) + 'px';
+    const rect = btn.getBoundingClientRect();
+    dd.style.top = (rect.bottom + 6) + 'px';
+    dd.style.right = (window.innerWidth - rect.right) + 'px';
+    dd.style.left = 'auto';
   }
+  dd.classList.toggle('open', !isOpen);
 }
 
 function closeMobileMenu() {
@@ -3607,14 +3614,7 @@ function closeMobileMenu() {
   if (dd) dd.classList.remove('open');
 }
 
-// Close mobile menu on outside tap
-document.addEventListener('click', function(e) {
-  const dd = document.getElementById('mobile-menu-dropdown');
-  const btn = document.getElementById('mobile-menu-btn');
-  if (dd && btn && !dd.contains(e.target) && !btn.contains(e.target)) {
-    dd.classList.remove('open');
-  }
-});
+document.addEventListener('click', function() { closeMobileMenu(); });
 
 function exportCSV(){
   const esc = v => {
