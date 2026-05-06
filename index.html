@@ -246,6 +246,10 @@
 
   .btn-add:hover { opacity: 0.85; }
 
+  /* Mobile overflow menu — hidden on desktop */
+  .mobile-menu-btn { display: none; }
+  .mobile-menu-dropdown { display: none; }
+
   /* ── Stats bar ── */
   .stats-bar {
     display: flex;
@@ -675,9 +679,14 @@
     .sidebar {
       position: fixed;
       bottom: 0; top: auto;
-      width: 100%; height: auto;
+      left: 0; right: 0;
+      width: 100%;
+      height: auto !important;
+      max-height: none;
+      min-height: 0;
+      overflow: visible !important;
       flex-direction: row;
-      align-items: center;
+      align-items: stretch;
       z-index: 200;
       border-top: 1px solid rgba(255,255,255,0.1);
       padding: 0;
@@ -718,6 +727,51 @@
     .topbar-title { font-size: 14px; width: 100%; }
     .search { width: 100%; }
     .search-wrap { flex: 1; }
+    /* Mobile overflow menu */
+    .mobile-menu-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px; height: 36px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: none;
+      font-size: 20px;
+      cursor: pointer;
+      color: var(--text-muted);
+      flex-shrink: 0;
+      line-height: 1;
+      padding-bottom: 4px;
+    }
+    .mobile-menu-dropdown {
+      display: none;
+      position: fixed;
+      top: auto;
+      right: 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+      z-index: 300;
+      min-width: 160px;
+      overflow: hidden;
+    }
+    .mobile-menu-dropdown.open { display: block; }
+    .mobile-menu-dropdown button {
+      display: block;
+      width: 100%;
+      padding: 12px 16px;
+      text-align: left;
+      background: none;
+      border: none;
+      border-bottom: 1px solid var(--border);
+      font-family: var(--sans);
+      font-size: 14px;
+      color: var(--text);
+      cursor: pointer;
+    }
+    .mobile-menu-dropdown button:last-child { border-bottom: none; }
+    .mobile-menu-dropdown button:active { background: var(--surface2); }
     .filter-select { flex: 1; font-size: 15px; padding: 10px 12px; min-height: 44px; }
     .btn-add { font-size: 14px; padding: 10px 16px; min-height: 44px; }
     .search { font-size: 15px; padding: 10px 12px 10px 32px; min-height: 44px; }
@@ -2061,6 +2115,13 @@
       </div>
       <select class="filter-select" onchange="render()" id="filter"></select>
       <button class="btn-add" onclick="openAdd()">+ Add client</button>
+      <!-- Mobile overflow menu -->
+      <button class="mobile-menu-btn" id="mobile-menu-btn" onclick="toggleMobileMenu()" title="More options">⋯</button>
+      <div class="mobile-menu-dropdown" id="mobile-menu-dropdown">
+        <button onclick="manualRefresh();closeMobileMenu()">↻ Refresh</button>
+        <button onclick="exportCSV();closeMobileMenu()">⬇ Export CSV</button>
+        <button onclick="doLogout();closeMobileMenu()">Sign out</button>
+      </div>
     </div>
 
     <div class="stats-bar" id="stats-bar"></div>
@@ -3526,6 +3587,34 @@ function saveApptsToStorage() {
 function loadApptsFromStorage() {
   // No-op: now loading via loadFromSupabase
 }
+
+function toggleMobileMenu() {
+  const dd = document.getElementById('mobile-menu-dropdown');
+  const btn = document.getElementById('mobile-menu-btn');
+  if (!dd) return;
+  const isOpen = dd.classList.contains('open');
+  dd.classList.toggle('open', !isOpen);
+  // Position dropdown just above the topbar row it's in
+  if (!isOpen) {
+    const btnRect = btn.getBoundingClientRect();
+    dd.style.top = (btnRect.bottom + 4) + 'px';
+    dd.style.right = (window.innerWidth - btnRect.right) + 'px';
+  }
+}
+
+function closeMobileMenu() {
+  const dd = document.getElementById('mobile-menu-dropdown');
+  if (dd) dd.classList.remove('open');
+}
+
+// Close mobile menu on outside tap
+document.addEventListener('click', function(e) {
+  const dd = document.getElementById('mobile-menu-dropdown');
+  const btn = document.getElementById('mobile-menu-btn');
+  if (dd && btn && !dd.contains(e.target) && !btn.contains(e.target)) {
+    dd.classList.remove('open');
+  }
+});
 
 function exportCSV(){
   const esc = v => {
