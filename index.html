@@ -2704,12 +2704,26 @@ function getPhoneStatus(c){
 function getTBRStatus(c){
   const t=tbrData[c.name];
   if(!t||!t.tbr1)return{label:'Not scheduled',cls:'not-scheduled'};
+  const daysSince=date=>Math.round((new Date()-new Date(date))/(1000*60*60*24));
   if(t.twice==='Yes'){
-    if(t.tbr1c&&t.tbr2c)return{label:'Completed',cls:'completed'};
-    if(t.tbr1c){if(t.tbr2){const d=daysFrom(new Date(t.tbr2));return d<0?{label:'Visit 2 overdue',cls:'overdue'}:{label:'Visit 2 pending',cls:'pending'};}return{label:'Visit 1 done',cls:'on-track'};}
+    // Twice/year: overdue if >182 days (~6 months) since last completed visit
+    if(t.tbr1c&&t.tbr2c){
+      const lastDone=daysSince(t.tbr2c>t.tbr1c?t.tbr2c:t.tbr1c);
+      return lastDone>182?{label:'Overdue',cls:'overdue'}:{label:'Completed',cls:'completed'};
+    }
+    if(t.tbr1c){
+      const sinceV1=daysSince(t.tbr1c);
+      if(sinceV1>182)return{label:'Overdue',cls:'overdue'};
+      if(t.tbr2){const d=daysFrom(new Date(t.tbr2));return d<0?{label:'Visit 2 overdue',cls:'overdue'}:{label:'Visit 2 pending',cls:'pending'};}
+      return{label:'Visit 1 done',cls:'on-track'};
+    }
     const d=daysFrom(new Date(t.tbr1));return d<0?{label:'Visit 1 overdue',cls:'overdue'}:{label:'Visit 1 pending',cls:'pending'};
   }
-  if(t.tbr1c)return{label:'Completed',cls:'completed'};
+  // Once/year: overdue if >365 days since last completed TBR
+  if(t.tbr1c){
+    const sinceV1=daysSince(t.tbr1c);
+    return sinceV1>365?{label:'Overdue',cls:'overdue'}:{label:'Completed',cls:'completed'};
+  }
   const d=daysFrom(new Date(t.tbr1));return d<0?{label:'Overdue',cls:'overdue'}:{label:'Pending',cls:'pending'};
 }
 function getReviewStatus(c){
