@@ -3593,7 +3593,9 @@ function toggleMobileMenu(e) {
   const isOpen = dd.classList.contains('open');
   if (!isOpen) {
     const rect = btn.getBoundingClientRect();
-    dd.style.top = (rect.bottom + 6) + 'px';
+    // Open upward from the button
+    dd.style.bottom = (window.innerHeight - rect.top + 6) + 'px';
+    dd.style.top = 'auto';
     dd.style.right = (window.innerWidth - rect.right) + 'px';
     dd.style.left = 'auto';
     dd.style.display = 'block';
