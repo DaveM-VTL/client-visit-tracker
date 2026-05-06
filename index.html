@@ -2709,11 +2709,14 @@ function getTBRStatus(c){
     // Twice/year: overdue if >182 days (~6 months) since last completed visit
     if(t.tbr1c&&t.tbr2c){
       const lastDone=daysSince(t.tbr2c>t.tbr1c?t.tbr2c:t.tbr1c);
-      return lastDone>182?{label:'Overdue',cls:'overdue'}:{label:'Completed',cls:'completed'};
+      if(lastDone>182)return{label:'Overdue',cls:'overdue'};
+      if(lastDone>122)return{label:'Schedule Soon!',cls:'due-soon'};
+      return{label:'Completed',cls:'completed'};
     }
     if(t.tbr1c){
       const sinceV1=daysSince(t.tbr1c);
       if(sinceV1>182)return{label:'Overdue',cls:'overdue'};
+      if(sinceV1>122)return{label:'Schedule Soon!',cls:'due-soon'};
       if(t.tbr2){const d=daysFrom(new Date(t.tbr2));return d<0?{label:'Visit 2 overdue',cls:'overdue'}:{label:'Visit 2 pending',cls:'pending'};}
       return{label:'Visit 1 done',cls:'on-track'};
     }
@@ -2722,7 +2725,9 @@ function getTBRStatus(c){
   // Once/year: overdue if >365 days since last completed TBR
   if(t.tbr1c){
     const sinceV1=daysSince(t.tbr1c);
-    return sinceV1>365?{label:'Overdue',cls:'overdue'}:{label:'Completed',cls:'completed'};
+    if(sinceV1>365)return{label:'Overdue',cls:'overdue'};
+    if(sinceV1>305)return{label:'Schedule Soon!',cls:'due-soon'};
+    return{label:'Completed',cls:'completed'};
   }
   const d=daysFrom(new Date(t.tbr1));return d<0?{label:'Overdue',cls:'overdue'}:{label:'Pending',cls:'pending'};
 }
@@ -2744,7 +2749,7 @@ function getReportStatus(c){
 const filterOptions={
   inperson:['all','overdue','due-soon','on-track','not-visited'],
   phone:['all','overdue','pending','completed','not-scheduled'],
-  tbr:['all','overdue','pending','completed','not-scheduled'],
+  tbr:['all','overdue','due-soon','pending','completed','not-scheduled'],
   reviews:['all','reviewed','sent','not-sent'],
   reports:['all','overdue','due-soon','on-track','not-sent'],
 };
@@ -2761,7 +2766,7 @@ function updateSidebarCounts(){
   document.getElementById('cnt-cli').textContent = clients.length;
   const ipOverdue=clients.filter(c=>getIPStatus(c).cls==='overdue').length;
   const phOverdue=clients.filter(c=>getPhoneStatus(c).cls==='overdue').length;
-  const tbrPending=clients.filter(c=>['overdue','pending'].includes(getTBRStatus(c).cls)).length;
+  const tbrPending=clients.filter(c=>['overdue','due-soon','pending'].includes(getTBRStatus(c).cls)).length;
   const revPending=clients.filter(c=>getReviewStatus(c).cls==='sent').length;
   const repDue=clients.filter(c=>['overdue','due-soon','not-sent'].includes(getReportStatus(c).cls)).length;
   document.getElementById('cnt-ip').textContent=ipOverdue>0?ipOverdue+'↑':clients.length;
