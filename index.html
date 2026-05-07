@@ -4258,7 +4258,7 @@ const AREA_COLORS = [
   '#c9607a','#4faa9e','#6e8fcb','#c2855a','#b56db8'
 ];
 let areaList = [];
-let areaOrder = []; // session-only display order for areas list
+let areaOrder = []; // display order for areas list — persisted to Supabase + localStorage
 const clientAreaData = {};
 
 function getAreaColor(areaName) {
@@ -4420,6 +4420,7 @@ function renderAreasGrouped() {
       areaOrder.splice(fromIdx, 1);
       areaOrder.splice(toIdx, 0, draggedName);
       renderAreasGrouped();
+      saveAreasToSupabase();
     });
 
     section.appendChild(header);
@@ -4504,13 +4505,16 @@ async function saveAreasToSupabase() {
   try {
     await sbUpsert('app_settings', { key: 'areas', value: JSON.stringify(areaList) });
     await sbUpsert('app_settings', { key: 'client_areas', value: JSON.stringify(clientAreaData) });
+    await sbUpsert('app_settings', { key: 'area_order', value: JSON.stringify(areaOrder) });
     localStorage.setItem('cvt_areas', JSON.stringify(areaList));
     localStorage.setItem('cvt_client_areas', JSON.stringify(clientAreaData));
+    localStorage.setItem('cvt_area_order', JSON.stringify(areaOrder));
   } catch(e) {
     console.warn('Supabase area save failed', e);
     try {
       localStorage.setItem('cvt_areas', JSON.stringify(areaList));
       localStorage.setItem('cvt_client_areas', JSON.stringify(clientAreaData));
+      localStorage.setItem('cvt_area_order', JSON.stringify(areaOrder));
     } catch(e2) {}
   }
 }
@@ -4522,16 +4526,20 @@ async function loadAreasFromSupabase() {
     if (rows && rows.length) {
       const areasRow = rows.find(r => r.key === 'areas');
       const caRow = rows.find(r => r.key === 'client_areas');
+      const aoRow = rows.find(r => r.key === 'area_order');
       if (areasRow && areasRow.value) { try { areaList = JSON.parse(areasRow.value); loadedFromCloud = true; } catch(e) {} }
       if (caRow && caRow.value) { try { Object.assign(clientAreaData, JSON.parse(caRow.value)); } catch(e) {} }
+      if (aoRow && aoRow.value) { try { areaOrder = JSON.parse(aoRow.value); } catch(e) {} }
     }
   } catch(e) { console.warn('Could not load areas from Supabase', e); }
   if (!loadedFromCloud) {
     try {
       const sa = localStorage.getItem('cvt_areas');
       const sca = localStorage.getItem('cvt_client_areas');
+      const sao = localStorage.getItem('cvt_area_order');
       if (sa) areaList = JSON.parse(sa);
       if (sca) Object.assign(clientAreaData, JSON.parse(sca));
+      if (sao) areaOrder = JSON.parse(sao);
     } catch(e) {}
   }
   populateAreaSelect();
