@@ -2790,13 +2790,34 @@ function getReviewStatus(c){
   if(r.reviewed)return{label:'Reviewed',cls:'reviewed'};
   return{label:'Awaiting review',cls:'sent'};
 }
+// Unique soft colors for each calendar month (Jan–Dec)
+const MONTH_BADGE_COLORS = [
+  {bg:'#e8f0ff',color:'#2d4fa0'}, // Jan — indigo
+  {bg:'#fde8f5',color:'#92276e'}, // Feb — pink
+  {bg:'#fff0e0',color:'#8a4a00'}, // Mar — amber
+  {bg:'#e6f9f0',color:'#1a6640'}, // Apr — green
+  {bg:'#e0f7fa',color:'#00636e'}, // May — teal
+  {bg:'#fff8dc',color:'#7a6000'}, // Jun — gold
+  {bg:'#ffe8e8',color:'#8b1a1a'}, // Jul — coral (reserved, won't show as on-track)
+  {bg:'#f0e8ff',color:'#5a2da0'}, // Aug — violet
+  {bg:'#e8fff0',color:'#1a6640'}, // Sep — mint
+  {bg:'#fff3e0',color:'#7a4200'}, // Oct — orange
+  {bg:'#e8f4ff',color:'#1a4a80'}, // Nov — steel blue
+  {bg:'#f5e8ff',color:'#6a1a8a'}, // Dec — purple
+];
 function getReportStatus(c){
   const r=reportData[c.name];
-  if(!r||!r.lastSent) return {label:'Never sent',cls:'not-sent'};
+  if(!r||!r.lastSent) return {label:'Never sent',cls:'not-sent',style:null};
   const d = daysFrom(r.lastSent);
-  if(d <= -28) return {label:'Overdue',cls:'overdue'};
-  if(d <= -14) return {label:'Due soon',cls:'due-soon'};
-  return {label:'Sent this month',cls:'on-track'};
+  if(d <= -30) return {label:'Overdue',cls:'overdue',style:null};
+  // Show the month+year of when it was last sent
+  const dt = parseDate(r.lastSent);
+  const monthNames=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const monthIdx = dt ? dt.getMonth() : 0;
+  const yearStr = dt ? dt.getFullYear() : '';
+  const label = dt ? monthNames[monthIdx]+' '+yearStr : 'Sent';
+  const mc = MONTH_BADGE_COLORS[monthIdx];
+  return {label, cls:'on-track', style:`background:${mc.bg};color:${mc.color};border:none;`};
 }
 
 const filterOptions={
@@ -3062,15 +3083,17 @@ function renderCards(rows){
     } else {
       const r = reportData[c.name]||{};
       const st = getReportStatus(c);
+      const stBadge = st.style ? `<span class="badge" style="${st.style}">${st.label}</span>` : badge(st.cls, st.label);
       summary = `<div class="card-due">Last sent: ${fmt(r.lastSent)||'—'}</div>`;
       details = `
         <div class="card-detail-row"><span class="card-detail-label">Last report sent</span><span class="card-detail-val">${fmt(r.lastSent)}</span></div>`;
-      return cardHTML(c, color, st, summary, details, note, noteEsc);
+      return cardHTML(c, color, st, summary, details, note, noteEsc, stBadge);
     }
   }).join('');
 }
 
-function cardHTML(c, color, st, summary, details, note, noteEsc){
+function cardHTML(c, color, st, summary, details, note, noteEsc, badgeHtml){
+  const badgeEl = badgeHtml || badge(st.cls, st.label);
   return `<div class="client-card" style="--client-color:${color}" id="card-${c.id}">
     <div class="card-main" onclick="toggleCard(${c.id})">
       <div class="card-left">
@@ -3078,7 +3101,7 @@ function cardHTML(c, color, st, summary, details, note, noteEsc){
         ${summary}
       </div>
       <div class="card-right">
-        ${badge(st.cls, st.label)}
+        ${badgeEl}
         <span class="card-chevron">▼</span>
       </div>
     </div>
@@ -3217,7 +3240,8 @@ function render(){
       const days=r.lastSent?Math.abs(daysFrom(r.lastSent))+'d ago':'—';
       const histCount = (reportHistory[c.name]||[]).length;
       const histBadge = histCount ? `<span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;background:var(--accent);color:#fff;border-radius:50%;font-size:9px;font-family:var(--mono);font-weight:600;margin-left:4px;">${histCount}</span>` : '';
-      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(r.lastSent)}</td><td class="td-days">${days}</td><td>${badge(st.cls,st.label)}</td>${renderCustomCells('reports',c.name)}<td style="white-space:nowrap;"><button class="edit-btn" style="background:var(--accent);color:#fff;border-color:var(--accent);" onclick="logReportSent('${c.name.replace(/'/g,"\\'")}')">+ Log sent</button></td><td class="td-edit" style="white-space:nowrap;"><button class="edit-btn" onclick="openReportHistory('${c.name.replace(/'/g,"\\'")}')">history${histBadge}</button> <button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
+      const stBadge = st.style ? `<span class="badge" style="${st.style}">${st.label}</span>` : badge(st.cls, st.label);
+      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(r.lastSent)}</td><td class="td-days">${days}</td><td>${stBadge}</td>${renderCustomCells('reports',c.name)}<td style="white-space:nowrap;"><button class="edit-btn" style="background:var(--accent);color:#fff;border-color:var(--accent);" onclick="logReportSent('${c.name.replace(/'/g,"\\'")}')">+ Log sent</button></td><td class="td-edit" style="white-space:nowrap;"><button class="edit-btn" onclick="openReportHistory('${c.name.replace(/'/g,"\\'")}')">history${histBadge}</button> <button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
     });
     html+='</tbody></table>';
   }
