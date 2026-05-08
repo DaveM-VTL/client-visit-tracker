@@ -2106,7 +2106,7 @@
       </button>
       <button class="nav-item" onclick="switchTab('reports',this)">
         <span class="nav-dot dot-rep"></span>
-        Reports
+        The Valley View
         <span class="nav-count" id="cnt-rep">—</span>
       </button>
       <button class="nav-item" onclick="switchTab('map',this)">
@@ -2346,12 +2346,12 @@
 <div class="rep-hist-overlay" id="rep-hist-overlay" onclick="if(event.target===this)closeReportHistory()">
   <div class="rep-hist-panel">
     <div class="rep-hist-header">
-      <h3 id="rep-hist-title">Report History</h3>
+      <h3 id="rep-hist-title">Valley View History</h3>
       <button class="rep-hist-close" onclick="closeReportHistory()">✕</button>
     </div>
     <div class="rep-hist-body" id="rep-hist-body"></div>
     <div class="rep-hist-footer">
-      <button class="rep-hist-log-btn" onclick="logReportSentFromPanel()">+ Log report sent today</button>
+      <button class="rep-hist-log-btn" onclick="logReportSentFromPanel()">+ Log Valley View sent today</button>
     </div>
   </div>
 </div>
@@ -2807,7 +2807,7 @@ const filterOptions={
   reports:['all','overdue','due-soon','on-track','not-sent'],
 };
 const filterLabels={all:'All statuses',overdue:'Overdue','due-soon':'Due soon','on-track':'On track','not-visited':'Not yet visited',pending:'Pending',completed:'Completed','not-scheduled':'Not scheduled',reviewed:'Reviewed',sent:'Awaiting review','not-sent':'Not sent'};
-const tabTitles={clients:'Clients',inperson:'In-person visits',phone:'Phone visits',tbr:'TBRs',reviews:'Google reviews',reports:'Reports',map:'Map',calendar:'Calendar'};
+const tabTitles={clients:'Clients',inperson:'In-person visits',phone:'Phone visits',tbr:'TBRs',reviews:'Google reviews',reports:'The Valley View',map:'Map',calendar:'Calendar'};
 
 function updateFilterOptions(){
   const sel=document.getElementById('filter');
@@ -5331,7 +5331,7 @@ let repHistClient = null;
 
 function openReportHistory(name){
   repHistClient = name;
-  document.getElementById('rep-hist-title').textContent = name + ' — Report History';
+  document.getElementById('rep-hist-title').textContent = name + ' — Valley View History';
   renderRepHist();
   document.getElementById('rep-hist-overlay').classList.add('open');
 }
@@ -5348,16 +5348,57 @@ function renderRepHist(){
     body.innerHTML = '<div class="rep-hist-empty">No reports logged yet.<br>Use the button below to log one.</div>';
     return;
   }
-  body.innerHTML = entries.map(e => {
-    const dAgo = Math.abs(daysFrom(e.sent_date));
-    const agoStr = dAgo === 0 ? 'today' : dAgo + 'd ago';
-    return `<div class="rep-hist-item">
-      <div class="rep-hist-dot"></div>
-      <div class="rep-hist-date">${fmt(e.sent_date)}</div>
-      <div class="rep-hist-ago">${agoStr}</div>
-      <button class="rep-hist-del" onclick="deleteRepHistEntry('${e.id}')" title="Remove">✕</button>
-    </div>`;
-  }).join('');
+
+  // Group entries by month (YYYY-MM)
+  const groups = {};
+  entries.forEach(e => {
+    const monthKey = e.sent_date ? e.sent_date.slice(0, 7) : 'unknown';
+    if(!groups[monthKey]) groups[monthKey] = [];
+    groups[monthKey].push(e);
+  });
+
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  function fmtMonthKey(key){
+    if(key === 'unknown') return 'Unknown';
+    const [y, m] = key.split('-');
+    return (monthNames[parseInt(m,10)-1] || m) + ' ' + y;
+  }
+
+  const sortedKeys = Object.keys(groups).sort((a,b) => b.localeCompare(a));
+  const totalSent = entries.length;
+
+  let html = `<div style="padding:12px 16px 8px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+    <span style="font-family:var(--mono);font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">Total sent:</span>
+    <span style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--accent);">${totalSent}</span>
+    <span style="font-family:var(--mono);font-size:10px;color:var(--text-muted);margin-left:8px;">across ${sortedKeys.length} month${sortedKeys.length!==1?'s':''}</span>
+  </div>`;
+
+  sortedKeys.forEach((key, idx) => {
+    const monthEntries = groups[key];
+    const label = fmtMonthKey(key);
+    const isFirst = idx === 0;
+    html += `<details${isFirst?' open':''} style="border-bottom:1px solid var(--border);">
+      <summary style="display:flex;align-items:center;gap:10px;padding:11px 16px;cursor:pointer;list-style:none;user-select:none;background:var(--surface2);">
+        <span style="font-family:var(--mono);font-size:11px;font-weight:600;color:var(--text);flex:1;">${label}</span>
+        <span style="font-family:var(--mono);font-size:10px;background:var(--accent);color:#fff;border-radius:10px;padding:1px 8px;">${monthEntries.length}</span>
+        <span style="font-family:var(--mono);font-size:10px;color:var(--text-muted);">▾</span>
+      </summary>
+      <div style="padding:4px 0;">
+        ${monthEntries.map(e => {
+          const dAgo = Math.abs(daysFrom(e.sent_date));
+          const agoStr = dAgo === 0 ? 'today' : dAgo + 'd ago';
+          return `<div class="rep-hist-item">
+            <div class="rep-hist-dot"></div>
+            <div class="rep-hist-date">${fmt(e.sent_date)}</div>
+            <div class="rep-hist-ago">${agoStr}</div>
+            <button class="rep-hist-del" onclick="deleteRepHistEntry('${e.id}')" title="Remove">✕</button>
+          </div>`;
+        }).join('')}
+      </div>
+    </details>`;
+  });
+
+  body.innerHTML = html;
 }
 
 async function logReportSent(name){
