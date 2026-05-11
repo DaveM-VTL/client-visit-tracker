@@ -140,6 +140,7 @@
   .dot-map { background: #e07b54; }
   .dot-cal { background: #9b72cf; }
   .dot-ai  { background: #e8a045; }
+  .dot-todo { background: #5ca8e0; }
 
   .nav-count {
     margin-left: auto;
@@ -2027,6 +2028,193 @@
   @media (max-width: 768px) {
     .rep-hist-panel { width: 100vw; }
   }
+
+  /* ── To-Do List ── */
+  #todo-view {
+    display: none;
+    flex-direction: column;
+    min-height: calc(100vh - 57px);
+    background: var(--bg);
+  }
+  .todo-header {
+    padding: 20px 32px 16px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  .todo-date-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    flex: 1;
+    letter-spacing: 0.04em;
+  }
+  .todo-progress {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .todo-clear-btn {
+    padding: 5px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: none;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.04em;
+  }
+  .todo-clear-btn:hover { border-color: var(--danger); color: var(--danger); background: var(--danger-light); }
+  .todo-input-wrap {
+    padding: 16px 32px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  .todo-input {
+    flex: 1;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: var(--sans);
+    font-size: 14px;
+    background: var(--bg);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .todo-input:focus { border-color: var(--accent); }
+  .todo-add-btn {
+    padding: 10px 20px;
+    background: var(--text);
+    color: var(--bg);
+    border: none;
+    border-radius: var(--radius);
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    white-space: nowrap;
+  }
+  .todo-add-btn:hover { opacity: 0.85; }
+  .todo-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 32px 32px;
+  }
+  .todo-empty {
+    text-align: center;
+    color: var(--text-muted);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 60px 0 20px;
+    letter-spacing: 0.04em;
+  }
+  .todo-section-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 16px 0 8px;
+  }
+  .todo-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 6px;
+    transition: all 0.15s;
+    cursor: default;
+  }
+  .todo-item:hover { border-color: #c8c2b4; }
+  .todo-item.done { opacity: 0.55; }
+  .todo-checkbox {
+    width: 18px; height: 18px;
+    border: 1.5px solid var(--border);
+    border-radius: 4px;
+    flex-shrink: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    margin-top: 1px;
+    background: var(--bg);
+  }
+  .todo-checkbox:hover { border-color: var(--accent); }
+  .todo-item.done .todo-checkbox {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  .todo-checkbox-check {
+    display: none;
+    color: #fff;
+    font-size: 11px;
+    line-height: 1;
+    font-weight: 700;
+  }
+  .todo-item.done .todo-checkbox-check { display: block; }
+  .todo-text {
+    flex: 1;
+    font-size: 14px;
+    line-height: 1.45;
+    padding-top: 1px;
+    outline: none;
+    border: none;
+    background: none;
+    font-family: var(--sans);
+    color: var(--text);
+    resize: none;
+    cursor: text;
+    min-height: 22px;
+    width: 0;
+  }
+  .todo-item.done .todo-text { text-decoration: line-through; color: var(--text-muted); }
+  .todo-delete-btn {
+    background: none;
+    border: none;
+    color: var(--border);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0 2px;
+    line-height: 1;
+    transition: color 0.15s;
+    margin-top: 2px;
+    flex-shrink: 0;
+  }
+  .todo-delete-btn:hover { color: var(--danger); }
+  .todo-footer {
+    padding: 10px 32px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  @media (max-width: 768px) {
+    .todo-header { padding: 14px 16px 10px; flex-wrap: wrap; gap: 8px; }
+    .todo-input-wrap { padding: 12px 16px; }
+    .todo-list { padding: 10px 16px 100px; }
+    .todo-footer { padding: 10px 16px; }
+    .todo-input { font-size: 16px; }
+  }
 </style>
 <script>
 // Load MSAL dynamically
@@ -2121,6 +2309,11 @@
       <button class="nav-item" onclick="switchTab('ai',this)">
         <span class="nav-dot dot-ai"></span>
         Ask Claude
+      </button>
+      <div class="nav-label">Tools</div>
+      <button class="nav-item" onclick="switchTab('todo',this)">
+        <span class="nav-dot dot-todo"></span>
+        Daily To-Do
       </button>
     </nav>
     <div class="sidebar-footer" style="display:flex;flex-direction:column;gap:10px;align-items:flex-start;">
@@ -2321,6 +2514,22 @@
           <textarea id="ai-input" placeholder="Ask about your clients…" style="flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius);font-family:var(--sans);font-size:13px;background:var(--bg);color:var(--text);resize:none;height:42px;max-height:120px;line-height:1.5;outline:none;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAiMessage();}" oninput="this.style.height='42px';this.style.height=Math.min(this.scrollHeight,120)+'px';this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'"></textarea>
           <button class="ai-send-btn" id="ai-send-btn" onclick="sendAiMessage()" style="padding:10px 18px;background:var(--text);color:var(--bg);border:none;border-radius:var(--radius);font-family:var(--sans);font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;height:42px;transition:opacity 0.15s;">Send</button>
         </div>
+      </div>
+
+      <!-- To-Do view -->
+      <div id="todo-view">
+        <div class="todo-header">
+          <div class="todo-date-label" id="todo-date-label"></div>
+          <span class="todo-progress" id="todo-progress"></span>
+          <button class="todo-clear-btn" onclick="todoClearCompleted()">Clear done</button>
+        </div>
+        <div class="todo-input-wrap">
+          <input class="todo-input" id="todo-input" type="text" placeholder="Add a task for today…"
+            onkeydown="if(event.key==='Enter')todoAdd()">
+          <button class="todo-add-btn" onclick="todoAdd()">Add</button>
+        </div>
+        <div class="todo-list" id="todo-list"></div>
+        <div class="todo-footer" id="todo-footer"></div>
       </div>
 
     </div>
@@ -3403,6 +3612,7 @@ function switchTab(tab,el){
     mapView.style.display = 'none';
     calView.style.display = 'none';
     document.getElementById('ai-view').style.display = 'none';
+    document.getElementById('todo-view').style.display = 'none';
     tableWrap.style.display = 'none';
     cardsWrap.style.display = 'none';
     statsBar.style.display = 'none';
@@ -3419,6 +3629,7 @@ function switchTab(tab,el){
     mapView.style.display = 'flex';
     calView.style.display = 'none';
     document.getElementById('ai-view').style.display = 'none';
+    document.getElementById('todo-view').style.display = 'none';
     tableWrap.style.display = 'none';
     cardsWrap.style.display = 'none';
     statsBar.style.display = 'none';
@@ -3432,6 +3643,7 @@ function switchTab(tab,el){
     mapView.style.display = 'none';
     calView.style.display = 'flex';
     document.getElementById('ai-view').style.display = 'none';
+    document.getElementById('todo-view').style.display = 'none';
     tableWrap.style.display = 'none';
     cardsWrap.style.display = 'none';
     statsBar.style.display = 'none';
@@ -3445,6 +3657,7 @@ function switchTab(tab,el){
     mapView.style.display = 'none';
     calView.style.display = 'none';
     document.getElementById('ai-view').style.display = 'flex';
+    document.getElementById('todo-view').style.display = 'none';
     tableWrap.style.display = 'none';
     cardsWrap.style.display = 'none';
     statsBar.style.display = 'none';
@@ -3453,11 +3666,26 @@ function switchTab(tab,el){
     if(btnAdd) btnAdd.style.display = 'none';
     if(topbar) topbar.innerHTML = 'Ask Claude <span>AI assistant</span>';
     initAiView();
+  } else if(tab === 'todo'){
+    clientsView.style.display = 'none';
+    mapView.style.display = 'none';
+    calView.style.display = 'none';
+    document.getElementById('ai-view').style.display = 'none';
+    document.getElementById('todo-view').style.display = 'flex';
+    tableWrap.style.display = 'none';
+    cardsWrap.style.display = 'none';
+    statsBar.style.display = 'none';
+    if(searchWrap) searchWrap.style.display = 'none';
+    if(filterSel) filterSel.style.display = 'none';
+    if(btnAdd) btnAdd.style.display = 'none';
+    if(topbar) topbar.innerHTML = 'Daily To-Do <span>today\'s tasks</span>';
+    todoInit();
   } else {
     clientsView.style.display = 'none';
     mapView.style.display = 'none';
     calView.style.display = 'none';
     document.getElementById('ai-view').style.display = 'none';
+    document.getElementById('todo-view').style.display = 'none';
     statsBar.style.display = '';
     if(searchWrap) searchWrap.style.display = '';
     if(filterSel) filterSel.style.display = '';
@@ -5506,6 +5734,151 @@ async function deleteRepHistEntry(id){
   }
   renderRepHist();
   render();
+}
+
+// ── Daily To-Do ──
+let todoItems = []; // [{id, text, done, createdAt}]
+let todoDate = ''; // YYYY-MM-DD of last loaded list
+
+const TODO_KEY = 'daily_todo';
+
+function fmtISOlocal(d) {
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+async function todoInit() {
+  const todayStr = fmtISOlocal(new Date());
+  const dl = document.getElementById('todo-date-label');
+  if(dl) dl.textContent = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+
+  try {
+    const rows = await sbGet('app_settings').catch(() => null);
+    if(rows) {
+      const entry = rows.find(r => r.key === TODO_KEY);
+      if(entry) {
+        const saved = JSON.parse(entry.value || '{}');
+        if(saved.date === todayStr) {
+          todoItems = saved.items || [];
+          todoDate = saved.date;
+        } else {
+          todoItems = [];
+          todoDate = todayStr;
+        }
+      } else {
+        todoItems = [];
+        todoDate = todayStr;
+      }
+    }
+  } catch(e) {
+    try {
+      const local = localStorage.getItem('cvt_todo');
+      if(local) {
+        const saved = JSON.parse(local);
+        if(saved.date === todayStr) { todoItems = saved.items || []; todoDate = saved.date; }
+        else { todoItems = []; todoDate = todayStr; }
+      }
+    } catch(e2) {}
+  }
+
+  todoRender();
+  const inp = document.getElementById('todo-input');
+  if(inp) inp.focus();
+}
+
+async function todoSave() {
+  const todayStr = fmtISOlocal(new Date());
+  const payload = { date: todayStr, items: todoItems };
+  try { localStorage.setItem('cvt_todo', JSON.stringify(payload)); } catch(e) {}
+  try { await sbUpsert('app_settings', { key: TODO_KEY, value: JSON.stringify(payload) }); } catch(e) {}
+  todoRender();
+}
+
+function todoAdd() {
+  const inp = document.getElementById('todo-input');
+  const text = (inp ? inp.value : '').trim();
+  if(!text) return;
+  todoItems.push({ id: Date.now(), text, done: false, createdAt: new Date().toISOString() });
+  if(inp) inp.value = '';
+  todoSave();
+}
+
+function todoToggle(id) {
+  const item = todoItems.find(t => t.id === id);
+  if(item) item.done = !item.done;
+  todoSave();
+}
+
+function todoDelete(id) {
+  todoItems = todoItems.filter(t => t.id !== id);
+  todoSave();
+}
+
+function todoUpdateText(id, text) {
+  const item = todoItems.find(t => t.id === id);
+  if(item) { item.text = text; todoSave(); }
+}
+
+function todoClearCompleted() {
+  todoItems = todoItems.filter(t => !t.done);
+  todoSave();
+}
+
+function todoRender() {
+  const list = document.getElementById('todo-list');
+  const prog = document.getElementById('todo-progress');
+  const footer = document.getElementById('todo-footer');
+  if(!list) return;
+
+  const total = todoItems.length;
+  const done = todoItems.filter(t => t.done).length;
+  if(prog) prog.textContent = total ? done + '/' + total + ' done' : '';
+
+  const pending = todoItems.filter(t => !t.done);
+  const completed = todoItems.filter(t => t.done);
+
+  if(!total) {
+    list.innerHTML = '<div class="todo-empty">No tasks yet — add something above</div>';
+    if(footer) footer.textContent = 'Tasks reset each day at midnight';
+    return;
+  }
+
+  let html = '';
+  if(pending.length) {
+    html += '<div class="todo-section-label">To do</div>';
+    pending.forEach(item => { html += todoItemHTML(item); });
+  }
+  if(completed.length) {
+    html += '<div class="todo-section-label">Completed</div>';
+    completed.forEach(item => { html += todoItemHTML(item); });
+  }
+
+  list.innerHTML = html;
+  if(footer) footer.textContent = 'Tasks reset each day — ' + (total - done) + ' remaining';
+
+  list.querySelectorAll('.todo-text').forEach(el => {
+    el.addEventListener('blur', function() {
+      const id = parseInt(this.dataset.id);
+      const newText = this.value.trim();
+      if(newText) todoUpdateText(id, newText);
+      else todoDelete(id);
+    });
+    el.addEventListener('keydown', function(e) {
+      if(e.key === 'Enter') { e.preventDefault(); this.blur(); }
+    });
+  });
+}
+
+function todoItemHTML(item) {
+  const esc = (item.text||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  return `<div class="todo-item${item.done?' done':''}" id="todo-item-${item.id}">
+    <div class="todo-checkbox" onclick="todoToggle(${item.id})">
+      <span class="todo-checkbox-check">✓</span>
+    </div>
+    <textarea class="todo-text" data-id="${item.id}" rows="1"
+      oninput="this.style.height='22px';this.style.height=this.scrollHeight+'px'"
+    >${esc}</textarea>
+    <button class="todo-delete-btn" onclick="todoDelete(${item.id})">✕</button>
+  </div>`;
 }
 
 (function checkSession(){
