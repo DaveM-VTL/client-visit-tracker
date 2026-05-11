@@ -5105,27 +5105,54 @@ async function pullFromTeams(token) {
   end.setDate(end.getDate() + 60);
   const endStr = end.toISOString();
 
-  const res = await fetch(
-    `https://graph.microsoft.com/v1.0/me/calendarView?startDateTime=${start}&endDateTime=${endStr}&$select=id,subject,start,end&$top=100`,
-    { headers: { Authorization: 'Bearer ' + token } }
-  );
-  const data = await res.json();
-  if(!data.value) return;
+  // Fetch all calendars first, then pull events from each one
+  let calendarIds = [];
+  try {
+    const calRes = await fetch(
+      'https://graph.microsoft.com/v1.0/me/calendars?$select=id,name&$top=50',
+      { headers: { Authorization: 'Bearer ' + token } }
+    );
+    const calData = await calRes.json();
+    if(calData.value && calData.value.length > 0) {
+      calendarIds = calData.value.map(c => c.id);
+    }
+  } catch(e) {
+    console.warn('Could not fetch calendar list, falling back to default calendar', e);
+  }
 
-  for(const evt of data.value) {
+  // If we couldn't get calendars, fall back to the default calendarView endpoint
+  const fetchPromises = calendarIds.length > 0
+    ? calendarIds.map(calId =>
+        fetch(
+          `https://graph.microsoft.com/v1.0/me/calendars/${calId}/calendarView?startDateTime=${start}&endDateTime=${endStr}&$select=id,subject,start,end&$top=100`,
+          { headers: { Authorization: 'Bearer ' + token } }
+        ).then(r => r.json()).catch(() => ({ value: [] }))
+      )
+    : [fetch(
+        `https://graph.microsoft.com/v1.0/me/calendarView?startDateTime=${start}&endDateTime=${endStr}&$select=id,subject,start,end&$top=100`,
+        { headers: { Authorization: 'Bearer ' + token } }
+      ).then(r => r.json()).catch(() => ({ value: [] }))];
+
+  const results = await Promise.all(fetchPromises);
+  const allEvents = results.flatMap(data => data.value || []);
+
+  // Deduplicate by Teams event ID (same event can appear across multiple calendar responses)
+  const seen = new Set();
+  for(const evt of allEvents) {
+    if(seen.has(evt.id)) continue;
+    seen.add(evt.id);
+
     // Teams returns UTC without Z — trim microseconds and force Z suffix
     const rawStart = evt.start.dateTime.substring(0, 19) + 'Z';
     const utcDate = new Date(rawStart);
     const localDate = utcDate.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
     const localTime = utcDate.toLocaleTimeString('en-US', { timeZone: 'America/Los_Angeles', hour: '2-digit', minute: '2-digit', hour12: false });
-    const date = localDate;
-    const time = localTime;
     const existing = appointments.find(a => a.teamsId === evt.id);
     if(!existing) {
       const id = nextApptId++;
-      const appt = { id, title: evt.subject, clientName: '', date, time, status: 'scheduled', notes: '', displayTitle: evt.subject, teamsId: evt.id };
+      const appt = { id, title: evt.subject, clientName: '', date: localDate, time: localTime, status: 'scheduled', notes: '', displayTitle: evt.subject, teamsId: evt.id };
       appointments.push(appt);
-      await sbUpsert('appointments', { id, title: evt.subject, client_name: null, date, time, status: 'scheduled', notes: null, teams_id: evt.id });
+      await sbUpsert('appointments', { id, title: evt.subject, client_name: null, date: localDate, time: localTime, status: 'scheduled', notes: null, teams_id: evt.id });
     }
   }
 }
