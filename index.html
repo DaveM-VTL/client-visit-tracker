@@ -728,6 +728,7 @@
     .nav-count { display: none; }
     .nav-dot { width: 5px; height: 5px; }
     .mobile-only-nav { display: flex !important; }
+    .nav-item { width: auto !important; flex: 0 0 auto !important; }
     /* Hide footer entirely on mobile — OUT/refresh/CSV are rarely needed */
     .sidebar-footer { display: none !important; }
     #last-updated { display: none !important; }
@@ -6112,6 +6113,11 @@ function todoItemHTML(item) {
     }
     const sidebar = document.querySelector('.sidebar');
     if(sidebar) sidebar.style.overflow = 'visible';
+    document.querySelectorAll('.nav-item').forEach(el => {
+      el.style.width = 'auto';
+      el.style.flex = '0 0 auto';
+      el.style.minWidth = '56px';
+    });
   }
 
   const token = sessionStorage.getItem('cvt_token');
