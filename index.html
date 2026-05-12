@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
 <title>Client Visit Tracker</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -6096,6 +6099,21 @@ function todoItemHTML(item) {
 
 (function checkSession(){
   loadCustomColsLocal();
+
+  // Force mobile nav fix — runs before anything else renders
+  if(window.innerWidth <= 768){
+    const footer = document.getElementById('sidebar-footer');
+    if(footer) footer.style.display = 'none';
+    const nav = document.querySelector('.sidebar-nav');
+    if(nav){
+      nav.style.overflowX = 'auto';
+      nav.style.overflowY = 'hidden';
+      nav.style.flexWrap = 'nowrap';
+    }
+    const sidebar = document.querySelector('.sidebar');
+    if(sidebar) sidebar.style.overflow = 'visible';
+  }
+
   const token = sessionStorage.getItem('cvt_token');
   const viewer = sessionStorage.getItem('cvt_viewer');
   if(token){
