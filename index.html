@@ -144,6 +144,7 @@
   .dot-cal { background: #9b72cf; }
   .dot-ai  { background: #e8a045; }
   .mobile-only-nav { display: none; }
+  .topbar-mobile-actions { display: none; }
 
   .nav-count {
     margin-left: auto;
@@ -729,6 +730,7 @@
     .nav-dot { width: 5px; height: 5px; }
     .mobile-only-nav { display: flex !important; }
     .nav-item { width: auto !important; flex: 0 0 auto !important; }
+    .topbar-mobile-actions { display: flex; gap: 6px; align-items: center; }
     /* Hide footer entirely on mobile — OUT/refresh/CSV are rarely needed */
     .sidebar-footer { display: none !important; }
     #last-updated { display: none !important; }
@@ -2396,10 +2398,6 @@
         <span class="nav-dot dot-todo"></span>
         To-Do
       </button>
-      <button class="nav-item mobile-only-nav" onclick="doLogout()" style="opacity:0.5;">
-        <span style="font-size:13px;line-height:1;">↪</span>
-        Out
-      </button>
     </nav>
     <div class="sidebar-footer" id="sidebar-footer">
       <div class="viewer-badge" id="viewer-badge" style="display:none;">👁 View only</div>
@@ -2420,6 +2418,10 @@
       </div>
       <select class="filter-select" onchange="render()" id="filter"></select>
       <button class="btn-add" onclick="openAdd()">+ Add client</button>
+      <div class="topbar-mobile-actions">
+        <button onclick="manualRefresh()" title="Refresh" style="background:none;border:1px solid var(--border);border-radius:var(--radius);padding:7px 11px;font-size:14px;cursor:pointer;color:var(--text-muted);">↻</button>
+        <button onclick="doLogout()" title="Sign out" style="background:none;border:1px solid var(--border);border-radius:var(--radius);padding:7px 11px;font-size:13px;cursor:pointer;color:var(--text-muted);font-family:var(--mono);">↪ Out</button>
+      </div>
     </div>
 
     <div class="stats-bar" id="stats-bar"></div>
