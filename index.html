@@ -3694,6 +3694,7 @@ function renderClients() {
 
 function switchTab(tab,el){
   currentTab=tab;
+  localStorage.setItem('cvt_activeTab', tab);
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   el.classList.add('active');
 
@@ -4278,7 +4279,11 @@ async function loadFromSupabase(){
     showStatus('Could not connect to database', false);
   }
   updateFilterOptions();
-  render();
+  // Restore the active tab; default to 'clients' if no tab has been saved yet
+  const savedTab = localStorage.getItem('cvt_activeTab') || 'clients';
+  const navEl = document.querySelector(`.nav-item[onclick*="'${savedTab}'"]`);
+  if(navEl) switchTab(savedTab, navEl);
+  else render();
 }
 
 async function saveClientToSupabase(){
