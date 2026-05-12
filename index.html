@@ -1400,7 +1400,7 @@
     }
     .cal-day-header .cal-date-num { font-size: 14px; }
     .cal-time-slot span { font-size: 8px; }
-    .cal-appt { font-size: 10px; padding: 3px 4px; left: 2px !important; right: 2px !important; }
+    .cal-appt { font-size: 10px; padding: 3px 4px; }
     .cal-appt .appt-time { font-size: 9px; }
   }
 
@@ -3865,13 +3865,18 @@ function renderCalendar() {
       const isToday = ds === todayStr;
       const cellAppts = appointments.filter(a => a.date === ds && parseInt(a.time.split(':')[0]) === h);
       let apptHtml = '';
+      const colCount = cellAppts.length || 1;
+      const colW = Math.floor(100 / colCount);
       cellAppts.forEach((a, ai) => {
         const mins = parseInt(a.time.split(':')[1]) || 0;
         const topPct = (mins / 60) * 100;
         const displayTitle = a.title || a.clientName || 'Untitled';
-        const shortName = displayTitle.length > 20 ? displayTitle.substring(0,18)+'…' : displayTitle;
+        const maxChars = colCount > 1 ? Math.max(8, Math.floor(18 / colCount)) : 20;
+        const shortName = displayTitle.length > maxChars ? displayTitle.substring(0, maxChars - 2) + '…' : displayTitle;
         const fmtT = fmtTime12(a.time);
-        apptHtml += `<div class="cal-appt status-${a.status||'scheduled'}" style="top:${topPct}%" onclick="openApptModal(${a.id})">
+        const leftPct = ai * colW;
+        const rightPct = 100 - leftPct - colW;
+        apptHtml += `<div class="cal-appt status-${a.status||'scheduled'}" style="top:${topPct}%;left:${leftPct}%;right:${rightPct}%;min-width:0;" onclick="openApptModal(${a.id})">
           <span class="appt-time">${fmtT}</span>
           ${shortName}
         </div>`;
