@@ -2730,32 +2730,9 @@
           <div class="field"><label>Last report sent</label><input id="f-rep-sent" type="date"></div>
         </div>
       </div>
-      <div class="modal-section">
-        <div class="section-label">Contact 1</div>
-        <div class="field-grid">
-          <div class="field full"><label>Name</label><input id="f-ct1-name" type="text" placeholder="Full name"></div>
-          <div class="field"><label>Phone</label><input id="f-ct1-phone" type="text" placeholder="(209) 555-1234"></div>
-          <div class="field"><label>Position</label><input id="f-ct1-pos" type="text" placeholder="e.g. Office Manager"></div>
-          <div class="field full"><label>Email</label><input id="f-ct1-email" type="text" placeholder="name@company.com"></div>
-        </div>
-      </div>
-      <div class="modal-section">
-        <div class="section-label">Contact 2</div>
-        <div class="field-grid">
-          <div class="field full"><label>Name</label><input id="f-ct2-name" type="text" placeholder="Full name"></div>
-          <div class="field"><label>Phone</label><input id="f-ct2-phone" type="text" placeholder="(209) 555-1234"></div>
-          <div class="field"><label>Position</label><input id="f-ct2-pos" type="text" placeholder="e.g. Accounts Payable"></div>
-          <div class="field full"><label>Email</label><input id="f-ct2-email" type="text" placeholder="name@company.com"></div>
-        </div>
-      </div>
-      <div class="modal-section">
-        <div class="section-label">Contact 3</div>
-        <div class="field-grid">
-          <div class="field full"><label>Name</label><input id="f-ct3-name" type="text" placeholder="Full name"></div>
-          <div class="field"><label>Phone</label><input id="f-ct3-phone" type="text" placeholder="(209) 555-1234"></div>
-          <div class="field"><label>Position</label><input id="f-ct3-pos" type="text" placeholder="e.g. CFO"></div>
-          <div class="field full"><label>Email</label><input id="f-ct3-email" type="text" placeholder="name@company.com"></div>
-        </div>
+      <div id="contacts-container"></div>
+      <div class="modal-section" style="padding-top:0;">
+        <button type="button" onclick="addContactRow()" style="display:flex;align-items:center;gap:6px;padding:7px 14px;border:1px dashed var(--border);border-radius:var(--radius);background:transparent;color:var(--accent);font-size:13px;font-family:var(--sans);cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background='transparent'">＋ Add contact</button>
       </div>
       <div class="modal-section">
         <div class="section-label">Website</div>
@@ -4043,6 +4020,8 @@ function openAdd(){
   ['f-name','f-addr','f-city','f-last','f-last2','f-ph1','f-ph2','f-ph1c','f-ph2c','f-tbr1','f-tbr1c','f-tbr2','f-tbr2c','f-rev-sent','f-rev-person','f-rev-date','f-rev-reviewer','f-rep-sent'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
   document.getElementById('f-tbr-twice').value='No';
   document.getElementById('f-notes').value='';
+  document.getElementById('f-website').value='';
+  renderContactRows([{}]);
   populateAreaSelect();
   document.getElementById('f-area').value='';
   document.getElementById('modal').classList.add('open');
@@ -4077,17 +4056,80 @@ function openEdit(id){
   document.getElementById('f-notes').value=notesData[c.name]||'';
   const prof=clientProfiles[c.name]||{};
   const cts=prof.contacts||[];
-  [1,2,3].forEach(i=>{
-    const ct=cts[i-1]||{};
-    document.getElementById('f-ct'+i+'-name').value=ct.name||'';
-    document.getElementById('f-ct'+i+'-phone').value=ct.phone||'';
-    document.getElementById('f-ct'+i+'-email').value=ct.email||'';
-    document.getElementById('f-ct'+i+'-pos').value=ct.position||'';
-  });
+  const contactsToRender = cts.length > 0 ? cts : [{}];
+  renderContactRows(contactsToRender);
   document.getElementById('f-website').value=prof.website||'';
   populateAreaSelect();
   document.getElementById('f-area').value=clientAreaData[c.name]||'';
   document.getElementById('modal').classList.add('open');
+}
+
+function renderContactRows(contacts){
+  const container=document.getElementById('contacts-container');
+  container.innerHTML='';
+  contacts.forEach((ct,idx)=>container.appendChild(buildContactRow(ct,idx)));
+}
+
+function buildContactRow(ct,idx){
+  const num=idx+1;
+  const section=document.createElement('div');
+  section.className='modal-section';
+  section.dataset.contactRow=idx;
+  section.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+      <div class="section-label" style="margin-bottom:0;">Contact ${num}</div>
+      <button type="button" onclick="removeContactRow(${idx})" title="Remove contact" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:16px;line-height:1;padding:2px 4px;border-radius:4px;" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text-muted)'">✕</button>
+    </div>
+    <div class="field-grid">
+      <div class="field full"><label>Name</label><input class="ct-name" type="text" placeholder="Full name" value="${escHtml(ct.name||'')}"></div>
+      <div class="field"><label>Phone</label><input class="ct-phone" type="text" placeholder="(209) 555-1234" value="${escHtml(ct.phone||'')}"></div>
+      <div class="field"><label>Position</label><input class="ct-pos" type="text" placeholder="e.g. Office Manager" value="${escHtml(ct.position||'')}"></div>
+      <div class="field full"><label>Email</label><input class="ct-email" type="text" placeholder="name@company.com" value="${escHtml(ct.email||'')}"></div>
+    </div>`;
+  return section;
+}
+
+function escHtml(s){return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function addContactRow(){
+  const container=document.getElementById('contacts-container');
+  const idx=container.children.length;
+  container.appendChild(buildContactRow({},idx));
+  // Renumber all headers
+  renumberContactRows();
+  // Scroll new row into view
+  container.lastElementChild.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function removeContactRow(idx){
+  const container=document.getElementById('contacts-container');
+  const rows=Array.from(container.querySelectorAll('[data-contact-row]'));
+  const row=rows.find(r=>+r.dataset.contactRow===idx);
+  if(row) row.remove();
+  renumberContactRows();
+  // Keep at least one row
+  if(container.children.length===0) container.appendChild(buildContactRow({},0));
+}
+
+function renumberContactRows(){
+  const container=document.getElementById('contacts-container');
+  Array.from(container.querySelectorAll('[data-contact-row]')).forEach((row,i)=>{
+    row.dataset.contactRow=i;
+    const label=row.querySelector('.section-label');
+    if(label) label.textContent='Contact '+(i+1);
+    const btn=row.querySelector('button[onclick^="removeContactRow"]');
+    if(btn) btn.setAttribute('onclick','removeContactRow('+i+')');
+  });
+}
+
+function readContactRows(){
+  const container=document.getElementById('contacts-container');
+  return Array.from(container.querySelectorAll('[data-contact-row]')).map(row=>({
+    name:row.querySelector('.ct-name').value.trim(),
+    phone:row.querySelector('.ct-phone').value.trim(),
+    email:row.querySelector('.ct-email').value.trim(),
+    position:row.querySelector('.ct-pos').value.trim()
+  })).filter(ct=>ct.name);
 }
 
 function closeModal(){document.getElementById('modal').classList.remove('open');}
@@ -4100,12 +4142,7 @@ function saveClient(){
   tbrData[name]={twice:document.getElementById('f-tbr-twice').value,tbr1:document.getElementById('f-tbr1').value||null,tbr1c:document.getElementById('f-tbr1c').value||null,tbr2:document.getElementById('f-tbr2').value||null,tbr2c:document.getElementById('f-tbr2c').value||null};
   reviewData[name]={sent:document.getElementById('f-rev-sent').value||null,person:document.getElementById('f-rev-person').value||null,reviewed:document.getElementById('f-rev-date').value||null,reviewer:document.getElementById('f-rev-reviewer').value||null};
   reportData[name]={lastSent:document.getElementById('f-rep-sent').value||null};
-  const newContacts=[1,2,3].map(i=>({
-    name:document.getElementById('f-ct'+i+'-name').value.trim(),
-    phone:document.getElementById('f-ct'+i+'-phone').value.trim(),
-    email:document.getElementById('f-ct'+i+'-email').value.trim(),
-    position:document.getElementById('f-ct'+i+'-pos').value.trim()
-  })).filter(ct=>ct.name);
+  const newContacts=readContactRows();
   clientProfiles[name]={contacts:newContacts,website:document.getElementById('f-website').value.trim()};
   if(editingId){const i=clients.findIndex(c=>c.id===editingId);clients[i]={...clients[i],...data};}
   else{clients.push({id:nextId++,...data});}
@@ -4290,12 +4327,7 @@ async function saveClientToSupabase(){
   const name = document.getElementById('f-name').value.trim();
   if(!name) return;
 
-  const newContacts=[1,2,3].map(i=>({
-    name:document.getElementById('f-ct'+i+'-name').value.trim(),
-    phone:document.getElementById('f-ct'+i+'-phone').value.trim(),
-    email:document.getElementById('f-ct'+i+'-email').value.trim(),
-    position:document.getElementById('f-ct'+i+'-pos').value.trim()
-  })).filter(ct=>ct.name);
+  const newContacts=readContactRows();
   const newWebsite = document.getElementById('f-website').value.trim();
 
   const clientRow = {
