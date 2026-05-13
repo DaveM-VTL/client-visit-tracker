@@ -691,7 +691,7 @@
       height: auto !important;
       max-height: none !important;
       min-height: 0 !important;
-      overflow: visible !important;
+      overflow: hidden !important;
       flex-direction: row !important;
       align-items: stretch;
       z-index: 200;
@@ -6156,7 +6156,7 @@ function todoItemHTML(item) {
       nav.style.flexWrap = 'nowrap';
     }
     const sidebar = document.querySelector('.sidebar');
-    if(sidebar) sidebar.style.overflow = 'visible';
+    if(sidebar) sidebar.style.overflow = 'hidden';
     document.querySelectorAll('.nav-item').forEach(el => {
       el.style.width = 'auto';
       el.style.flex = '0 0 auto';
