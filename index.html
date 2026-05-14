@@ -6660,14 +6660,25 @@ function todoStartAlertChecker() {
     document.querySelector('.shell').style.display = '';
     loadFromSupabase();
     todoStartAlertChecker();
+    showCsvReminder();
   } else if(viewer){
     enterViewerMode();
     document.getElementById('login-screen').style.display = 'none';
     document.querySelector('.shell').style.display = '';
     loadFromSupabase();
     todoStartAlertChecker();
+    showCsvReminder();
   }
 })();
+
+function showCsvReminder() {
+  const key = 'cvt_csv_reminder_' + new Date().toISOString().slice(0, 10); // once per day
+  if (localStorage.getItem(key)) return;
+  localStorage.setItem(key, '1');
+  setTimeout(() => {
+    alert('📋 Reminder: Export a CSV backup before making changes today!');
+  }, 1200);
+}
 
 </script>
 </body>
