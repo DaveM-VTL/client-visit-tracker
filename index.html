@@ -691,7 +691,7 @@
       height: auto !important;
       max-height: none !important;
       min-height: 0 !important;
-      overflow: hidden !important;
+      overflow: visible !important;
       flex-direction: row !important;
       align-items: stretch;
       z-index: 200;
@@ -2298,6 +2298,158 @@
     .todo-day-tab { min-width: 44px; padding: 8px 4px 6px; }
     .todo-day-num { font-size: 13px; }
   }
+
+  /* ── To-Do Alert System ─────────────────────────────── */
+  .todo-alert-banner {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 500;
+    background: var(--accent);
+    color: #fff;
+    padding: 12px 16px 12px 20px;
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    padding-top: max(12px, calc(env(safe-area-inset-top, 0px) + 12px));
+  }
+  .todo-alert-banner.visible { display: flex; }
+  .todo-alert-banner-icon { font-size: 18px; flex-shrink: 0; }
+  .todo-alert-banner-text { flex: 1; line-height: 1.4; }
+  .todo-alert-banner-sub { font-weight: 400; font-size: 11px; opacity: 0.9; font-family: var(--mono); }
+  .todo-alert-banner-close {
+    background: rgba(255,255,255,0.2);
+    border: none;
+    color: #fff;
+    border-radius: 50%;
+    width: 24px; height: 24px;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .todo-alert-banner-close:hover { background: rgba(255,255,255,0.35); }
+
+  /* Notification dot on To-Do tab */
+  .nav-item .todo-notif-dot {
+    display: none;
+    width: 6px; height: 6px;
+    background: var(--danger);
+    border-radius: 50%;
+    position: absolute;
+    top: 6px; right: 6px;
+  }
+  .nav-item { position: relative; }
+  .nav-item .todo-notif-dot.visible { display: block; }
+
+  /* Alert settings panel inside To-Do tab */
+  .todo-alert-settings {
+    border-top: 1px solid var(--border);
+    padding: 14px 24px;
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+  .todo-alert-settings-toggle {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    user-select: none;
+    text-transform: uppercase;
+  }
+  .todo-alert-settings-toggle:hover { color: var(--text); }
+  .todo-alert-settings-body {
+    display: none;
+    margin-top: 12px;
+    gap: 10px;
+    flex-direction: column;
+  }
+  .todo-alert-settings-body.open { display: flex; }
+  .todo-alert-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--text);
+    font-family: var(--sans);
+  }
+  .todo-alert-row label { flex: 1; color: var(--text-muted); font-family: var(--mono); font-size: 10px; letter-spacing: 0.04em; text-transform: uppercase; }
+  .todo-alert-toggle {
+    width: 36px; height: 20px;
+    background: var(--border);
+    border-radius: 10px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.2s;
+    border: none;
+    flex-shrink: 0;
+  }
+  .todo-alert-toggle.on { background: var(--accent); }
+  .todo-alert-toggle::after {
+    content: '';
+    position: absolute;
+    top: 3px; left: 3px;
+    width: 14px; height: 14px;
+    background: #fff;
+    border-radius: 50%;
+    transition: left 0.2s;
+  }
+  .todo-alert-toggle.on::after { left: 19px; }
+  .todo-alert-time-input {
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    width: 110px;
+  }
+  .todo-alert-time-input:focus { border-color: var(--accent); outline: none; }
+  .todo-alert-status {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    padding: 4px 0;
+    letter-spacing: 0.03em;
+  }
+
+  /* Due time on todo items */
+  .todo-due-time {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 2px;
+    flex-shrink: 0;
+  }
+  .todo-due-time input[type="time"] {
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-family: var(--mono);
+    font-size: 10px;
+    cursor: pointer;
+    padding: 0;
+    width: 80px;
+  }
+  .todo-due-time input[type="time"]:focus { outline: none; color: var(--accent); }
+  .todo-item.due-now .todo-due-time { color: var(--danger); }
+  .todo-item.due-now .todo-due-time input[type="time"] { color: var(--danger); }
+  @media (max-width: 768px) {
+    .todo-alert-settings { padding: 12px 14px; }
+    .todo-alert-banner { font-size: 12px; }
+  }
 </style>
 <script>
 // Load MSAL dynamically
@@ -2310,6 +2462,16 @@
 </script>
 </head>
 <body>
+
+<!-- To-Do Alert Banner -->
+<div class="todo-alert-banner" id="todo-alert-banner" onclick="todoAlertBannerClick()">
+  <span class="todo-alert-banner-icon">📋</span>
+  <div class="todo-alert-banner-text">
+    <div id="todo-alert-banner-title">You have tasks today</div>
+    <div class="todo-alert-banner-sub" id="todo-alert-banner-sub"></div>
+  </div>
+  <button class="todo-alert-banner-close" onclick="event.stopPropagation();todoAlertBannerDismiss()">✕</button>
+</div>
 
 <!-- Login Screen -->
 <div class="login-screen" id="login-screen">
@@ -2397,6 +2559,7 @@
       <button class="nav-item" onclick="switchTab('todo',this)">
         <span class="nav-dot dot-todo"></span>
         To-Do
+        <span class="todo-notif-dot" id="todo-notif-dot"></span>
       </button>
     </nav>
     <div class="sidebar-footer" id="sidebar-footer">
@@ -2631,6 +2794,28 @@
         <!-- Task list for active day -->
         <div class="todo-list" id="todo-list"></div>
         <div class="todo-footer" id="todo-footer"></div>
+
+        <!-- Alert Settings -->
+        <div class="todo-alert-settings">
+          <div class="todo-alert-settings-toggle" onclick="todoToggleAlertSettings()">
+            <span id="todo-alert-settings-arrow">▶</span> Alert settings
+            <span id="todo-alert-notif-status" style="margin-left:auto;"></span>
+          </div>
+          <div class="todo-alert-settings-body" id="todo-alert-settings-body">
+            <div class="todo-alert-row">
+              <label>Push notifications</label>
+              <button class="todo-alert-toggle" id="todo-push-toggle" onclick="todoTogglePush()"></button>
+            </div>
+            <div class="todo-alert-row">
+              <label>Daily morning alert</label>
+              <input type="time" class="todo-alert-time-input" id="todo-alert-time" value="08:00" onchange="todoSaveAlertSettings()">
+            </div>
+            <div class="todo-alert-row" style="flex-direction:column;align-items:flex-start;gap:4px;">
+              <div class="todo-alert-status" id="todo-alert-perm-status"></div>
+              <button onclick="todoRequestNotifPermission()" style="font-size:11px;padding:6px 12px;border:1px solid var(--accent);border-radius:var(--radius);background:none;color:var(--accent);cursor:pointer;font-family:var(--mono);">Enable browser notifications</button>
+            </div>
+          </div>
+        </div>
       </div>
 
     </div>
@@ -4704,6 +4889,7 @@ function doViewerLogin(){
     document.getElementById('login-screen').style.display = 'none';
     document.querySelector('.shell').style.display = '';
     loadFromSupabase();
+    todoStartAlertChecker();
   } else {
     errEl.style.display = 'block';
   }
@@ -4728,6 +4914,7 @@ async function doLogin(){
       document.getElementById('login-screen').style.display = 'none';
       document.querySelector('.shell').style.display = '';
       loadFromSupabase();
+      todoStartAlertChecker();
     } else {
       errEl.style.display = 'block';
     }
@@ -5958,6 +6145,7 @@ async function todoSave() {
   todoRenderTabs();
   todoRenderList();
   todoRenderWeekHeader();
+  todoUpdateNotifDot();
 }
 
 function todoNavWeek(dir) {
@@ -5983,7 +6171,7 @@ function todoAdd() {
   const day = sel ? sel.value : todoActiveDay;
   if(!day) return;
   if(!todoWeekData[day]) todoWeekData[day] = [];
-  todoWeekData[day].push({ id: Date.now(), text, done: false, createdAt: new Date().toISOString() });
+  todoWeekData[day].push({ id: Date.now(), text, done: false, dueTime: '', createdAt: new Date().toISOString() });
   if(inp) inp.value = '';
   // Switch to that day if not already there
   todoActiveDay = day;
@@ -6129,17 +6317,290 @@ function todoRenderList() {
   });
 }
 
+function todoDueTimeChange(id, val) {
+  const items = todoWeekData[todoActiveDay] || [];
+  const item = items.find(t => t.id === id);
+  if(item) { item.dueTime = val; todoSave(); }
+}
+
 function todoItemHTML(item) {
   const esc = (item.text||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
-  return `<div class="todo-item${item.done?' done':''}" id="todo-item-${item.id}">
+  const timeVal = item.dueTime || '';
+  const nowHHMM = new Date().toTimeString().slice(0,5);
+  const isDueNow = !item.done && timeVal && todoActiveDay === todayStr() && timeVal <= nowHHMM;
+  const clearBtn = timeVal ? `<span style="cursor:pointer;opacity:0.5;padding-left:2px;" onclick="todoDueTimeChange(${item.id},'');this.closest('.todo-due-time').querySelector('input').value=''">✕</span>` : '';
+  return `<div class="todo-item${item.done?' done':''}${isDueNow?' due-now':''}" id="todo-item-${item.id}">
     <div class="todo-checkbox" onclick="todoToggle(${item.id})">
       <span class="todo-checkbox-check">✓</span>
     </div>
-    <textarea class="todo-text" data-id="${item.id}" rows="1"
-      oninput="this.style.height='22px';this.style.height=this.scrollHeight+'px'"
-    >${esc}</textarea>
+    <div style="flex:1;min-width:0;">
+      <textarea class="todo-text" data-id="${item.id}" rows="1"
+        oninput="this.style.height='22px';this.style.height=this.scrollHeight+'px'"
+      >${esc}</textarea>
+      <div class="todo-due-time">
+        <span style="opacity:0.5;font-size:9px;">⏰</span>
+        <input type="time" value="${timeVal}" title="Set due time (optional)"
+          onchange="todoDueTimeChange(${item.id}, this.value)"
+          onclick="event.stopPropagation()">${clearBtn}
+      </div>
+    </div>
     <button class="todo-delete-btn" onclick="todoDelete(${item.id})">✕</button>
   </div>`;
+}
+
+
+// ── To-Do Alert System ────────────────────────────────────────────────
+const ALERT_SETTINGS_KEY = 'cvt_todo_alert_settings';
+let alertCheckInterval = null;
+let alertScheduleTimeout = null;
+let bannerDismissedDate = '';
+
+function todoLoadAlertSettings() {
+  try {
+    const s = JSON.parse(localStorage.getItem(ALERT_SETTINGS_KEY) || '{}');
+    return {
+      pushEnabled: s.pushEnabled || false,
+      alertTime: s.alertTime || '08:00',
+    };
+  } catch(e) { return { pushEnabled: false, alertTime: '08:00' }; }
+}
+
+function todoSaveAlertSettings() {
+  const timeEl = document.getElementById('todo-alert-time');
+  const settings = {
+    pushEnabled: document.getElementById('todo-push-toggle')?.classList.contains('on') || false,
+    alertTime: timeEl ? timeEl.value : '08:00',
+  };
+  localStorage.setItem(ALERT_SETTINGS_KEY, JSON.stringify(settings));
+  todoScheduleDailyAlert();
+  todoUpdateAlertUI();
+}
+
+function todoUpdateAlertUI() {
+  const settings = todoLoadAlertSettings();
+  const toggle = document.getElementById('todo-push-toggle');
+  const timeEl = document.getElementById('todo-alert-time');
+  const permStatus = document.getElementById('todo-alert-perm-status');
+  const notifStatus = document.getElementById('todo-alert-notif-status');
+
+  if(toggle) toggle.classList.toggle('on', settings.pushEnabled);
+  if(timeEl) timeEl.value = settings.alertTime;
+
+  const perm = Notification?.permission || 'default';
+  if(permStatus) {
+    permStatus.textContent =
+      perm === 'granted' ? '✅ Notifications allowed' :
+      perm === 'denied'  ? '🚫 Notifications blocked — check browser settings' :
+                           '⚠️ Notifications not yet enabled';
+  }
+  if(notifStatus) {
+    notifStatus.textContent = settings.pushEnabled && perm === 'granted' ? '🔔 on' : '';
+  }
+
+  // Red dot on tab if there are pending tasks today
+  todoUpdateNotifDot();
+}
+
+function todoUpdateNotifDot() {
+  const dot = document.getElementById('todo-notif-dot');
+  if(!dot) return;
+  const today = todayStr();
+  const items = todoWeekData[today] || [];
+  const pending = items.filter(t => !t.done).length;
+  dot.classList.toggle('visible', pending > 0);
+}
+
+function todoToggleAlertSettings() {
+  const body = document.getElementById('todo-alert-settings-body');
+  const arrow = document.getElementById('todo-alert-settings-arrow');
+  if(!body) return;
+  const open = body.classList.toggle('open');
+  if(arrow) arrow.textContent = open ? '▼' : '▶';
+  if(open) todoUpdateAlertUI();
+}
+
+function todoTogglePush() {
+  const toggle = document.getElementById('todo-push-toggle');
+  if(!toggle) return;
+  const willEnable = !toggle.classList.contains('on');
+  if(willEnable && Notification?.permission !== 'granted') {
+    todoRequestNotifPermission().then(() => {
+      toggle.classList.toggle('on', Notification.permission === 'granted');
+      todoSaveAlertSettings();
+    });
+  } else {
+    toggle.classList.toggle('on');
+    todoSaveAlertSettings();
+  }
+}
+
+async function todoRequestNotifPermission() {
+  if(!('Notification' in window)) {
+    alert('Your browser does not support notifications.');
+    return;
+  }
+  const result = await Notification.requestPermission();
+  todoUpdateAlertUI();
+  return result;
+}
+
+function todoGetTodayPending() {
+  const today = todayStr();
+  // We might not have this week loaded if it's a different week view — load from storage
+  const wk = weekKey(getMonday(0));
+  const storageKey = 'cvt_' + TODO_KEY + '_' + wk;
+  let dayData = {};
+  try {
+    const raw = localStorage.getItem(storageKey);
+    if(raw) dayData = JSON.parse(raw);
+  } catch(e) {}
+  // Merge with live data if on current week
+  if(todoWeekOffset === 0 && todoWeekData) {
+    Object.assign(dayData, todoWeekData);
+  }
+  return (dayData[today] || []).filter(t => !t.done);
+}
+
+// ── In-app banner ────────────────────────────────────────────────────
+function todoCheckBanner() {
+  const today = todayStr();
+  if(bannerDismissedDate === today) return;
+  const pending = todoGetTodayPending();
+  if(!pending.length) { todoAlertBannerHide(); return; }
+
+  const banner = document.getElementById('todo-alert-banner');
+  const title = document.getElementById('todo-alert-banner-title');
+  const sub = document.getElementById('todo-alert-banner-sub');
+  if(!banner) return;
+
+  const count = pending.length;
+  if(title) title.textContent = count === 1 ? 'You have 1 task today' : `You have ${count} tasks today`;
+
+  // Find the next due-time item
+  const timed = pending.filter(t => t.dueTime).sort((a,b) => a.dueTime.localeCompare(b.dueTime));
+  if(timed.length) {
+    const next = timed[0];
+    const [hh, mm] = next.dueTime.split(':');
+    const h = parseInt(hh), ampm = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 || 12;
+    if(sub) sub.textContent = `Next: "${next.text}" at ${h12}:${mm} ${ampm}`;
+  } else {
+    if(sub) sub.textContent = 'Tap to view your to-do list';
+  }
+
+  banner.classList.add('visible');
+  todoUpdateNotifDot();
+}
+
+function todoAlertBannerDismiss() {
+  bannerDismissedDate = todayStr();
+  todoAlertBannerHide();
+}
+
+function todoAlertBannerHide() {
+  const banner = document.getElementById('todo-alert-banner');
+  if(banner) banner.classList.remove('visible');
+}
+
+function todoAlertBannerClick() {
+  todoAlertBannerDismiss();
+  // Switch to To-Do tab
+  const btn = document.querySelector("[data-tab='todo']") || document.querySelector('.nav-item[onclick*="todo"]');
+  if(btn) switchTab('todo', btn);
+}
+
+// ── Push notification ─────────────────────────────────────────────────
+function todoSendPushNotif(title, body) {
+  if(Notification?.permission !== 'granted') return;
+  try {
+    new Notification(title, {
+      body,
+      icon: '/client-visit-tracker/icon-192.png',
+      badge: '/client-visit-tracker/icon-192.png',
+      tag: 'todo-daily',
+      renotify: true,
+    });
+  } catch(e) { console.warn('Notif error:', e); }
+}
+
+function todoFireDailyAlert() {
+  const pending = todoGetTodayPending();
+  if(!pending.length) return;
+  const settings = todoLoadAlertSettings();
+  const count = pending.length;
+  const timed = pending.filter(t => t.dueTime).sort((a,b) => a.dueTime.localeCompare(b.dueTime));
+  const bodyText = timed.length
+    ? `Next: "${timed[0].text}" at ${timed[0].dueTime}`
+    : `${count} task${count>1?'s':''} to complete today`;
+
+  if(settings.pushEnabled) {
+    todoSendPushNotif(
+      count === 1 ? '📋 1 task today' : `📋 ${count} tasks today`,
+      bodyText
+    );
+  }
+  // Also show in-app banner
+  bannerDismissedDate = '';
+  todoCheckBanner();
+}
+
+// ── Per-item due-time notifications ──────────────────────────────────
+function todoScheduleItemNotifs() {
+  const settings = todoLoadAlertSettings();
+  if(!settings.pushEnabled || Notification?.permission !== 'granted') return;
+  const today = todayStr();
+  const pending = todoGetTodayPending().filter(t => t.dueTime);
+  const now = new Date();
+  pending.forEach(item => {
+    const [hh, mm] = item.dueTime.split(':');
+    const dueDate = new Date();
+    dueDate.setHours(parseInt(hh), parseInt(mm), 0, 0);
+    const msUntil = dueDate - now;
+    if(msUntil > 0 && msUntil < 86400000) {
+      setTimeout(() => {
+        const stillPending = todoGetTodayPending().find(t => t.id === item.id);
+        if(stillPending) {
+          todoSendPushNotif(`⏰ Due now: ${item.text}`, 'Tap to open your to-do list');
+          bannerDismissedDate = '';
+          todoCheckBanner();
+          todoUpdateNotifDot();
+        }
+      }, msUntil);
+    }
+  });
+}
+
+// ── Daily schedule at configured time ────────────────────────────────
+function todoScheduleDailyAlert() {
+  if(alertScheduleTimeout) clearTimeout(alertScheduleTimeout);
+  const settings = todoLoadAlertSettings();
+  const [hh, mm] = settings.alertTime.split(':');
+  const now = new Date();
+  const next = new Date();
+  next.setHours(parseInt(hh), parseInt(mm), 0, 0);
+  if(next <= now) next.setDate(next.getDate() + 1);
+  const msUntil = next - now;
+  alertScheduleTimeout = setTimeout(() => {
+    todoFireDailyAlert();
+    todoScheduleDailyAlert(); // reschedule for next day
+  }, msUntil);
+}
+
+// ── Check item due times every minute ────────────────────────────────
+function todoStartAlertChecker() {
+  if(alertCheckInterval) clearInterval(alertCheckInterval);
+  // Check immediately
+  todoCheckBanner();
+  todoUpdateNotifDot();
+  todoScheduleItemNotifs();
+  // Re-check every 60s for due-now highlighting and banner
+  alertCheckInterval = setInterval(() => {
+    todoUpdateNotifDot();
+    // Re-render list if on todo tab to update due-now highlighting
+    const todoTab = document.getElementById('tab-todo');
+    if(todoTab && todoTab.style.display !== 'none') todoRenderList();
+  }, 60000);
+  todoScheduleDailyAlert();
 }
 
 (function checkSession(){
@@ -6156,7 +6617,7 @@ function todoItemHTML(item) {
       nav.style.flexWrap = 'nowrap';
     }
     const sidebar = document.querySelector('.sidebar');
-    if(sidebar) sidebar.style.overflow = 'hidden';
+    if(sidebar) sidebar.style.overflow = 'visible';
     document.querySelectorAll('.nav-item').forEach(el => {
       el.style.width = 'auto';
       el.style.flex = '0 0 auto';
@@ -6170,11 +6631,13 @@ function todoItemHTML(item) {
     document.getElementById('login-screen').style.display = 'none';
     document.querySelector('.shell').style.display = '';
     loadFromSupabase();
+    todoStartAlertChecker();
   } else if(viewer){
     enterViewerMode();
     document.getElementById('login-screen').style.display = 'none';
     document.querySelector('.shell').style.display = '';
     loadFromSupabase();
+    todoStartAlertChecker();
   }
 })();
 
