@@ -6323,12 +6323,49 @@ function todoDueTimeChange(id, val) {
   if(item) { item.dueTime = val; todoSave(); }
 }
 
+function todoAddDueTime(id) {
+  // Create a temporary time input, trigger it, then save the value
+  const el = document.getElementById('todo-item-' + id);
+  if(!el) return;
+  const tmp = document.createElement('input');
+  tmp.type = 'time';
+  tmp.style.position = 'fixed';
+  tmp.style.opacity = '0';
+  tmp.style.pointerEvents = 'none';
+  document.body.appendChild(tmp);
+  tmp.focus();
+  tmp.click();
+  tmp.onchange = function() {
+    if(tmp.value) todoDueTimeChange(id, tmp.value);
+    document.body.removeChild(tmp);
+  };
+  tmp.onblur = function() {
+    setTimeout(() => {
+      if(tmp.value) todoDueTimeChange(id, tmp.value);
+      if(tmp.parentNode) document.body.removeChild(tmp);
+    }, 200);
+  };
+}
+
 function todoItemHTML(item) {
   const esc = (item.text||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
   const timeVal = item.dueTime || '';
   const nowHHMM = new Date().toTimeString().slice(0,5);
   const isDueNow = !item.done && timeVal && todoActiveDay === todayStr() && timeVal <= nowHHMM;
-  const clearBtn = timeVal ? `<span style="cursor:pointer;opacity:0.5;padding-left:2px;" onclick="todoDueTimeChange(${item.id},'');this.closest('.todo-due-time').querySelector('input').value=''">✕</span>` : '';
+
+  // Only render the time input when a time is already set — avoids iOS auto-fill on empty inputs
+  const timeSection = timeVal
+    ? `<div class="todo-due-time">
+        <span style="opacity:0.5;font-size:9px;">⏰</span>
+        <input type="time" value="${timeVal}" title="Due time"
+          onchange="todoDueTimeChange(${item.id}, this.value)"
+          onclick="event.stopPropagation()">
+        <span style="cursor:pointer;opacity:0.5;padding-left:4px;" onclick="todoDueTimeChange(${item.id},'')">✕</span>
+      </div>`
+    : `<div class="todo-due-time">
+        <button style="background:none;border:none;cursor:pointer;font-family:var(--mono);font-size:9px;color:var(--text-muted);padding:2px 0;opacity:0.5;" onclick="todoAddDueTime(${item.id})">⏰ add time</button>
+      </div>`;
+
   return `<div class="todo-item${item.done?' done':''}${isDueNow?' due-now':''}" id="todo-item-${item.id}">
     <div class="todo-checkbox" onclick="todoToggle(${item.id})">
       <span class="todo-checkbox-check">✓</span>
@@ -6337,12 +6374,7 @@ function todoItemHTML(item) {
       <textarea class="todo-text" data-id="${item.id}" rows="1"
         oninput="this.style.height='22px';this.style.height=this.scrollHeight+'px'"
       >${esc}</textarea>
-      <div class="todo-due-time">
-        <span style="opacity:0.5;font-size:9px;">⏰</span>
-        <input type="time" value="${timeVal}" title="Set due time (optional)"
-          onchange="todoDueTimeChange(${item.id}, this.value)"
-          onclick="event.stopPropagation()">${clearBtn}
-      </div>
+      ${timeSection}
     </div>
     <button class="todo-delete-btn" onclick="todoDelete(${item.id})">✕</button>
   </div>`;
