@@ -6353,30 +6353,19 @@ function todoItemHTML(item) {
   const nowHHMM = new Date().toTimeString().slice(0,5);
   const isDueNow = !item.done && timeVal && todoActiveDay === todayStr() && timeVal <= nowHHMM;
 
-  // Only render the time input when a time is already set — avoids iOS auto-fill on empty inputs
   const timeSection = timeVal
-    ? `<div class="todo-due-time">
-        <span style="opacity:0.5;font-size:9px;">⏰</span>
-        <input type="time" value="${timeVal}" title="Due time"
-          onchange="todoDueTimeChange(${item.id}, this.value)"
-          onclick="event.stopPropagation()">
-        <span style="cursor:pointer;opacity:0.5;padding-left:4px;" onclick="todoDueTimeChange(${item.id},'')">✕</span>
-      </div>`
-    : `<div class="todo-due-time">
-        <button style="background:none;border:none;cursor:pointer;font-family:var(--mono);font-size:9px;color:var(--text-muted);padding:2px 0;opacity:0.5;" onclick="todoAddDueTime(${item.id})">⏰ add time</button>
-      </div>`;
+    ? `<div class="todo-due-time">⏰ ${timeVal} <span style="cursor:pointer;opacity:0.6;" onclick="todoDueTimeChange(${item.id},'')">✕</span></div>`
+    : `<div class="todo-due-time"><button style="background:none;border:none;cursor:pointer;font-family:var(--mono);font-size:9px;color:var(--text-muted);padding:0;opacity:0.5;" onclick="todoAddDueTime(${item.id})">⏰ add time</button></div>`;
 
-  return `<div class="todo-item${item.done?' done':''}${isDueNow?' due-now':''}" id="todo-item-${item.id}">
-    <div class="todo-checkbox" onclick="todoToggle(${item.id})">
+  return `<div class="todo-item${item.done?' done':''}${isDueNow?' due-now':''}" id="todo-item-${item.id}" style="flex-wrap:wrap;">
+    <div class="todo-checkbox" onclick="todoToggle(${item.id})" style="align-self:flex-start;margin-top:2px;">
       <span class="todo-checkbox-check">✓</span>
     </div>
-    <div style="flex:1;min-width:0;">
-      <textarea class="todo-text" data-id="${item.id}" rows="1"
-        oninput="this.style.height='22px';this.style.height=this.scrollHeight+'px'"
-      >${esc}</textarea>
-      ${timeSection}
-    </div>
+    <textarea class="todo-text" data-id="${item.id}" rows="1"
+      oninput="this.style.height='22px';this.style.height=this.scrollHeight+'px'"
+    >${esc}</textarea>
     <button class="todo-delete-btn" onclick="todoDelete(${item.id})">✕</button>
+    <div style="width:100%;padding-left:30px;">${timeSection}</div>
   </div>`;
 }
 
