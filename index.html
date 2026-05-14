@@ -4165,7 +4165,10 @@ function exportCSV(){
   const fmtD = d => d||'';
 
   const headers = [
-    'Client Name','Address','City',
+    'Client Name','Address','City','Website',
+    'Contact 1 Name','Contact 1 Phone','Contact 1 Email','Contact 1 Position',
+    'Contact 2 Name','Contact 2 Phone','Contact 2 Email','Contact 2 Position',
+    'Contact 3 Name','Contact 3 Phone','Contact 3 Email','Contact 3 Position',
     'Last In-Person Visit 1','Last In-Person Visit 2',
     'Phone Visit 1 Scheduled','Phone Visit 2 Scheduled','Phone Visit 1 Completed','Phone Visit 2 Completed',
     'TBR Twice/Year','TBR Visit 1 Scheduled','TBR Visit 1 Completed','TBR Visit 2 Scheduled','TBR Visit 2 Completed',
@@ -4180,8 +4183,18 @@ function exportCSV(){
     const r = reviewData[c.name]||{};
     const rep = reportData[c.name]||{};
     const note = notesData[c.name]||'';
+    const prof = clientProfiles[c.name]||{};
+    const contacts = prof.contacts||[];
+    const website = prof.website||'';
+    // Up to 3 contacts, pad with empty strings if fewer
+    const ctFields = [];
+    for(let i=0; i<3; i++){
+      const ct = contacts[i]||{};
+      ctFields.push(ct.name||'', ct.phone||'', ct.email||'', ct.position||'');
+    }
     return [
-      c.name, c.address, c.city,
+      c.name, c.address, c.city, website,
+      ...ctFields,
       fmtD(c.lastVisit), fmtD(c.lastVisit2),
       fmtD(p.ph1), fmtD(p.ph2), fmtD(p.ph1c), fmtD(p.ph2c),
       t.twice||'', fmtD(t.tbr1), fmtD(t.tbr1c), fmtD(t.tbr2), fmtD(t.tbr2c),
