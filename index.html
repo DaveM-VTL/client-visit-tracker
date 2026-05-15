@@ -923,6 +923,29 @@
     text-align: center;
   }
 
+  .card-quick-btn {
+    flex: 2;
+    padding: 8px;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    background: var(--accent-light);
+    font-family: var(--mono);
+    font-size: 11px;
+    cursor: pointer;
+    color: var(--accent);
+    text-align: center;
+    font-weight: 600;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }
+  .card-quick-btn:active { opacity: 0.75; }
+  .card-quick-btn.logged {
+    background: var(--success-light);
+    color: var(--success);
+    border-color: var(--success);
+    pointer-events: none;
+  }
+  body.viewer-mode .card-quick-btn { display: none !important; }
+
   .card-note {
     width: 100%;
     margin-top: 8px;
@@ -3567,6 +3590,47 @@ function renderCards(rows){
   }).join('');
 }
 
+function quickLogBtn(c){
+  const nameEsc = c.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+  if(currentTab === 'inperson'){
+    return `<button class="card-quick-btn" id="qlb-${c.id}" onclick="quickLogVisit(${c.id},'formal');event.stopPropagation();">✓ Visited today</button>`;
+  } else if(currentTab === 'phone'){
+    return `<button class="card-quick-btn" id="qlb-${c.id}" onclick="quickLogVisit(${c.id},'phone');event.stopPropagation();">✓ Called today</button>`;
+  }
+  return '';
+}
+
+async function quickLogVisit(clientId, type){
+  const c = clients.find(x => x.id === clientId);
+  if(!c) return;
+  const btn = document.getElementById('qlb-' + clientId);
+  if(btn){ btn.textContent = 'Saving…'; btn.style.opacity = '0.6'; }
+
+  const date = fmtISO(TODAY);
+  const id = Date.now() + '_' + Math.random().toString(36).slice(2,7);
+  if(!visitLog[c.name]) visitLog[c.name] = [];
+  visitLog[c.name].push({id, date, type, note:'', nextDue:null});
+
+  if(type === 'formal'){
+    c.lastVisit = date;
+    try { await sbUpsert('clients', {id: c.id, name: c.name, address: c.address, city: c.city, last_visit: date, last_visit2: c.lastVisit2 || null}); } catch(e){}
+  }
+  try {
+    await fetch(SUPA_URL + '/rest/v1/visit_log', {
+      method: 'POST',
+      headers: { ...sbHeaders(), 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify({id, client_name: c.name, date, type, note: null, next_due: null})
+    });
+  } catch(e){ console.warn('quickLogVisit save failed:', e); }
+
+  if(btn){
+    btn.textContent = type === 'formal' ? '✓ Visited!' : '✓ Called!';
+    btn.classList.add('logged');
+  }
+  // Re-render after short delay so user sees the confirmation
+  setTimeout(() => render(), 1200);
+}
+
 function cardHTML(c, color, st, summary, details, note, noteEsc, badgeHtml){
   const badgeEl = badgeHtml || badge(st.cls, st.label);
   return `<div class="client-card" style="--client-color:${color}" id="card-${c.id}">
@@ -3583,6 +3647,7 @@ function cardHTML(c, color, st, summary, details, note, noteEsc, badgeHtml){
     <div class="card-details">
       ${details}
       <div class="card-actions">
+        ${quickLogBtn(c)}
         <button class="card-edit-btn" onclick="openEdit(${c.id})">✎ Edit</button>
       </div>
       <textarea class="card-note" placeholder="Add a note…" onblur="saveNote('${c.name.replace(/'/g,"\\'")}', this.value)">${noteEsc}</textarea>
