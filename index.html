@@ -601,6 +601,31 @@
 
   .modal-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
 
+  /* ── Contact row drag-and-drop ── */
+  .contact-drag-handle {
+    cursor: grab;
+    color: var(--border);
+    font-size: 16px;
+    padding: 2px 4px;
+    border-radius: 4px;
+    line-height: 1;
+    transition: color 0.15s;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .contact-drag-handle:hover { color: var(--text-muted); }
+  .contact-drag-handle:active { cursor: grabbing; }
+
+  [data-contact-row].drag-over {
+    outline: 2px dashed var(--accent);
+    outline-offset: 2px;
+    border-radius: var(--radius);
+  }
+  [data-contact-row].dragging {
+    opacity: 0.4;
+  }
+
   .section-label {
     font-family: var(--mono);
     font-size: 9px;
@@ -4348,10 +4373,14 @@ function buildContactRow(ct,idx){
   const section=document.createElement('div');
   section.className='modal-section';
   section.dataset.contactRow=idx;
+  section.draggable=true;
   section.innerHTML=`
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-      <div class="section-label" style="margin-bottom:0;">Contact ${num}</div>
-      <button type="button" onclick="removeContactRow(${idx})" title="Remove contact" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:16px;line-height:1;padding:2px 4px;border-radius:4px;" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text-muted)'">✕</button>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span class="contact-drag-handle" title="Drag to reorder">&#8942;&#8942;</span>
+        <div class="section-label" style="margin-bottom:0;">Contact ${num}</div>
+      </div>
+      <button type="button" onclick="removeContactRow(${idx})" title="Remove contact" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:16px;line-height:1;padding:2px 4px;border-radius:4px;" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text-muted)'">&#x2715;</button>
     </div>
     <div class="field-grid">
       <div class="field full"><label>Name</label><input class="ct-name" type="text" placeholder="Full name" value="${escHtml(ct.name||'')}"></div>
@@ -4359,7 +4388,77 @@ function buildContactRow(ct,idx){
       <div class="field"><label>Position</label><input class="ct-pos" type="text" placeholder="e.g. Office Manager" value="${escHtml(ct.position||'')}"></div>
       <div class="field full"><label>Email</label><input class="ct-email" type="text" placeholder="name@company.com" value="${escHtml(ct.email||'')}"></div>
     </div>`;
+  section.addEventListener('dragstart', contactRowDragStart);
+  section.addEventListener('dragover',  contactRowDragOver);
+  section.addEventListener('dragleave', contactRowDragLeave);
+  section.addEventListener('drop',      contactRowDrop);
+  section.addEventListener('dragend',   contactRowDragEnd);
   return section;
+}
+
+let _contactDragSrc = null;
+
+function contactRowDragStart(e){
+  _contactDragSrc = this;
+  this.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  // Store current contact data so input values survive the DOM move
+  const data = {
+    name: this.querySelector('.ct-name').value,
+    phone: this.querySelector('.ct-phone').value,
+    position: this.querySelector('.ct-pos').value,
+    email: this.querySelector('.ct-email').value,
+  };
+  e.dataTransfer.setData('text/plain', JSON.stringify(data));
+}
+
+function contactRowDragOver(e){
+  if(e.preventDefault) e.preventDefault();
+  if(_contactDragSrc && _contactDragSrc !== this){
+    this.classList.add('drag-over');
+  }
+  e.dataTransfer.dropEffect = 'move';
+  return false;
+}
+
+function contactRowDragLeave(){
+  this.classList.remove('drag-over');
+}
+
+function contactRowDrop(e){
+  if(e.stopPropagation) e.stopPropagation();
+  if(!_contactDragSrc || _contactDragSrc === this) return false;
+  this.classList.remove('drag-over');
+  // Read live values from both rows before moving DOM nodes
+  const srcData = {
+    name: _contactDragSrc.querySelector('.ct-name').value,
+    phone: _contactDragSrc.querySelector('.ct-phone').value,
+    position: _contactDragSrc.querySelector('.ct-pos').value,
+    email: _contactDragSrc.querySelector('.ct-email').value,
+  };
+  const tgtData = {
+    name: this.querySelector('.ct-name').value,
+    phone: this.querySelector('.ct-phone').value,
+    position: this.querySelector('.ct-pos').value,
+    email: this.querySelector('.ct-email').value,
+  };
+  // Swap field values instead of moving DOM nodes (safer with event listeners)
+  _contactDragSrc.querySelector('.ct-name').value = tgtData.name;
+  _contactDragSrc.querySelector('.ct-phone').value = tgtData.phone;
+  _contactDragSrc.querySelector('.ct-pos').value = tgtData.position;
+  _contactDragSrc.querySelector('.ct-email').value = tgtData.email;
+  this.querySelector('.ct-name').value = srcData.name;
+  this.querySelector('.ct-phone').value = srcData.phone;
+  this.querySelector('.ct-pos').value = srcData.position;
+  this.querySelector('.ct-email').value = srcData.email;
+  return false;
+}
+
+function contactRowDragEnd(){
+  document.querySelectorAll('[data-contact-row]').forEach(r=>{
+    r.classList.remove('dragging','drag-over');
+  });
+  _contactDragSrc = null;
 }
 
 function escHtml(s){return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
