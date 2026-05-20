@@ -6380,6 +6380,101 @@ function weekKey(monday) {
 }
 function todayStr() { return fmtISOlocal(new Date()); }
 
+// Returns the ISO date string of the previous business day relative to a given ISO date string.
+// Fri → Mon logic: Mon's prev = Fri. Sat/Sun are skipped (they have no prev business day themselves).
+function todoPrevBusinessDay(isoDate) {
+  const d = new Date(isoDate + 'T00:00:00');
+  const dow = d.getDay(); // 0=Sun,1=Mon,...,6=Sat
+  if(dow === 0 || dow === 6) return null; // weekend days have no prev business day
+  if(dow === 1) d.setDate(d.getDate() - 3); // Mon → Fri
+  else d.setDate(d.getDate() - 1);
+  return fmtISOlocal(d);
+}
+
+// Load a week's todo data by ISO date (reads from Supabase with localStorage fallback).
+async function todoLoadWeekDataForDate(isoDate) {
+  const d = new Date(isoDate + 'T00:00:00');
+  // Find Monday of that week
+  const dow = d.getDay() === 0 ? 6 : d.getDay() - 1;
+  const monday = new Date(d);
+  monday.setDate(d.getDate() - dow);
+  monday.setHours(0,0,0,0);
+  const wk = weekKey(monday);
+  const storageKey = TODO_KEY + '_' + wk;
+  let data = {};
+  try {
+    const rows = await sbGet('app_settings').catch(() => null);
+    if(rows) {
+      const entry = rows.find(r => r.key === storageKey);
+      data = entry ? JSON.parse(entry.value || '{}') : {};
+    }
+  } catch(e) {
+    try {
+      const local = localStorage.getItem('cvt_' + storageKey);
+      data = local ? JSON.parse(local) : {};
+    } catch(e2) { data = {}; }
+  }
+  return { wk, storageKey, data };
+}
+
+// Save a week's todo data back to Supabase + localStorage.
+async function todoSaveWeekDataRaw(storageKey, data) {
+  try { localStorage.setItem('cvt_' + storageKey, JSON.stringify(data)); } catch(e) {}
+  try { await sbUpsert('app_settings', { key: storageKey, value: JSON.stringify(data) }); } catch(e) {}
+}
+
+// Rolls uncompleted tasks from the previous business day into today.
+// Runs once per calendar day (tracked via localStorage).
+async function todoRolloverUncompleted() {
+  const today = todayStr();
+  const rolloverKey = 'cvt_todo_rollover_' + today;
+  if(localStorage.getItem(rolloverKey)) return; // already ran today
+
+  const prevDay = todoPrevBusinessDay(today);
+  if(!prevDay) return; // today is a weekend, nothing to roll
+
+  // Load previous day's week data
+  const { storageKey: prevStorageKey, data: prevData } = await todoLoadWeekDataForDate(prevDay);
+  const prevTasks = prevData[prevDay] || [];
+  const uncompleted = prevTasks.filter(t => !t.done);
+  if(!uncompleted.length) {
+    localStorage.setItem(rolloverKey, '1');
+    return; // nothing to roll over
+  }
+
+  // Mark them as rolled over on source day (keep as done-ish so they don't double-roll)
+  prevData[prevDay] = prevTasks.map(t => t.done ? t : { ...t, rolledOver: true });
+  await todoSaveWeekDataRaw(prevStorageKey, prevData);
+
+  // Add to today (if not already present from a previous partial rollover)
+  const isSameWeek = prevStorageKey === (TODO_KEY + '_' + todoWeekKey);
+  let todayData, todayStorageKey;
+  if(isSameWeek) {
+    todayData = todoWeekData;
+    todayStorageKey = TODO_KEY + '_' + todoWeekKey;
+  } else {
+    const loaded = await todoLoadWeekDataForDate(today);
+    todayData = loaded.data;
+    todayStorageKey = loaded.storageKey;
+  }
+
+  if(!todayData[today]) todayData[today] = [];
+  const existingIds = new Set(todayData[today].map(t => t.id));
+  const toAdd = uncompleted.filter(t => !existingIds.has(t.id)).map(t => ({
+    ...t,
+    rolledFrom: prevDay,
+    createdAt: t.createdAt || new Date().toISOString()
+  }));
+  if(toAdd.length) {
+    todayData[today] = [...toAdd, ...todayData[today]];
+    await todoSaveWeekDataRaw(todayStorageKey, todayData);
+    // If this is the current week, update the in-memory reference
+    if(isSameWeek) todoWeekData = todayData;
+  }
+
+  localStorage.setItem(rolloverKey, '1');
+}
+
 async function todoInit() {
   // Set active day to today (or Monday if viewing different week)
   const todayISO = todayStr();
@@ -6412,6 +6507,11 @@ async function todoInit() {
       const local = localStorage.getItem('cvt_' + storageKey);
       todoWeekData = local ? JSON.parse(local) : {};
     } catch(e2) { todoWeekData = {}; }
+  }
+
+  // Roll uncompleted tasks from previous business day into today (current week only)
+  if(todoWeekOffset === 0) {
+    await todoRolloverUncompleted();
   }
 
   todoRenderTabs();
@@ -6641,13 +6741,17 @@ function todoItemHTML(item) {
     ? `<div class="todo-due-time">⏰ ${timeVal} <span style="cursor:pointer;opacity:0.6;" onclick="todoDueTimeChange(${item.id},'')">✕</span></div>`
     : `<div class="todo-due-time"><button style="background:none;border:none;cursor:pointer;font-family:var(--mono);font-size:9px;color:var(--text-muted);padding:0;opacity:0.5;" onclick="todoAddDueTime(${item.id})">⏰ add time</button></div>`;
 
+  const rolledTag = item.rolledFrom
+    ? `<span style="font-family:var(--mono);font-size:9px;color:var(--text-muted);opacity:0.7;margin-left:4px;vertical-align:middle;" title="Rolled over from ${item.rolledFrom}">↩ carried</span>`
+    : '';
+
   return `<div class="todo-item${item.done?' done':''}${isDueNow?' due-now':''}" id="todo-item-${item.id}" style="flex-wrap:wrap;">
     <div class="todo-checkbox" onclick="todoToggle(${item.id})" style="align-self:flex-start;margin-top:2px;">
       <span class="todo-checkbox-check">✓</span>
     </div>
     <textarea class="todo-text" data-id="${item.id}" rows="1"
       oninput="this.style.height='22px';this.style.height=this.scrollHeight+'px'"
-    >${esc}</textarea>
+    >${esc}</textarea>${rolledTag}
     <button class="todo-delete-btn" onclick="todoDelete(${item.id})">✕</button>
     <div style="width:100%;padding-left:30px;">${timeSection}</div>
   </div>`;
