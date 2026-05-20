@@ -2558,6 +2558,12 @@
       <p>55 clients</p>
     </div>
     <nav class="sidebar-nav">
+      <div class="nav-label">Overview</div>
+      <button class="nav-item" onclick="switchTab('dashboard',this)">
+        <span class="nav-dot" style="background:#e8a045"></span>
+        Dashboard
+        <span class="nav-count" id="cnt-dash">—</span>
+      </button>
       <div class="nav-label">Directory</div>
       <button class="nav-item" onclick="switchTab('clients',this)">
         <span class="nav-dot dot-cli"></span>
@@ -2639,6 +2645,12 @@
     <div class="content">
       <div class="table-wrap" id="table-wrap"></div>
       <div class="cards-wrap" id="cards-wrap"></div>
+
+      <!-- Dashboard view -->
+      <div id="dashboard-view" style="display:none;flex-direction:column;min-height:calc(100vh - 57px);background:var(--bg);overflow-y:auto;">
+        <div id="dash-content" style="padding:24px 32px 48px;max-width:900px;width:100%;"></div>
+      </div>
+
       <!-- Map view -->
       <div id="map-view" style="display:none; flex-direction:column; height:calc(100vh - 57px);">
 
@@ -3370,6 +3382,12 @@ function updateSidebarCounts(){
   document.getElementById('cnt-tbr').textContent=tbrPending>0?tbrPending:'—';
   document.getElementById('cnt-rev').textContent=revPending>0?revPending+'↑':'—';
   document.getElementById('cnt-rep').textContent=repDue>0?repDue+'↑':'—';
+  // Dashboard count — total action items across all trackers
+  const dashEl = document.getElementById('cnt-dash');
+  if(dashEl){
+    const totalItems = getDashboardItems().length;
+    dashEl.textContent = totalItems > 0 ? totalItems : '✓';
+  }
 }
 
 function renderStats(){
@@ -3954,6 +3972,7 @@ function switchTab(tab,el){
   el.classList.add('active');
 
   const clientsView = document.getElementById('clients-view');
+  const dashView = document.getElementById('dashboard-view');
   const mapView = document.getElementById('map-view');
   const calView = document.getElementById('calendar-view');
   const tableWrap = document.getElementById('table-wrap');
@@ -3963,6 +3982,27 @@ function switchTab(tab,el){
   const searchWrap = document.querySelector('.search-wrap');
   const filterSel = document.getElementById('filter');
   const btnAdd = document.querySelector('.btn-add');
+
+  // Always hide dashboard unless explicitly switching to it
+  if(dashView) dashView.style.display = 'none';
+
+  if(tab === 'dashboard'){
+    clientsView.style.display = 'none';
+    if(dashView) dashView.style.display = 'flex';
+    mapView.style.display = 'none';
+    calView.style.display = 'none';
+    document.getElementById('ai-view').style.display = 'none';
+    document.getElementById('todo-view').style.display = 'none';
+    tableWrap.style.display = 'none';
+    cardsWrap.style.display = 'none';
+    statsBar.style.display = 'none';
+    if(searchWrap) searchWrap.style.display = 'none';
+    if(filterSel) filterSel.style.display = 'none';
+    if(btnAdd) btnAdd.style.display = 'none';
+    if(topbar) topbar.innerHTML = 'Dashboard <span>needs attention</span>';
+    renderDashboard();
+    return;
+  }
 
   if(tab === 'clients'){
     clientsView.style.display = 'flex';
@@ -4506,6 +4546,206 @@ function readContactRows(){
 
 function closeModal(){document.getElementById('modal').classList.remove('open');}
 
+// ── Dashboard ──
+function getDashboardItems(){
+  const items = [];
+
+  clients.forEach(c => {
+    // In-person visit
+    const ip = getIPStatus(c);
+    if(ip.cls !== 'on-track'){
+      let urgency, daysVal = 0;
+      if(ip.cls === 'overdue'){
+        daysVal = ip.days !== null ? Math.abs(ip.days) : 999;
+        urgency = 3000 + daysVal; // overdue: highest urgency
+      } else if(ip.cls === 'due-soon'){
+        daysVal = ip.days !== null ? ip.days : 0;
+        urgency = 1000 + (30 - daysVal); // due soon: next tier
+      } else { // not-visited
+        urgency = 500;
+      }
+      items.push({
+        client: c.name, city: c.city,
+        type: 'In-person', icon: '📍',
+        label: ip.label,
+        cls: ip.cls,
+        detail: ip.nextDue ? 'Due ' + fmt(ip.nextDue) : (c.lastVisit ? 'Last: ' + fmt(c.lastVisit) : 'Never visited'),
+        urgency,
+        tabTarget: 'inperson'
+      });
+    }
+
+    // Phone visit
+    const ph = getPhoneStatus(c);
+    if(ph.cls !== 'completed' && ph.cls !== 'on-track'){
+      let urgency = 0;
+      const p = phoneData[c.name] || {};
+      if(ph.cls === 'overdue'){
+        const ref = p.ph1c ? p.ph2 : p.ph1;
+        const d = ref ? Math.abs(daysFrom(ref)) : 0;
+        urgency = 2800 + d;
+      } else if(ph.cls === 'pending'){ urgency = 800; }
+      else if(ph.cls === 'not-scheduled'){ urgency = 400; }
+      else { urgency = 600; }
+      items.push({
+        client: c.name, city: c.city,
+        type: 'Phone', icon: '📞',
+        label: ph.label,
+        cls: ph.cls,
+        detail: p.ph1 ? 'Visit 1: ' + fmt(p.ph1) : 'Not scheduled',
+        urgency,
+        tabTarget: 'phone'
+      });
+    }
+
+    // TBR
+    const tbr = getTBRStatus(c);
+    if(tbr.cls !== 'completed' && tbr.cls !== 'on-track'){
+      let urgency = 0;
+      const t = tbrData[c.name] || {};
+      if(tbr.cls === 'overdue'){
+        const ref = t.tbr1c ? t.tbr2 : t.tbr1;
+        const d = ref ? Math.abs(daysFrom(ref)) : 0;
+        urgency = 2600 + d;
+      } else if(tbr.cls === 'due-soon'){ urgency = 900; }
+      else if(tbr.cls === 'not-scheduled'){ urgency = 300; }
+      else { urgency = 550; }
+      if(tbr.cls !== 'not-scheduled' || (t && t.tbr1)){
+        items.push({
+          client: c.name, city: c.city,
+          type: 'TBR', icon: '📋',
+          label: tbr.label,
+          cls: tbr.cls,
+          detail: t.tbr1 ? 'TBR 1: ' + fmt(t.tbr1) : 'Not scheduled',
+          urgency,
+          tabTarget: 'tbr'
+        });
+      }
+    }
+
+    // Google Review
+    const rev = getReviewStatus(c);
+    if(rev.cls !== 'reviewed' && rev.cls !== 'on-track'){
+      let urgency = 0;
+      const r = reviewData[c.name] || {};
+      if(rev.cls === 'not-sent'){ urgency = 350; }
+      else if(rev.cls === 'sent' || rev.cls === 'pending'){ urgency = 700; }
+      else { urgency = 400; }
+      items.push({
+        client: c.name, city: c.city,
+        type: 'Review', icon: '⭐',
+        label: rev.label,
+        cls: rev.cls,
+        detail: r.sent ? 'Sent ' + fmt(r.sent) : 'Not sent',
+        urgency,
+        tabTarget: 'reviews'
+      });
+    }
+
+    // Valley View report
+    const rep = getReportStatus(c);
+    if(rep.cls === 'overdue' || rep.cls === 'not-sent'){
+      const r = reportData[c.name] || {};
+      let urgency = 0;
+      if(rep.cls === 'overdue'){
+        const d = r.lastSent ? Math.abs(daysFrom(r.lastSent)) : 999;
+        urgency = 2400 + d;
+      } else { urgency = 350; }
+      items.push({
+        client: c.name, city: c.city,
+        type: 'Valley View', icon: '📰',
+        label: rep.label,
+        cls: rep.cls,
+        detail: r.lastSent ? 'Last sent ' + fmt(r.lastSent) : 'Never sent',
+        urgency,
+        tabTarget: 'reports'
+      });
+    }
+  });
+
+  items.sort((a, b) => b.urgency - a.urgency);
+  return items;
+}
+
+function renderDashboard(){
+  const items = getDashboardItems();
+  const el = document.getElementById('dash-content');
+  if(!el) return;
+
+  // Update sidebar count
+  const dashCount = document.getElementById('cnt-dash');
+  if(dashCount) dashCount.textContent = items.length || '✓';
+
+  const today = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+
+  if(!items.length){
+    el.innerHTML = `
+      <div style="margin-bottom:24px;">
+        <div style="font-family:var(--mono);font-size:11px;color:var(--text-muted);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px;">${today}</div>
+        <div style="font-size:22px;font-weight:600;">All caught up 🎉</div>
+        <div style="color:var(--text-muted);font-size:13px;margin-top:4px;">No clients need attention right now.</div>
+      </div>`;
+    return;
+  }
+
+  // Count by severity
+  const overdue = items.filter(i => i.cls === 'overdue').length;
+  const dueSoon = items.filter(i => ['due-soon','pending'].includes(i.cls)).length;
+  const other = items.length - overdue - dueSoon;
+
+  // Group by client for the "worst offender" insight
+  const byClient = {};
+  items.forEach(i => { if(!byClient[i.client]) byClient[i.client] = 0; byClient[i.client]++; });
+  const worstClient = Object.entries(byClient).sort((a,b)=>b[1]-a[1])[0];
+
+  const typeBadgeStyle = type => {
+    const map = {
+      'In-person': 'background:#e8f0ea;color:#2d5a3d;',
+      'Phone': 'background:#e3eef7;color:#1a4060;',
+      'TBR': 'background:#fdf3dc;color:#7a5500;',
+      'Review': 'background:#f5e8f5;color:#6b3b6b;',
+      'Valley View': 'background:#e3eef7;color:#1a4060;'
+    };
+    return map[type] || '';
+  };
+
+  const urgBadge = cls => {
+    if(cls === 'overdue') return `<span style="background:var(--danger-light);color:var(--danger);font-family:var(--mono);font-size:10px;font-weight:600;padding:2px 8px;border-radius:3px;text-transform:uppercase;letter-spacing:0.04em;">Overdue</span>`;
+    if(['due-soon','pending'].includes(cls)) return `<span style="background:var(--warning-light);color:var(--warning);font-family:var(--mono);font-size:10px;font-weight:600;padding:2px 8px;border-radius:3px;text-transform:uppercase;letter-spacing:0.04em;">Due soon</span>`;
+    return `<span style="background:var(--surface2);color:var(--text-muted);font-family:var(--mono);font-size:10px;font-weight:600;padding:2px 8px;border-radius:3px;text-transform:uppercase;letter-spacing:0.04em;">Needs action</span>`;
+  };
+
+  const rows = items.map(item => {
+    const color = getClientColor(item.client);
+    const nameEsc = item.client.replace(/'/g, "\\'");
+    return `<div style="display:flex;align-items:center;gap:14px;padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:6px;cursor:pointer;transition:background 0.12s;"
+      onclick="(function(){ var nb=document.querySelector('.nav-item[onclick*=\\'${item.tabTarget}\\']'); if(nb) switchTab('${item.tabTarget}',nb); document.getElementById('search').value='${nameEsc}'; setTimeout(()=>{ currentTab==='clients'?renderClients():render(); },50); })()"
+      onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='var(--surface)'">
+      <span style="width:10px;height:10px;border-radius:50%;background:${color};flex-shrink:0;"></span>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.client}</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text-muted);margin-top:2px;">${item.detail}</div>
+      </div>
+      <span style="font-family:var(--mono);font-size:10px;font-weight:500;padding:2px 8px;border-radius:3px;letter-spacing:0.04em;white-space:nowrap;${typeBadgeStyle(item.type)}">${item.icon} ${item.type}</span>
+      ${urgBadge(item.cls)}
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div style="margin-bottom:28px;">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text-muted);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px;">${today}</div>
+      <div style="font-size:22px;font-weight:600;">${items.length} item${items.length!==1?'s':''} need${items.length===1?'s':''} attention</div>
+      <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:14px;">
+        ${overdue ? `<div style="background:var(--danger-light);color:var(--danger);padding:8px 16px;border-radius:var(--radius);font-family:var(--mono);font-size:12px;font-weight:600;">${overdue} overdue</div>` : ''}
+        ${dueSoon ? `<div style="background:var(--warning-light);color:var(--warning);padding:8px 16px;border-radius:var(--radius);font-family:var(--mono);font-size:12px;font-weight:600;">${dueSoon} due soon</div>` : ''}
+        ${other ? `<div style="background:var(--surface2);color:var(--text-muted);padding:8px 16px;border-radius:var(--radius);font-family:var(--mono);font-size:12px;font-weight:600;">${other} other</div>` : ''}
+        ${worstClient && worstClient[1] > 1 ? `<div style="background:var(--info-light);color:var(--info);padding:8px 16px;border-radius:var(--radius);font-family:var(--mono);font-size:12px;font-weight:600;">Most gaps: ${worstClient[0]} (${worstClient[1]})</div>` : ''}
+      </div>
+    </div>
+    <div style="font-family:var(--mono);font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px;padding-left:2px;">Sorted by urgency — click any row to jump to that client</div>
+    ${rows}`;
+}
+
 function saveClient(){
   const name=document.getElementById('f-name').value.trim();
   if(!name)return;
@@ -4743,8 +4983,8 @@ async function loadFromSupabase(){
     showStatus('Could not connect to database', false);
   }
   updateFilterOptions();
-  // Restore the active tab; default to 'clients' if no tab has been saved yet
-  const savedTab = localStorage.getItem('cvt_activeTab') || 'clients';
+  // Restore the active tab; default to 'dashboard' if no tab has been saved yet
+  const savedTab = localStorage.getItem('cvt_activeTab') || 'dashboard';
   const navEl = document.querySelector(`.nav-item[onclick*="'${savedTab}'"]`);
   if(navEl) switchTab(savedTab, navEl);
   else render();
@@ -4839,7 +5079,7 @@ window.addEventListener('resize', () => render());
 // Fix cards bottom padding for mobile tab bar
 if(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)){
   const style = document.createElement('style');
-  style.textContent = '.cards-wrap { padding-bottom: 160px !important; }';
+  style.textContent = '.cards-wrap { padding-bottom: 160px !important; } #dash-content { padding-bottom: 160px !important; }';
   document.head.appendChild(style);
 }
 
