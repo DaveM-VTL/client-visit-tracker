@@ -5956,10 +5956,10 @@ async function pullFromTeams(token) {
   const allEvents = results.flatMap(data => data.value || []);
 
   // Deduplicate by Teams event ID (same event can appear across multiple calendar responses)
-  const seen = new Set();
+  const seenTeamsIds = new Set();
   for(const evt of allEvents) {
-    if(seen.has(evt.id)) continue;
-    seen.add(evt.id);
+    if(seenTeamsIds.has(evt.id)) continue;
+    seenTeamsIds.add(evt.id);
 
     // Teams returns UTC without Z — trim microseconds and force Z suffix
     const rawStart = evt.start.dateTime.substring(0, 19) + 'Z';
@@ -5968,11 +5968,34 @@ async function pullFromTeams(token) {
     const localTime = utcDate.toLocaleTimeString('en-US', { timeZone: 'America/Los_Angeles', hour: '2-digit', minute: '2-digit', hour12: false });
     const existing = appointments.find(a => a.teamsId === evt.id);
     if(!existing) {
+      // New event in Teams -- add it
       const id = nextApptId++;
       const appt = { id, title: evt.subject, clientName: '', date: localDate, time: localTime, status: 'scheduled', notes: '', displayTitle: evt.subject, teamsId: evt.id };
       appointments.push(appt);
       await sbUpsert('appointments', { id, title: evt.subject, client_name: null, date: localDate, time: localTime, status: 'scheduled', notes: null, teams_id: evt.id });
+    } else {
+      // Event already exists -- check if it was moved or renamed in Teams
+      const changed = existing.date !== localDate || existing.time !== localTime || existing.title !== evt.subject;
+      if(changed) {
+        existing.date = localDate;
+        existing.time = localTime;
+        existing.title = evt.subject;
+        existing.displayTitle = evt.subject;
+        await sbUpsert('appointments', {
+          id: existing.id, title: evt.subject, client_name: existing.clientName || null,
+          date: localDate, time: localTime, status: existing.status,
+          notes: existing.notes || null, teams_id: evt.id
+        });
+      }
     }
+  }
+
+  // Remove any appointments that came from Teams but are no longer in the Teams response
+  // (deleted or moved outside the 60-day sync window in Teams)
+  const toRemove = appointments.filter(a => a.teamsId && !seenTeamsIds.has(a.teamsId));
+  for(const appt of toRemove) {
+    appointments.splice(appointments.indexOf(appt), 1);
+    await sbDelete('appointments', 'id', appt.id);
   }
 }
 
