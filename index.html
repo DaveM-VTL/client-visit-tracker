@@ -4538,19 +4538,60 @@ function sbHeaders(){
   };
 }
 
+// Refresh the Supabase JWT using the stored refresh token.
+// Returns true if successful, false otherwise.
+async function sbRefreshToken(){
+  const refresh = sessionStorage.getItem('cvt_refresh');
+  if(!refresh) return false;
+  try {
+    const res = await fetch(SUPA_AUTH + '/token?grant_type=refresh_token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY },
+      body: JSON.stringify({ refresh_token: refresh })
+    });
+    const data = await res.json();
+    if(data.access_token){
+      sessionStorage.setItem('cvt_token', data.access_token);
+      if(data.refresh_token) sessionStorage.setItem('cvt_refresh', data.refresh_token);
+      console.log('Supabase token refreshed successfully');
+      return true;
+    }
+  } catch(e){ console.warn('Token refresh failed', e); }
+  return false;
+}
+
 async function sbGet(table){
   const res = await fetch(SUPA_URL + '/rest/v1/' + table + '?select=*', {
     headers: sbHeaders()
   });
+  // Auto-refresh on 401 and retry once
+  if(res.status === 401){
+    const refreshed = await sbRefreshToken();
+    if(refreshed){
+      const retry = await fetch(SUPA_URL + '/rest/v1/' + table + '?select=*', { headers: sbHeaders() });
+      return retry.json();
+    }
+  }
   return res.json();
 }
 
 async function sbUpsert(table, row){
-  const res = await fetch(SUPA_URL + '/rest/v1/' + table, {
+  let res = await fetch(SUPA_URL + '/rest/v1/' + table, {
     method: 'POST',
     headers: { ...sbHeaders(), 'Prefer': 'resolution=merge-duplicates,return=minimal' },
     body: JSON.stringify(row)
   });
+  // Auto-refresh on 401 and retry once
+  if(res.status === 401){
+    const refreshed = await sbRefreshToken();
+    if(refreshed){
+      res = await fetch(SUPA_URL + '/rest/v1/' + table, {
+        method: 'POST',
+        headers: { ...sbHeaders(), 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+        body: JSON.stringify(row)
+      });
+    }
+  }
   if(!res.ok){
     const errText = await res.text().catch(() => res.statusText);
     throw new Error('Supabase error on ' + table + ' (' + res.status + '): ' + errText);
@@ -4558,10 +4599,20 @@ async function sbUpsert(table, row){
 }
 
 async function sbDelete(table, column, value){
-  await fetch(SUPA_URL + '/rest/v1/' + table + '?' + column + '=eq.' + value, {
+  let res = await fetch(SUPA_URL + '/rest/v1/' + table + '?' + column + '=eq.' + value, {
     method: 'DELETE',
     headers: sbHeaders()
   });
+  // Auto-refresh on 401 and retry once
+  if(res.status === 401){
+    const refreshed = await sbRefreshToken();
+    if(refreshed){
+      await fetch(SUPA_URL + '/rest/v1/' + table + '?' + column + '=eq.' + value, {
+        method: 'DELETE',
+        headers: sbHeaders()
+      });
+    }
+  }
 }
 
 function showStatus(msg, ok=true){
@@ -5856,6 +5907,7 @@ async function pullFromTeams(token) {
 
   // Fetch all calendars first, then pull events from each one
   let calendarIds = [];
+  let calendarNames = [];
   try {
     const calRes = await fetch(
       'https://graph.microsoft.com/v1.0/me/calendars?$select=id,name&$top=50',
@@ -5864,19 +5916,37 @@ async function pullFromTeams(token) {
     const calData = await calRes.json();
     if(calData.value && calData.value.length > 0) {
       calendarIds = calData.value.map(c => c.id);
+      calendarNames = calData.value.map(c => c.name);
     }
   } catch(e) {
     console.warn('Could not fetch calendar list, falling back to default calendar', e);
   }
 
-  // If we couldn't get calendars, fall back to the default calendarView endpoint
+  // If we couldn't get calendars, fall back to the default calendarView endpoint.
+  // Each per-calendar fetch is wrapped to skip gracefully if access is denied
+  // (e.g. a shared calendar you no longer have permission to read).
   const fetchPromises = calendarIds.length > 0
-    ? calendarIds.map(calId =>
-        fetch(
+    ? calendarIds.map((calId, i) => {
+        const calName = calendarNames[i] || calId;
+        return fetch(
           `https://graph.microsoft.com/v1.0/me/calendars/${calId}/calendarView?startDateTime=${start}&endDateTime=${endStr}&$select=id,subject,start,end&$top=100`,
           { headers: { Authorization: 'Bearer ' + token } }
-        ).then(r => r.json()).catch(() => ({ value: [] }))
-      )
+        ).then(async r => {
+          if(!r.ok){
+            console.warn(`Skipping calendar "${calName}" — HTTP ${r.status} (no access or removed)`);
+            return { value: [] };
+          }
+          const data = await r.json();
+          if(data.error){
+            console.warn(`Skipping calendar "${calName}" — ${data.error.message}`);
+            return { value: [] };
+          }
+          return data;
+        }).catch(e => {
+          console.warn(`Skipping calendar "${calName}" — fetch error`, e);
+          return { value: [] };
+        });
+      })
     : [fetch(
         `https://graph.microsoft.com/v1.0/me/calendarView?startDateTime=${start}&endDateTime=${endStr}&$select=id,subject,start,end&$top=100`,
         { headers: { Authorization: 'Bearer ' + token } }
