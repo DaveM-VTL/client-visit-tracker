@@ -2073,6 +2073,152 @@
     .rep-hist-panel { width: 100vw; }
   }
 
+  /* ── Review Email Log Panel ── */
+  .rev-email-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(26,24,20,0.4);
+    z-index: 300;
+    align-items: flex-start;
+    justify-content: flex-end;
+  }
+  .rev-email-overlay.open { display: flex; }
+  .rev-email-panel {
+    background: var(--surface);
+    width: 420px;
+    max-width: 100vw;
+    height: 100vh;
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    box-shadow: -8px 0 32px rgba(0,0,0,0.1);
+  }
+  .rev-email-header {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+  .rev-email-header h3 {
+    font-size: 14px;
+    font-weight: 600;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .rev-email-close {
+    background: none;
+    border: none;
+    font-size: 16px;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px;
+    line-height: 1;
+  }
+  .rev-email-body {
+    flex: 1;
+    overflow-y: auto;
+  }
+  .rev-email-empty {
+    text-align: center;
+    color: var(--text-muted);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 40px 24px;
+    line-height: 1.7;
+  }
+  .rev-email-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .rev-email-item:last-child { border-bottom: none; }
+  .rev-email-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #c47eb5;
+    flex-shrink: 0;
+  }
+  .rev-email-date {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text);
+    flex-shrink: 0;
+  }
+  .rev-email-campaign {
+    flex: 1;
+    font-size: 12px;
+    color: var(--text-muted);
+    font-style: italic;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .rev-email-ago {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+  .rev-email-del {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 13px;
+    padding: 2px 6px;
+    border-radius: var(--radius);
+    transition: all 0.15s;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .rev-email-del:hover { color: var(--danger); background: var(--danger-light); }
+  .rev-email-footer {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .rev-email-campaign-input {
+    width: 100%;
+    padding: 9px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: var(--sans);
+    font-size: 13px;
+    background: var(--bg);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .rev-email-campaign-input:focus { border-color: #c47eb5; }
+  .rev-email-campaign-input::placeholder { color: var(--text-muted); }
+  .rev-email-log-btn {
+    width: 100%;
+    padding: 10px;
+    background: #c47eb5;
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .rev-email-log-btn:hover { opacity: 0.85; }
+  @media (max-width: 768px) {
+    .rev-email-panel { width: 100vw; }
+  }
+
   /* ── Weekly To-Do ── */
   #todo-view {
     display: none;
@@ -2914,6 +3060,21 @@
   </div>
 </div>
 
+<!-- Review Email Log Panel -->
+<div class="rev-email-overlay" id="rev-email-overlay" onclick="if(event.target===this)closeRevEmailLog()">
+  <div class="rev-email-panel">
+    <div class="rev-email-header">
+      <h3 id="rev-email-title">Email Log</h3>
+      <button class="rev-email-close" onclick="closeRevEmailLog()">✕</button>
+    </div>
+    <div class="rev-email-body" id="rev-email-body"></div>
+    <div class="rev-email-footer">
+      <input class="rev-email-campaign-input" id="rev-email-campaign-input" type="text" placeholder="Campaign label (optional, e.g. Spring 2026)">
+      <button class="rev-email-log-btn" onclick="logRevEmailFromPanel()">+ Log email sent today</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="modal">
   <div class="modal">
     <div class="modal-header">
@@ -3100,6 +3261,8 @@ const notesData = {};
 
 const reportData = {}; // name -> { lastSent: 'YYYY-MM-DD' } // name -> string
 const reportHistory = {}; // name -> [{id, sent_date}]
+const reviewEmailLog = {}; // name -> [{id, sent_date, campaign}]
+let revEmailClient = null; // currently open email log client
 
 const phoneData = {
   'Alia Corp':{ph1:'2026-02-10',ph2:'2026-03-31',ph1c:null,ph2c:null},
@@ -3417,10 +3580,11 @@ function renderStats(){
     const reviewed=clients.filter(c=>getReviewStatus(c).cls==='reviewed').length;
     const awaiting=clients.filter(c=>getReviewStatus(c).cls==='sent').length;
     const notSent=clients.filter(c=>getReviewStatus(c).cls==='not-sent').length;
+    const totalEmails=Object.values(reviewEmailLog).reduce((sum,arr)=>sum+arr.length,0);
     html=`<div class="stat-cell"><div class="stat-num num-success">${reviewed}</div><div class="stat-lbl">Reviewed</div></div>
           <div class="stat-cell"><div class="stat-num num-warning">${awaiting}</div><div class="stat-lbl">Awaiting review</div></div>
           <div class="stat-cell"><div class="stat-num">${notSent}</div><div class="stat-lbl">Not sent</div></div>
-          <div class="stat-cell"><div class="stat-num num-info">${clients.length}</div><div class="stat-lbl">Total clients</div></div>`;
+          <div class="stat-cell"><div class="stat-num" style="color:#c47eb5;">${totalEmails}</div><div class="stat-lbl">Emails logged</div></div>`;
   } else if(currentTab==='tbr'){
     const comp=clients.filter(c=>getTBRStatus(c).cls==='completed').length;
     const pend=clients.filter(c=>['pending','overdue'].includes(getTBRStatus(c).cls)).length;
@@ -3618,7 +3782,8 @@ function renderCards(rows){
     } else if(currentTab==='reviews'){
       const r = reviewData[c.name]||{};
       const st = getReviewStatus(c);
-      summary = `<div class="card-due">Sent: ${fmt(r.sent)||'—'}</div>`;
+      const emailCount=(reviewEmailLog[c.name]||[]).length;
+      summary = `<div class="card-due">Sent: ${fmt(r.sent)||'—'} ${emailCount?`<span style="background:#c47eb5;color:#fff;border-radius:10px;padding:1px 6px;font-size:9px;font-family:var(--mono);margin-left:4px;">${emailCount} email${emailCount!==1?'s':''}</span>`:''}`;
       details = `
         <div class="card-detail-row"><span class="card-detail-label">Person sent to</span><span class="card-detail-val">${r.person||'—'}</span></div>
         <div class="card-detail-row"><span class="card-detail-label">Date reviewed</span><span class="card-detail-val">${fmt(r.reviewed)}</span></div>
@@ -3642,6 +3807,9 @@ function quickLogBtn(c){
     return `<button class="card-quick-btn" id="qlb-${c.id}" onclick="quickLogVisit(${c.id},'formal');event.stopPropagation();">✓ Visited today</button>`;
   } else if(currentTab === 'phone'){
     return `<button class="card-quick-btn" id="qlb-${c.id}" onclick="quickLogVisit(${c.id},'phone');event.stopPropagation();">✓ Called today</button>`;
+  } else if(currentTab === 'reviews'){
+    const emailCount=(reviewEmailLog[c.name]||[]).length;
+    return `<button class="card-quick-btn" style="background:#c47eb5;color:#fff;" onclick="logRevEmailQuick('${nameEsc}');event.stopPropagation();">+ Log email</button><button class="card-quick-btn" style="margin-left:6px;" onclick="openRevEmailLog('${nameEsc}');event.stopPropagation();">📋 Log${emailCount?` (${emailCount})`:''}`;
   }
   return '';
 }
@@ -3812,7 +3980,9 @@ function render(){
       const r=reviewData[c.name]||{};const st=getReviewStatus(c);
       const color=getClientColor(c.name);
       const note=notesData[c.name]||'';
-      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(r.sent)}</td><td>${r.person||'—'}</td><td class="td-date">${fmt(r.reviewed)}</td><td>${r.reviewer||'—'}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td>${renderCustomCells('reviews',c.name)}<td></td><td class="td-edit"><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
+      const emailCount=(reviewEmailLog[c.name]||[]).length;
+      const emailCountBadge=emailCount?`<span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;background:#c47eb5;color:#fff;border-radius:50%;font-size:9px;font-family:var(--mono);font-weight:600;margin-left:4px;">${emailCount}</span>`:'';
+      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(r.sent)}</td><td>${r.person||'—'}</td><td class="td-date">${fmt(r.reviewed)}</td><td>${r.reviewer||'—'}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td>${renderCustomCells('reviews',c.name)}<td></td><td class="td-edit" style="white-space:nowrap;"><button class="edit-btn" style="background:#c47eb5;color:#fff;border-color:#c47eb5;" onclick="logRevEmailQuick('${c.name.replace(/'/g,"\\'")}')" title="Log email sent today">+ Email</button> <button class="edit-btn" onclick="openRevEmailLog('${c.name.replace(/'/g,"\\'")}')" title="View email history">log${emailCountBadge}</button> <button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
     });
     html+='</tbody></table>';
   } else {
@@ -4885,6 +5055,7 @@ async function loadFromSupabase(){
     const rh = await sbGet('report_history').catch(() => []);
     const ap = await sbGet('appointments').catch(() => []);
     const vl = await sbGet('visit_log').catch((e) => { console.error('visit_log fetch error:', e); return []; });
+    const rel = await sbGet('review_email_log').catch(() => []);
 
     if(c && c.length > 0){
       // Keep hardcoded data as fallback for missing fields
@@ -4951,6 +5122,17 @@ async function loadFromSupabase(){
       // Sort each client's history newest first
       Object.keys(reportHistory).forEach(name => {
         reportHistory[name].sort((a,b) => b.sent_date.localeCompare(a.sent_date));
+      });
+    }
+    // Load review email log
+    Object.keys(reviewEmailLog).forEach(k => delete reviewEmailLog[k]);
+    if(rel && rel.length > 0){
+      rel.forEach(row => {
+        if(!reviewEmailLog[row.client_name]) reviewEmailLog[row.client_name] = [];
+        reviewEmailLog[row.client_name].push({ id: row.id, sent_date: row.sent_date, campaign: row.campaign || '' });
+      });
+      Object.keys(reviewEmailLog).forEach(name => {
+        reviewEmailLog[name].sort((a,b) => b.sent_date.localeCompare(a.sent_date));
       });
     }
     if(ap && ap.length > 0){
@@ -6590,6 +6772,134 @@ async function deleteRepHistEntry(id){
     showStatus('Delete failed', false);
   }
   renderRepHist();
+  render();
+}
+
+// ── Review Email Log ──────────────────────────────────────────────────
+
+function openRevEmailLog(name){
+  revEmailClient = name;
+  document.getElementById('rev-email-title').textContent = name + ' — Email Log';
+  document.getElementById('rev-email-campaign-input').value = '';
+  renderRevEmailLog();
+  document.getElementById('rev-email-overlay').classList.add('open');
+}
+
+function closeRevEmailLog(){
+  document.getElementById('rev-email-overlay').classList.remove('open');
+  revEmailClient = null;
+}
+
+function renderRevEmailLog(){
+  const body = document.getElementById('rev-email-body');
+  const entries = reviewEmailLog[revEmailClient] || [];
+
+  if(!entries.length){
+    body.innerHTML = '<div class="rev-email-empty">No emails logged yet.<br>Use the button below to log one.<br><br>Add a campaign label to group emails<br>across all clients (e.g. "Spring 2026").</div>';
+    return;
+  }
+
+  // Group by campaign (or "No campaign"), then by month
+  const campaigns = {};
+  entries.forEach(e => {
+    const key = e.campaign || '— No label —';
+    if(!campaigns[key]) campaigns[key] = [];
+    campaigns[key].push(e);
+  });
+
+  const campaignKeys = Object.keys(campaigns).sort((a,b) => {
+    // No label goes last
+    if(a === '— No label —') return 1;
+    if(b === '— No label —') return -1;
+    return a.localeCompare(b);
+  });
+
+  const totalEmails = entries.length;
+
+  let html = `<div style="padding:12px 16px 8px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+    <span style="font-family:var(--mono);font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">Total emails:</span>
+    <span style="font-family:var(--mono);font-size:13px;font-weight:600;color:#c47eb5;">${totalEmails}</span>
+    <span style="font-family:var(--mono);font-size:10px;color:var(--text-muted);margin-left:8px;">across ${campaignKeys.length} campaign${campaignKeys.length!==1?'s':''}</span>
+  </div>`;
+
+  campaignKeys.forEach((key, idx) => {
+    const campEntries = campaigns[key];
+    const isFirst = idx === 0;
+    html += `<details${isFirst?' open':''} style="border-bottom:1px solid var(--border);">
+      <summary style="display:flex;align-items:center;gap:10px;padding:11px 16px;cursor:pointer;list-style:none;user-select:none;background:var(--surface2);">
+        <span style="font-size:10px;">✉️</span>
+        <span style="font-family:var(--mono);font-size:11px;font-weight:600;color:var(--text);flex:1;">${key}</span>
+        <span style="font-family:var(--mono);font-size:10px;background:#c47eb5;color:#fff;border-radius:10px;padding:1px 8px;">${campEntries.length}</span>
+        <span style="font-family:var(--mono);font-size:10px;color:var(--text-muted);">▾</span>
+      </summary>
+      <div style="padding:4px 0;">
+        ${campEntries.map(e => {
+          const dAgo = Math.abs(daysFrom(e.sent_date));
+          const agoStr = dAgo === 0 ? 'today' : dAgo + 'd ago';
+          return `<div class="rev-email-item">
+            <div class="rev-email-dot"></div>
+            <div class="rev-email-date">${fmt(e.sent_date)}</div>
+            <div class="rev-email-campaign">${e.campaign || ''}</div>
+            <div class="rev-email-ago">${agoStr}</div>
+            <button class="rev-email-del" onclick="deleteRevEmailEntry('${e.id}')" title="Remove">✕</button>
+          </div>`;
+        }).join('')}
+      </div>
+    </details>`;
+  });
+
+  body.innerHTML = html;
+}
+
+async function logRevEmailFromPanel(){
+  if(!revEmailClient) return;
+  const campaign = (document.getElementById('rev-email-campaign-input').value || '').trim();
+  await logRevEmail(revEmailClient, campaign);
+  renderRevEmailLog();
+}
+
+async function logRevEmailQuick(name){
+  // Quick log with no campaign — prompts for one optionally
+  const campaign = prompt('Campaign label (optional, e.g. "Spring 2026"):\nLeave blank to log without a label.', '') ?? null;
+  if(campaign === null) return; // cancelled
+  await logRevEmail(name, campaign.trim());
+  render();
+}
+
+async function logRevEmail(name, campaign){
+  const today = fmtISO(TODAY);
+  const id = Date.now() + '_' + Math.random().toString(36).slice(2,6);
+  const entry = { id, sent_date: today, campaign: campaign || '' };
+  if(!reviewEmailLog[name]) reviewEmailLog[name] = [];
+  // Allow multiple emails same day (different campaigns), but not exact duplicate
+  const isDuplicate = reviewEmailLog[name].some(e => e.sent_date === today && (e.campaign||'') === (campaign||''));
+  if(isDuplicate){ showStatus('Already logged today for this campaign', true); return; }
+  reviewEmailLog[name].unshift(entry);
+  try {
+    await fetch(SUPA_URL + '/rest/v1/review_email_log', {
+      method: 'POST',
+      headers: { ...sbHeaders(), 'Prefer': 'resolution=merge-duplicates' },
+      body: JSON.stringify({ id, client_name: name, sent_date: today, campaign: campaign || null })
+    });
+    showStatus('Email logged!', true);
+  } catch(e){
+    showStatus('Save failed', false);
+    console.error(e);
+  }
+  render();
+}
+
+async function deleteRevEmailEntry(id){
+  if(!confirm('Remove this email log entry?')) return;
+  const name = revEmailClient;
+  reviewEmailLog[name] = (reviewEmailLog[name]||[]).filter(e => e.id !== id);
+  try {
+    await sbDelete('review_email_log', 'id', id);
+    showStatus('Entry removed', true);
+  } catch(e){
+    showStatus('Delete failed', false);
+  }
+  renderRevEmailLog();
   render();
 }
 
