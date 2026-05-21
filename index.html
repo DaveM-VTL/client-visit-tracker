@@ -3089,6 +3089,7 @@
           <div class="field full"><label>Client name</label><input id="f-name" type="text"></div>
           <div class="field full"><label>Address</label><input id="f-addr" type="text"></div>
           <div class="field"><label>City</label><input id="f-city" type="text"></div>
+          <div class="field"><label>Main Phone <span style="font-weight:400;color:var(--text-muted);font-size:10px;">(shown on all tabs)</span></label><input id="f-main-phone" type="tel" placeholder="(209) 555-1234"></div>
           <div class="field"><label>Area <span style="font-weight:400;color:var(--text-muted);font-size:10px;">(set up in Map → 🗂 Areas)</span></label>
             <select id="f-area" style="width:100%;">
               <option value="">— No area —</option>
@@ -3710,6 +3711,10 @@ function nameCell(c){
   const website = profile.website || '';
   const addr = [c.address, c.city].filter(Boolean).join(', ') || 'No address on file';
 
+  const mainPhoneHtml = c.mainPhone
+    ? `<div style="margin-top:5px;"><a href="tel:${c.mainPhone}" style="color:var(--accent);text-decoration:none;font-size:12px;font-weight:500;">📞 ${c.mainPhone}</a></div>`
+    : '';
+
   let contactsHtml = contacts.filter(ct => ct.name).map(ct => {
     const phone = ct.phone ? `<a href="tel:${ct.phone}" style="color:var(--accent);text-decoration:none">${ct.phone}</a>` : '';
     const email = ct.email ? `<a href="mailto:${ct.email}" style="color:var(--accent);text-decoration:none;font-size:10px">${ct.email}</a>` : '';
@@ -3730,6 +3735,7 @@ function nameCell(c){
     <div class="client-popup">
       <strong>${c.name}</strong>
       <div style="color:var(--text-muted);font-size:11px">${addr}</div>
+      ${mainPhoneHtml}
       ${contactsHtml}
       ${websiteHtml}
     </div>
@@ -3758,6 +3764,7 @@ function renderCards(rows){
         <div class="card-detail-row"><span class="card-detail-label">Second visit</span><span class="card-detail-val">${fmt(c.lastVisit2)}</span></div>
         ${c.scheduledVisit ? `<div class="card-detail-row"><span class="card-detail-label">Scheduled visit</span><span class="card-detail-val" style="color:#5a2da0;font-weight:600;">📅 ${fmt(c.scheduledVisit)}</span></div>` : ''}
         <div class="card-detail-row"><span class="card-detail-label">Address</span><span class="card-detail-val">${[c.address,c.city].filter(Boolean).join(', ')||'—'}</span></div>
+        ${c.mainPhone ? `<div class="card-detail-row"><span class="card-detail-label">Main Phone</span><a href="tel:${c.mainPhone}" style="font-family:var(--mono);font-size:12px;color:var(--accent);text-decoration:none;">${c.mainPhone}</a></div>` : ''}
         ${cardContacts(c.name)}`;
       return cardHTML(c, color, st, summary, details, note, noteEsc);
     } else if(currentTab==='phone'){
@@ -4033,6 +4040,7 @@ function renderClients() {
         <th style="padding-left:32px;">#</th>
         <th>Client</th>
         <th>City</th>
+        <th>Main Phone</th>
         <th>Contacts</th>
         <th>Website</th>
         <th></th>
@@ -4047,7 +4055,7 @@ function renderClients() {
     const website = profile.website || '';
     const isExp = expandedClientIds.has(c.id);
     const contactSummary = contacts.filter(ct=>ct.name).map(ct=>ct.name).join(', ') || '—';
-    const colCount = 6;
+    const colCount = 7;
 
     html += `<tr class="client-dir-row${isExp?' dir-expanded':''} has-color" style="--client-color:${color}" onclick="toggleClientDir(${c.id})">
       <td class="td-num" style="padding-left:32px;">${i+1}</td>
@@ -4056,6 +4064,7 @@ function renderClients() {
         <span class="client-dot" style="background:${color}"></span>${c.name}
       </td>
       <td class="td-city">${c.city||'—'}</td>
+      <td style="font-family:var(--mono);font-size:11px;">${c.mainPhone ? `<a href="tel:${c.mainPhone}" style="color:var(--accent);text-decoration:none;" onclick="event.stopPropagation()">📞 ${c.mainPhone}</a>` : '<span style="color:var(--border)">—</span>'}</td>
       <td style="font-size:12px;color:var(--text-muted);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${contactSummary}</td>
       <td style="font-size:11px;font-family:var(--mono);">${website ? `<a href="${website}" target="_blank" style="color:var(--accent);text-decoration:none;" onclick="event.stopPropagation()">🌐 ${website.replace(/https?:\/\//,'').replace(/\/$/,'').substring(0,30)}</a>` : '<span style="color:var(--border)">—</span>'}</td>
       <td style="padding-right:32px;"><button class="edit-btn" onclick="event.stopPropagation();openEdit(${c.id})">edit</button></td>
@@ -4082,11 +4091,13 @@ function renderClients() {
 
       const addr = [c.address, c.city].filter(Boolean).join(', ');
       const addrRow = addr ? `<div style="font-family:var(--mono);font-size:11px;color:var(--text-muted);">📍 ${addr}</div>` : '';
+      const mainPhoneRow = c.mainPhone ? `<div style="font-family:var(--mono);font-size:11px;color:var(--text-muted);margin-top:4px;"><a href="tel:${c.mainPhone}" style="color:var(--accent);text-decoration:none;font-size:12px;font-weight:500;">📞 ${c.mainPhone}</a> <span style="font-size:10px;color:var(--border)">main</span></div>` : '';
 
       html += `<tr class="client-dir-detail">
         <td colspan="${colCount}">
           <div class="client-dir-panel">
             ${addrRow}
+            ${mainPhoneRow}
             <div class="dir-contacts-grid">${contactCards || '<span style="font-family:var(--mono);font-size:11px;color:var(--border)">No contacts on file</span>'}</div>
             ${websiteRow}
           </div>
@@ -4119,12 +4130,13 @@ function renderClients() {
 
     const wsRow = website ? `<div style="padding-top:8px;border-top:1px solid var(--border);"><a href="${website}" target="_blank" style="color:var(--accent);font-size:11px;font-family:var(--mono);">🌐 ${website.replace(/https?:\/\//,'').replace(/\/$/,'')}</a></div>` : '';
     const addr = [c.address, c.city].filter(Boolean).join(', ');
+    const mainPhoneMobile = c.mainPhone ? `<a href="tel:${c.mainPhone}" style="color:var(--accent);font-family:var(--mono);font-size:11px;text-decoration:none;">📞 ${c.mainPhone}</a>` : '';
 
     return `<div class="client-card" style="--client-color:${color}" id="cdir-${c.id}">
       <div class="card-main" onclick="toggleClientDir(${c.id})">
         <div class="card-left">
           <div class="card-name"><span class="client-dot" style="background:${color}"></span>${c.name}</div>
-          <div class="card-due">${addr||'No address'}</div>
+          <div class="card-due">${addr||'No address'}${c.mainPhone ? ` · <a href="tel:${c.mainPhone}" style="color:var(--accent);text-decoration:none;" onclick="event.stopPropagation()">${c.mainPhone}</a>` : ''}</div>
         </div>
         <div class="card-right">
           <span style="font-size:11px;color:var(--text-muted);font-family:var(--mono);">${contacts.filter(ct=>ct.name).length} contact${contacts.filter(ct=>ct.name).length!==1?'s':''}</span>
@@ -4133,6 +4145,7 @@ function renderClients() {
       </div>
       ${isExp ? `<div class="card-details" style="display:block;padding:0 14px 14px;">
         <div style="display:flex;flex-direction:column;gap:10px;padding-top:12px;">
+          ${c.mainPhone ? `<div style="padding-bottom:4px;">${mainPhoneMobile} <span style="font-size:10px;font-family:var(--mono);color:var(--text-muted);">main line</span></div>` : ''}
           ${contactCards || '<span style="font-family:var(--mono);font-size:11px;color:var(--border)">No contacts on file</span>'}
           ${wsRow}
         </div>
@@ -4534,7 +4547,7 @@ function exportCSV(){
 function openAdd(){
   editingId=null;
   document.getElementById('modal-title').textContent='Add client';
-  ['f-name','f-addr','f-city','f-last','f-last2','f-scheduled','f-ph1','f-ph2','f-ph1c','f-ph2c','f-tbr1','f-tbr1c','f-tbr2','f-tbr2c','f-rev-sent','f-rev-person','f-rev-date','f-rev-reviewer','f-rep-sent'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
+  ['f-name','f-addr','f-city','f-main-phone','f-last','f-last2','f-scheduled','f-ph1','f-ph2','f-ph1c','f-ph2c','f-tbr1','f-tbr1c','f-tbr2','f-tbr2c','f-rev-sent','f-rev-person','f-rev-date','f-rev-reviewer','f-rep-sent'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
   document.getElementById('f-tbr-twice').value='No';
   document.getElementById('f-notes').value='';
   document.getElementById('f-website').value='';
@@ -4554,6 +4567,7 @@ function openEdit(id){
   document.getElementById('f-name').value=c.name;
   document.getElementById('f-addr').value=c.address;
   document.getElementById('f-city').value=c.city;
+  document.getElementById('f-main-phone').value=c.mainPhone||'';
   document.getElementById('f-last').value=c.lastVisit||'';
   document.getElementById('f-last2').value=c.lastVisit2||'';
   document.getElementById('f-scheduled').value=c.scheduledVisit||'';
@@ -5087,7 +5101,8 @@ async function loadFromSupabase(){
           city: row.city || local.city || '',
           lastVisit: row.last_visit || local.lastVisit || null,
           lastVisit2: row.last_visit2 || local.lastVisit2 || null,
-          scheduledVisit: row.scheduled_visit || null
+          scheduledVisit: row.scheduled_visit || null,
+          mainPhone: row.main_phone || null
         };
       });
       clients.sort((a,b) => a.name.localeCompare(b.name));
@@ -5198,6 +5213,7 @@ async function saveClientToSupabase(){
     last_visit: document.getElementById('f-last').value || null,
     last_visit2: document.getElementById('f-last2').value || null,
     scheduled_visit: document.getElementById('f-scheduled').value || null,
+    main_phone: document.getElementById('f-main-phone').value.trim() || null,
     contacts: JSON.stringify(newContacts),
     website: newWebsite || null
   };
@@ -5242,7 +5258,7 @@ async function saveClientToSupabase(){
     ]);
 
     // update local data too
-    const data = { id: clientRow.id, name, address: clientRow.address, city: clientRow.city, lastVisit: clientRow.last_visit, lastVisit2: clientRow.last_visit2, scheduledVisit: clientRow.scheduled_visit };
+    const data = { id: clientRow.id, name, address: clientRow.address, city: clientRow.city, lastVisit: clientRow.last_visit, lastVisit2: clientRow.last_visit2, scheduledVisit: clientRow.scheduled_visit, mainPhone: clientRow.main_phone || null };
     phoneData[name] = { ph1: phoneRow.ph1, ph2: phoneRow.ph2, ph1c: phoneRow.ph1c, ph2c: phoneRow.ph2c };
     tbrData[name] = { twice: tbrRow.twice, tbr1: tbrRow.tbr1, tbr1c: tbrRow.tbr1c, tbr2: tbrRow.tbr2, tbr2c: tbrRow.tbr2c };
     reviewData[name] = { sent: reviewRow.sent, person: reviewRow.person, reviewed: reviewRow.reviewed, reviewer: reviewRow.reviewer };
