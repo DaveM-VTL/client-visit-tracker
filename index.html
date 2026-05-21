@@ -2311,6 +2311,9 @@
     cursor: text;
     min-height: 22px;
     width: 0;
+    min-width: 0;
+    overflow: hidden;
+    word-break: break-word;
   }
   .todo-item.done .todo-text { text-decoration: line-through; color: var(--text-muted); }
   .todo-delete-btn {
@@ -6929,6 +6932,10 @@ function todoRenderList() {
   if(footer) footer.textContent = (total - done) + ' task' + (total-done!==1?'s':'') + ' remaining for ' + dayLabel;
 
   list.querySelectorAll('.todo-text').forEach(el => {
+    // Auto-expand to fit full content on initial render
+    el.style.height = '22px';
+    el.style.height = el.scrollHeight + 'px';
+
     el.addEventListener('blur', function() {
       const id = parseInt(this.dataset.id);
       const newText = this.value.trim();
