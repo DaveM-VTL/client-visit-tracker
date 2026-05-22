@@ -4485,18 +4485,23 @@ function exportCSV(){
     return s;
   };
   const fmtD = d => d||'';
+  const row = cols => cols.map(esc).join(',');
+  const blank = () => '';
+  const sectionHeader = label => `\r\n${esc(label)}\r\n`;
 
-  // Find the max number of contacts across all clients
+  const today = new Date().toISOString().slice(0,10);
+  const sections = [];
+
+  // ── SECTION 1: CLIENT PROFILES ──────────────────────────────────────────
   const maxContacts = Math.max(1, ...clients.map(c => (clientProfiles[c.name]||{}).contacts?.length||0));
-
   const contactHeaders = [];
   for(let i=0; i<maxContacts; i++){
     const n = i+1;
     contactHeaders.push(`Contact ${n} Name`,`Contact ${n} Phone`,`Contact ${n} Email`,`Contact ${n} Position`);
   }
-
-  const headers = [
-    'Client Name','Address','City','Website',
+  sections.push('=== CLIENT DATA ===');
+  sections.push(row([
+    'Client Name','Address','City','Main Phone','Website','Scheduled Visit',
     ...contactHeaders,
     'Last In-Person Visit 1','Last In-Person Visit 2',
     'Phone Visit 1 Scheduled','Phone Visit 2 Scheduled','Phone Visit 1 Completed','Phone Visit 2 Completed',
@@ -4504,9 +4509,8 @@ function exportCSV(){
     'Review Request Sent','Review Request Person','Review Date','Reviewer Name',
     'Last Report Sent',
     'Notes'
-  ];
-
-  const rows = clients.map(c => {
+  ]));
+  clients.forEach(c => {
     const p = phoneData[c.name]||{};
     const t = tbrData[c.name]||{};
     const r = reviewData[c.name]||{};
@@ -4515,14 +4519,13 @@ function exportCSV(){
     const prof = clientProfiles[c.name]||{};
     const contacts = prof.contacts||[];
     const website = prof.website||'';
-    // All contacts up to maxContacts, pad with empty strings if fewer
     const ctFields = [];
     for(let i=0; i<maxContacts; i++){
       const ct = contacts[i]||{};
       ctFields.push(ct.name||'', ct.phone||'', ct.email||'', ct.position||'');
     }
-    return [
-      c.name, c.address, c.city, website,
+    sections.push(row([
+      c.name, c.address||'', c.city||'', c.mainPhone||'', website, fmtD(c.scheduledVisit),
       ...ctFields,
       fmtD(c.lastVisit), fmtD(c.lastVisit2),
       fmtD(p.ph1), fmtD(p.ph2), fmtD(p.ph1c), fmtD(p.ph2c),
@@ -4530,14 +4533,68 @@ function exportCSV(){
       fmtD(r.sent), r.person||'', fmtD(r.reviewed), r.reviewer||'',
       fmtD(rep.lastSent),
       note
-    ].map(esc).join(',');
+    ]));
   });
 
-  const csv = [headers.map(esc).join(','), ...rows].join('\r\n');
+  // ── SECTION 2: VISIT LOG ─────────────────────────────────────────────────
+  sections.push('');
+  sections.push('=== VISIT LOG ===');
+  sections.push(row(['Client Name','Date','Type','Note','Next Due']));
+  const visitLogClients = Object.keys(visitLog).sort();
+  let hasVisitLog = false;
+  visitLogClients.forEach(name => {
+    (visitLog[name]||[]).forEach(v => {
+      sections.push(row([name, v.date||'', v.type||'', v.note||'', v.nextDue||'']));
+      hasVisitLog = true;
+    });
+  });
+  if(!hasVisitLog) sections.push(row(['(no visit log entries)','','','','']));
+
+  // ── SECTION 3: REPORT HISTORY (Valley View) ──────────────────────────────
+  sections.push('');
+  sections.push('=== VALLEY VIEW REPORT HISTORY ===');
+  sections.push(row(['Client Name','Sent Date']));
+  const rhClients = Object.keys(reportHistory).sort();
+  let hasRH = false;
+  rhClients.forEach(name => {
+    (reportHistory[name]||[]).forEach(h => {
+      sections.push(row([name, h.sent_date||'']));
+      hasRH = true;
+    });
+  });
+  if(!hasRH) sections.push(row(['(no report history)','']));
+
+  // ── SECTION 4: REVIEW EMAIL LOG ───────────────────────────────────────────
+  sections.push('');
+  sections.push('=== REVIEW EMAIL LOG ===');
+  sections.push(row(['Client Name','Sent Date','Campaign']));
+  const relClients = Object.keys(reviewEmailLog).sort();
+  let hasREL = false;
+  relClients.forEach(name => {
+    (reviewEmailLog[name]||[]).forEach(e => {
+      sections.push(row([name, e.sent_date||'', e.campaign||'']));
+      hasREL = true;
+    });
+  });
+  if(!hasREL) sections.push(row(['(no review email log entries)','','']));
+
+  // ── SECTION 5: APPOINTMENTS ───────────────────────────────────────────────
+  sections.push('');
+  sections.push('=== APPOINTMENTS ===');
+  sections.push(row(['ID','Client Name','Title','Date','Time','Status','Notes']));
+  if(appointments && appointments.length > 0){
+    const sorted = [...appointments].sort((a,b) => (a.date||'').localeCompare(b.date||''));
+    sorted.forEach(a => {
+      sections.push(row([String(a.id||''), a.clientName||'', a.title||'', a.date||'', a.time||'', a.status||'', a.notes||'']));
+    });
+  } else {
+    sections.push(row(['(no appointments)','','','','','','']));
+  }
+
+  const csv = sections.join('\r\n');
   const blob = new Blob([csv], {type:'text/csv'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  const today = new Date().toISOString().slice(0,10);
   a.href = url;
   a.download = `client-visit-tracker-${today}.csv`;
   a.click();
