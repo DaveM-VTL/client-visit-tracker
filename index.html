@@ -6972,12 +6972,12 @@ async function logRevEmail(name, campaign){
   if(isDuplicate){ showStatus('Already logged today for this campaign', true); return; }
   reviewEmailLog[name].unshift(entry);
 
-  // Update the "Email Sent" date in reviewData to today
+  // Also update the "Email Sent" date shown on the Reviews tab
   if(!reviewData[name]) reviewData[name] = {};
   reviewData[name].sent = today;
 
   try {
-    const existingRev = reviewData[name];
+    const rev = reviewData[name];
     await Promise.all([
       fetch(SUPA_URL + '/rest/v1/review_email_log', {
         method: 'POST',
@@ -6987,9 +6987,9 @@ async function logRevEmail(name, campaign){
       sbUpsert('review_data', {
         name,
         sent: today,
-        person: existingRev.person || null,
-        reviewed: existingRev.reviewed || null,
-        reviewer: existingRev.reviewer || null
+        person: rev.person || null,
+        reviewed: rev.reviewed || null,
+        reviewer: rev.reviewer || null
       })
     ]);
     showStatus('Email logged!', true);
