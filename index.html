@@ -2821,7 +2821,7 @@
         <input class="search" type="text" placeholder="Search clients..." oninput="currentTab==='clients'?renderClients():render()" id="search">
       </div>
       <select class="filter-select" onchange="render()" id="filter"></select>
-      <button class="btn-add" onclick="openAdd()">+ Add client</button>
+      <button class="btn-add" id="btn-add-client" onclick="openAdd()">+ Add client</button>
       <button id="btn-bulk-select" onclick="toggleBulkSelect()" style="display:none;padding:8px 16px;background:#c47eb5;color:#fff;border:none;border-radius:6px;font-family:var(--sans);font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;">☐ Select clients</button>
       <div class="topbar-mobile-actions">
         <button onclick="manualRefresh()" title="Refresh" style="background:none;border:1px solid var(--border);border-radius:var(--radius);padding:7px 11px;font-size:14px;cursor:pointer;color:var(--text-muted);">↻</button>
@@ -3957,7 +3957,9 @@ function render(){
 
   // Show/hide bulk select button based on current tab
   const btnBulk = document.getElementById('btn-bulk-select');
+  const btnAdd = document.getElementById('btn-add-client');
   if(btnBulk) btnBulk.style.display = (currentTab === 'reviews') ? '' : 'none';
+  if(btnAdd) btnAdd.style.display = (currentTab === 'reviews') ? 'none' : '';
 
   let rows=clients.filter(c=>{
     if(q&&!c.name.toLowerCase().includes(q)&&!c.city.toLowerCase().includes(q))return false;
