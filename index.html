@@ -3955,6 +3955,10 @@ function render(){
   const title=document.getElementById('topbar-title');
   title.innerHTML=`${tabTitles[currentTab]} <span>${clients.length} clients</span>`;
 
+  // Show/hide bulk select button based on current tab
+  const btnBulk = document.getElementById('btn-bulk-select');
+  if(btnBulk) btnBulk.style.display = (currentTab === 'reviews') ? '' : 'none';
+
   let rows=clients.filter(c=>{
     if(q&&!c.name.toLowerCase().includes(q)&&!c.city.toLowerCase().includes(q))return false;
     if(f!=='all'){
