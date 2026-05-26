@@ -7102,12 +7102,12 @@ async function todoRolloverUncompleted() {
   // Load previous day's week data
   const { storageKey: prevStorageKey, data: prevData } = await todoLoadWeekDataForDate(prevDay);
   const prevTasks = prevData[prevDay] || [];
-  // Uncompleted = not done AND not already rolled over to a future day
-  const uncompleted = prevTasks.filter(t => !t.done && !t.rolledOver);
+  // Uncompleted = not done (ignore rolledOver flag — old code set it but we still want those tasks)
+  const uncompleted = prevTasks.filter(t => !t.done);
   if(!uncompleted.length) return; // nothing to roll over
 
   // Mark source tasks as rolled over so they don't roll again if prev day is revisited
-  prevData[prevDay] = prevTasks.map(t => (!t.done && !t.rolledOver) ? { ...t, rolledOver: true } : t);
+  prevData[prevDay] = prevTasks.map(t => !t.done ? { ...t, rolledOver: true } : t);
   await todoSaveWeekDataRaw(prevStorageKey, prevData);
 
   // Add to today, deduped by id
