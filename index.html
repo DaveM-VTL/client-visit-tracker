@@ -6971,12 +6971,27 @@ async function logRevEmail(name, campaign){
   const isDuplicate = reviewEmailLog[name].some(e => e.sent_date === today && (e.campaign||'') === (campaign||''));
   if(isDuplicate){ showStatus('Already logged today for this campaign', true); return; }
   reviewEmailLog[name].unshift(entry);
+
+  // Update the "Email Sent" date in reviewData to today
+  if(!reviewData[name]) reviewData[name] = {};
+  reviewData[name].sent = today;
+
   try {
-    await fetch(SUPA_URL + '/rest/v1/review_email_log', {
-      method: 'POST',
-      headers: { ...sbHeaders(), 'Prefer': 'resolution=merge-duplicates' },
-      body: JSON.stringify({ id, client_name: name, sent_date: today, campaign: campaign || null })
-    });
+    const existingRev = reviewData[name];
+    await Promise.all([
+      fetch(SUPA_URL + '/rest/v1/review_email_log', {
+        method: 'POST',
+        headers: { ...sbHeaders(), 'Prefer': 'resolution=merge-duplicates' },
+        body: JSON.stringify({ id, client_name: name, sent_date: today, campaign: campaign || null })
+      }),
+      sbUpsert('review_data', {
+        name,
+        sent: today,
+        person: existingRev.person || null,
+        reviewed: existingRev.reviewed || null,
+        reviewer: existingRev.reviewer || null
+      })
+    ]);
     showStatus('Email logged!', true);
   } catch(e){
     showStatus('Save failed', false);
