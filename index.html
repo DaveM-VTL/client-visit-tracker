@@ -387,6 +387,43 @@
   .badge-sent { background: var(--warning-light); color: var(--warning); }
   .badge-scheduled-visit { background: #f0e8ff; color: #5a2da0; }
 
+  /* ── Bulk select bar ── */
+  .bulk-bar {
+    display: none;
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--text);
+    color: var(--bg);
+    border-radius: 10px;
+    padding: 12px 20px;
+    gap: 14px;
+    align-items: center;
+    z-index: 999;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.25);
+    font-family: var(--mono);
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .bulk-bar.visible { display: flex; }
+  .bulk-bar-count { font-weight: 600; color: #c47eb5; }
+  .bulk-bar-btn {
+    padding: 7px 16px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    transition: opacity 0.15s;
+  }
+  .bulk-bar-btn:hover { opacity: 0.85; }
+  .bulk-bar-btn-primary { background: #c47eb5; color: #fff; }
+  .bulk-bar-btn-cancel  { background: rgba(255,255,255,0.12); color: var(--bg); }
+  tr.bulk-selected { background: #f9f0f8 !important; }
+  tr.bulk-selected td { background: #f9f0f8 !important; }
+
   .edit-btn {
     padding: 4px 10px;
     border: 1px solid var(--border);
@@ -2785,6 +2822,7 @@
       </div>
       <select class="filter-select" onchange="render()" id="filter"></select>
       <button class="btn-add" onclick="openAdd()">+ Add client</button>
+      <button class="btn-add" id="btn-bulk-select" onclick="toggleBulkSelect()" style="display:none;background:#c47eb5;border-color:#c47eb5;">☐ Select clients</button>
       <div class="topbar-mobile-actions">
         <button onclick="manualRefresh()" title="Refresh" style="background:none;border:1px solid var(--border);border-radius:var(--radius);padding:7px 11px;font-size:14px;cursor:pointer;color:var(--text-muted);">↻</button>
         <button onclick="doLogout()" title="Sign out" style="background:none;border:1px solid var(--border);border-radius:var(--radius);padding:7px 11px;font-size:13px;cursor:pointer;color:var(--text-muted);font-family:var(--mono);">↪ Out</button>
@@ -3988,14 +4026,18 @@ function render(){
     html+='</tbody></table>';
   } else if(currentTab==='reviews'){
     const customThCells = getCustomCols('reviews').map(col=>`<th class="th-custom">${col.label}</th>`).join('');
-    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>Email sent</th><th>Person sent to</th><th>Date reviewed</th><th>Reviewer</th><th>Status</th><th>Notes</th>${customThCells}${renderAddColTh('reviews')}<th class="th-edit"></th></tr></thead><tbody>`;
+    const bulkTh = bulkMode ? `<th style="width:32px;padding:8px 6px;"><input type="checkbox" title="Select all visible" onchange="bulkSelectAll()" style="cursor:pointer;accent-color:#c47eb5;"></th>` : '';
+    html=`<table><thead><tr>${bulkTh}<th>#</th><th>Client</th><th>City</th><th>Email sent</th><th>Person sent to</th><th>Date reviewed</th><th>Reviewer</th><th>Status</th><th>Notes</th>${customThCells}${renderAddColTh('reviews')}<th class="th-edit"></th></tr></thead><tbody>`;
     rows.forEach((c,i)=>{
       const r=reviewData[c.name]||{};const st=getReviewStatus(c);
       const color=getClientColor(c.name);
       const note=notesData[c.name]||'';
       const emailCount=(reviewEmailLog[c.name]||[]).length;
       const emailCountBadge=emailCount?`<span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;background:#c47eb5;color:#fff;border-radius:50%;font-size:9px;font-family:var(--mono);font-weight:600;margin-left:4px;">${emailCount}</span>`:'';
-      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(r.sent)}</td><td>${r.person||'—'}</td><td class="td-date">${fmt(r.reviewed)}</td><td>${r.reviewer||'—'}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td>${renderCustomCells('reviews',c.name)}<td></td><td class="td-edit" style="white-space:nowrap;"><button class="edit-btn" style="background:#c47eb5;color:#fff;border-color:#c47eb5;" onclick="logRevEmailQuick('${c.name.replace(/'/g,"\\'")}')" title="Log email sent today">+ Email</button> <button class="edit-btn" onclick="openRevEmailLog('${c.name.replace(/'/g,"\\'")}')" title="View email history">log${emailCountBadge}</button> <button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
+      const nameEsc = c.name.replace(/'/g,"\\'");
+      const bulkTd = bulkMode ? `<td style="padding:8px 6px;"><input type="checkbox" data-bulk-name="${c.name.replace(/"/g,'&quot;')}" ${bulkSelected.has(c.name)?'checked':''} onchange="toggleBulkClient('${nameEsc}')" style="cursor:pointer;accent-color:#c47eb5;"></td>` : '';
+      const rowClick = bulkMode ? `onclick="toggleBulkClient('${nameEsc}')" style="cursor:pointer;--client-color:${color}"` : `style="--client-color:${color}"`;
+      html+=`<tr class="has-color${bulkSelected.has(c.name)?' bulk-selected':''}" data-bulk-name="${c.name.replace(/"/g,'&quot;')}" ${rowClick}>${bulkTd}<td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(r.sent)}</td><td>${r.person||'—'}</td><td class="td-date">${fmt(r.reviewed)}</td><td>${r.reviewer||'—'}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td>${renderCustomCells('reviews',c.name)}<td></td><td class="td-edit" style="white-space:nowrap;">${bulkMode?'':`<button class="edit-btn" style="background:#c47eb5;color:#fff;border-color:#c47eb5;" onclick="logRevEmailQuick('${nameEsc}');event.stopPropagation()" title="Log email sent today">+ Email</button> <button class="edit-btn" onclick="openRevEmailLog('${nameEsc}');event.stopPropagation()" title="View email history">log${emailCountBadge}</button> <button class="edit-btn" onclick="openEdit(${c.id});event.stopPropagation()">edit</button>`}</td></tr>`;
     });
     html+='</tbody></table>';
   } else {
@@ -4279,6 +4321,11 @@ function switchTab(tab,el){
     if(searchWrap) searchWrap.style.display = '';
     if(filterSel) filterSel.style.display = '';
     if(btnAdd) btnAdd.style.display = '';
+    // Show bulk select button only on reviews tab
+    const btnBulk = document.getElementById('btn-bulk-select');
+    if(btnBulk) btnBulk.style.display = (tab === 'reviews') ? '' : 'none';
+    // Exit bulk mode if leaving reviews tab
+    if(tab !== 'reviews' && bulkMode) exitBulkMode();
     updateFilterOptions();
     render();
   }
@@ -7741,6 +7788,123 @@ function showCsvReminder() {
   }, 1200);
 }
 
+// ── Bulk email select (Reviews tab) ──────────────────────────────────
+let bulkMode = false;
+let bulkSelected = new Set(); // client names
+
+function toggleBulkSelect() {
+  bulkMode = !bulkMode;
+  bulkSelected.clear();
+  const btn = document.getElementById('btn-bulk-select');
+  if(btn) btn.textContent = bulkMode ? '✕ Cancel select' : '☐ Select clients';
+  updateBulkBar();
+  render();
+}
+
+function exitBulkMode() {
+  bulkMode = false;
+  bulkSelected.clear();
+  const btn = document.getElementById('btn-bulk-select');
+  if(btn) btn.textContent = '☐ Select clients';
+  updateBulkBar();
+  render();
+}
+
+function toggleBulkClient(name) {
+  if(bulkSelected.has(name)) bulkSelected.delete(name);
+  else bulkSelected.add(name);
+  // Toggle row highlight
+  const rows = document.querySelectorAll('#table-wrap tr[data-bulk-name]');
+  rows.forEach(tr => {
+    if(tr.dataset.bulkName === name) tr.classList.toggle('bulk-selected', bulkSelected.has(name));
+  });
+  // Update checkbox state
+  const cb = document.querySelector(`#table-wrap input[type=checkbox][data-bulk-name="${CSS.escape(name)}"]`);
+  if(cb) cb.checked = bulkSelected.has(name);
+  updateBulkBar();
+}
+
+function bulkSelectAll() {
+  const rows = document.querySelectorAll('#table-wrap tr[data-bulk-name]');
+  const allSelected = rows.length > 0 && [...rows].every(tr => bulkSelected.has(tr.dataset.bulkName));
+  rows.forEach(tr => {
+    const name = tr.dataset.bulkName;
+    if(allSelected) bulkSelected.delete(name);
+    else bulkSelected.add(name);
+    tr.classList.toggle('bulk-selected', bulkSelected.has(name));
+    const cb = tr.querySelector('input[type=checkbox]');
+    if(cb) cb.checked = bulkSelected.has(name);
+  });
+  updateBulkBar();
+}
+
+function updateBulkBar() {
+  let bar = document.getElementById('bulk-bar');
+  if(!bar) return;
+  const n = bulkSelected.size;
+  bar.classList.toggle('visible', bulkMode);
+  const countEl = document.getElementById('bulk-bar-count');
+  if(countEl) countEl.textContent = n === 0 ? 'No clients selected' : `${n} client${n!==1?'s':''} selected`;
+  const logBtn = document.getElementById('bulk-bar-log-btn');
+  if(logBtn) logBtn.disabled = n === 0;
+  if(logBtn) logBtn.style.opacity = n === 0 ? '0.4' : '1';
+}
+
+async function bulkLogEmail() {
+  if(!bulkSelected.size) return;
+  const campaign = prompt(`Log email sent to ${bulkSelected.size} client${bulkSelected.size!==1?'s':''}.\n\nCampaign label (optional, e.g. "Spring 2026"):\nLeave blank to log without a label.`, '') ?? null;
+  if(campaign === null) return; // cancelled
+  const names = [...bulkSelected];
+  const today = fmtISO(TODAY);
+  const label = campaign.trim();
+  let logged = 0, skipped = 0;
+  for(const name of names) {
+    if(!reviewEmailLog[name]) reviewEmailLog[name] = [];
+    const isDuplicate = reviewEmailLog[name].some(e => e.sent_date === today && (e.campaign||'') === label);
+    if(isDuplicate){ skipped++; continue; }
+    const id = Date.now() + '_' + Math.random().toString(36).slice(2,6);
+    reviewEmailLog[name].unshift({ id, sent_date: today, campaign: label });
+    if(!reviewData[name]) reviewData[name] = {};
+    reviewData[name].sent = today;
+    try {
+      const rev = reviewData[name];
+      await Promise.all([
+        fetch(SUPA_URL + '/rest/v1/review_email_log', {
+          method: 'POST',
+          headers: { ...sbHeaders(), 'Prefer': 'resolution=merge-duplicates' },
+          body: JSON.stringify({ id, client_name: name, sent_date: today, campaign: label || null })
+        }),
+        sbUpsert('review_data', {
+          name,
+          sent: today,
+          person: rev.person || null,
+          reviewed: rev.reviewed || null,
+          reviewer: rev.reviewer || null
+        })
+      ]);
+      logged++;
+    } catch(e) {
+      console.error('Bulk log failed for', name, e);
+    }
+    // Small delay to avoid hammering Supabase
+    await new Promise(r => setTimeout(r, 50));
+  }
+  const msg = skipped > 0
+    ? `Logged ${logged} email${logged!==1?'s':''}. ${skipped} skipped (already logged today).`
+    : `Logged ${logged} email${logged!==1?'s':''}!`;
+  showStatus(msg, true);
+  exitBulkMode();
+}
+
 </script>
+
+<!-- Bulk email select bar -->
+<div class="bulk-bar" id="bulk-bar">
+  <span class="bulk-bar-count" id="bulk-bar-count">No clients selected</span>
+  <button class="bulk-bar-btn bulk-bar-btn-cancel" onclick="bulkSelectAll()">☑ Select all visible</button>
+  <button class="bulk-bar-btn bulk-bar-btn-primary" id="bulk-bar-log-btn" onclick="bulkLogEmail()" disabled>✉ Log email for selected</button>
+  <button class="bulk-bar-btn bulk-bar-btn-cancel" onclick="exitBulkMode()">✕ Cancel</button>
+</div>
+
 </body>
 </html>
