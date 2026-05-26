@@ -7073,30 +7073,16 @@ async function todoSaveWeekDataRaw(storageKey, data) {
 }
 
 // Rolls uncompleted tasks from the previous business day into today.
-// Runs once per calendar day (tracked via localStorage).
+// Idempotent — uses task IDs and rolledFrom metadata to detect duplicates,
+// so no localStorage sentinel is needed. Safe across all devices via Supabase.
 async function todoRolloverUncompleted() {
   const today = todayStr();
-  const rolloverKey = 'cvt_todo_rollover_' + today;
-  if(localStorage.getItem(rolloverKey)) return; // already ran today
 
   const prevDay = todoPrevBusinessDay(today);
   if(!prevDay) return; // today is a weekend, nothing to roll
 
-  // Load previous day's week data
-  const { storageKey: prevStorageKey, data: prevData } = await todoLoadWeekDataForDate(prevDay);
-  const prevTasks = prevData[prevDay] || [];
-  const uncompleted = prevTasks.filter(t => !t.done);
-  if(!uncompleted.length) {
-    localStorage.setItem(rolloverKey, '1');
-    return; // nothing to roll over
-  }
-
-  // Mark them as rolled over on source day (keep as done-ish so they don't double-roll)
-  prevData[prevDay] = prevTasks.map(t => t.done ? t : { ...t, rolledOver: true });
-  await todoSaveWeekDataRaw(prevStorageKey, prevData);
-
-  // Add to today (if not already present from a previous partial rollover)
-  const isSameWeek = prevStorageKey === (TODO_KEY + '_' + todoWeekKey);
+  // Load today's data first to check if rollover already happened
+  const isSameWeek = (TODO_KEY + '_' + weekKey(getMonday(0))) === (TODO_KEY + '_' + todoWeekKey);
   let todayData, todayStorageKey;
   if(isSameWeek) {
     todayData = todoWeekData;
@@ -7108,10 +7094,28 @@ async function todoRolloverUncompleted() {
   }
 
   if(!todayData[today]) todayData[today] = [];
+
+  // If today already has tasks rolled from prevDay, rollover already ran — skip
+  const alreadyRolled = todayData[today].some(t => t.rolledFrom === prevDay);
+  if(alreadyRolled) return;
+
+  // Load previous day's week data
+  const { storageKey: prevStorageKey, data: prevData } = await todoLoadWeekDataForDate(prevDay);
+  const prevTasks = prevData[prevDay] || [];
+  // Uncompleted = not done AND not already rolled over to a future day
+  const uncompleted = prevTasks.filter(t => !t.done && !t.rolledOver);
+  if(!uncompleted.length) return; // nothing to roll over
+
+  // Mark source tasks as rolled over so they don't roll again if prev day is revisited
+  prevData[prevDay] = prevTasks.map(t => (!t.done && !t.rolledOver) ? { ...t, rolledOver: true } : t);
+  await todoSaveWeekDataRaw(prevStorageKey, prevData);
+
+  // Add to today, deduped by id
   const existingIds = new Set(todayData[today].map(t => t.id));
   const toAdd = uncompleted.filter(t => !existingIds.has(t.id)).map(t => ({
     ...t,
     rolledFrom: prevDay,
+    rolledOver: false, // reset so this copy can roll again tomorrow if still undone
     createdAt: t.createdAt || new Date().toISOString()
   }));
   if(toAdd.length) {
@@ -7120,8 +7124,6 @@ async function todoRolloverUncompleted() {
     // If this is the current week, update the in-memory reference
     if(isSameWeek) todoWeekData = todayData;
   }
-
-  localStorage.setItem(rolloverKey, '1');
 }
 
 async function todoInit() {
