@@ -384,6 +384,49 @@
   .badge-not-visited, .badge-not-scheduled, .badge-not-sent { background: var(--surface2); color: var(--text-muted); }
   .badge-completed, .badge-reviewed { background: var(--success-light); color: var(--success); }
   .badge-pending { background: var(--info-light); color: var(--info); }
+
+  /* ── TBR Priority Queue ── */
+  .tbr-view-toggle { display:flex; gap:6px; padding:14px 20px 0; }
+  .tbr-toggle-btn { font-family:var(--mono); font-size:11px; padding:5px 12px; border-radius:var(--radius); border:1px solid var(--border); background:none; color:var(--text-muted); cursor:pointer; letter-spacing:0.04em; transition:all 0.15s; }
+  .tbr-toggle-btn.active { background:var(--text); color:#f5f3ee; border-color:var(--text); }
+  .tbr-queue-wrap { padding:16px 20px; display:none; }
+  .tbr-queue-wrap.visible { display:block; }
+  .tbr-queue-section { margin-bottom:24px; }
+  .tbr-queue-section-hd { font-family:var(--mono); font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted); margin-bottom:8px; padding-bottom:6px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:8px; }
+  .tbr-queue-section-hd .hd-count { background:var(--surface2); color:var(--text-muted); padding:1px 7px; border-radius:10px; font-size:10px; }
+  .tbr-q-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:12px 14px; margin-bottom:8px; display:flex; align-items:center; gap:12px; }
+  .tbr-q-card:hover { border-color:#aaa; }
+  .tbr-q-rank { font-family:var(--mono); font-size:11px; color:var(--text-muted); min-width:20px; text-align:right; }
+  .tbr-q-info { flex:1; min-width:0; }
+  .tbr-q-name { font-weight:600; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tbr-q-meta { font-size:11px; color:var(--text-muted); font-family:var(--mono); margin-top:2px; }
+  .tbr-q-actions { display:flex; gap:6px; flex-shrink:0; }
+  .tbr-q-btn { font-size:11px; padding:4px 10px; border-radius:var(--radius); border:1px solid var(--border); background:none; color:var(--text); cursor:pointer; white-space:nowrap; transition:all 0.15s; font-family:var(--mono); }
+  .tbr-q-btn:hover { background:var(--surface2); }
+  .tbr-q-btn.accent { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .tbr-q-btn.accent:hover { opacity:0.85; }
+  .tbr-q-geo { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:4px; }
+  .tbr-q-geo-badge { font-size:10px; font-family:var(--mono); padding:2px 7px; border-radius:10px; background:var(--surface2); color:var(--text-muted); }
+
+  /* TBR Outreach Modal */
+  .tbr-outreach-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:9000; align-items:center; justify-content:center; padding:20px; }
+  .tbr-outreach-overlay.open { display:flex; }
+  .tbr-outreach-modal { background:var(--surface); border-radius:10px; width:100%; max-width:600px; max-height:90vh; display:flex; flex-direction:column; border:1px solid var(--border); overflow:hidden; }
+  .tbr-outreach-hd { padding:18px 20px 14px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+  .tbr-outreach-hd h3 { font-size:14px; font-weight:600; }
+  .tbr-outreach-body { flex:1; overflow-y:auto; padding:18px 20px; display:flex; flex-direction:column; gap:12px; }
+  .tbr-outreach-label { font-family:var(--mono); font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px; }
+  .tbr-outreach-email-to { font-size:13px; color:var(--text); }
+  .tbr-outreach-subject { width:100%; font-size:13px; padding:8px 10px; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface); color:var(--text); font-family:var(--sans); }
+  .tbr-outreach-textarea { width:100%; min-height:200px; font-size:13px; padding:10px 12px; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface); color:var(--text); font-family:var(--sans); line-height:1.6; resize:vertical; }
+  .tbr-outreach-generating { font-family:var(--mono); font-size:12px; color:var(--text-muted); padding:16px 0; text-align:center; }
+  .tbr-outreach-footer { padding:12px 20px; border-top:1px solid var(--border); display:flex; gap:8px; justify-content:flex-end; }
+  .tbr-outreach-copy-btn { font-size:12px; padding:7px 14px; border-radius:var(--radius); border:1px solid var(--border); background:none; color:var(--text); cursor:pointer; font-family:var(--mono); }
+  .tbr-outreach-copy-btn:hover { background:var(--surface2); }
+
+  /* Quick-schedule date picker row */
+  .tbr-sched-row { display:flex; gap:8px; align-items:center; }
+  .tbr-sched-input { font-size:12px; padding:4px 8px; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface); color:var(--text); font-family:var(--mono); }
   .badge-sent { background: var(--warning-light); color: var(--warning); }
   .badge-scheduled-visit { background: #f0e8ff; color: #5a2da0; }
 
@@ -2821,7 +2864,7 @@
         <input class="search" type="text" placeholder="Search clients..." oninput="currentTab==='clients'?renderClients():render()" id="search">
       </div>
       <select class="filter-select" onchange="render()" id="filter"></select>
-      <button class="btn-add" id="btn-add-client" onclick="openAdd()">+ Add client</button>
+      <button class="btn-add" onclick="openAdd()">+ Add client</button>
       <button id="btn-bulk-select" onclick="toggleBulkSelect()" style="display:none;padding:8px 16px;background:#c47eb5;color:#fff;border:none;border-radius:6px;font-family:var(--sans);font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;">☐ Select clients</button>
       <div class="topbar-mobile-actions">
         <button onclick="manualRefresh()" title="Refresh" style="background:none;border:1px solid var(--border);border-radius:var(--radius);padding:7px 11px;font-size:14px;cursor:pointer;color:var(--text-muted);">↻</button>
@@ -2831,6 +2874,13 @@
 
     <div class="stats-bar" id="stats-bar"></div>
     <div class="content">
+      <!-- TBR view toggle (only visible on tbr tab) -->
+      <div class="tbr-view-toggle" id="tbr-view-toggle" style="display:none">
+        <button class="tbr-toggle-btn active" id="tbr-btn-table" onclick="tbrSetView('table')">All clients</button>
+        <button class="tbr-toggle-btn" id="tbr-btn-queue" onclick="tbrSetView('queue')">Priority queue</button>
+      </div>
+      <!-- TBR Priority Queue -->
+      <div class="tbr-queue-wrap" id="tbr-queue-wrap"></div>
       <div class="table-wrap" id="table-wrap"></div>
       <div class="cards-wrap" id="cards-wrap"></div>
 
@@ -3957,9 +4007,7 @@ function render(){
 
   // Show/hide bulk select button based on current tab
   const btnBulk = document.getElementById('btn-bulk-select');
-  const btnAdd = document.getElementById('btn-add-client');
   if(btnBulk) btnBulk.style.display = (currentTab === 'reviews') ? '' : 'none';
-  if(btnAdd) btnAdd.style.display = (currentTab === 'reviews') ? 'none' : '';
 
   let rows=clients.filter(c=>{
     if(q&&!c.name.toLowerCase().includes(q)&&!c.city.toLowerCase().includes(q))return false;
@@ -4327,6 +4375,17 @@ function switchTab(tab,el){
     if(searchWrap) searchWrap.style.display = '';
     if(filterSel) filterSel.style.display = '';
     if(btnAdd) btnAdd.style.display = '';
+    // Show/hide TBR priority queue toggle
+    const tbrToggle = document.getElementById('tbr-view-toggle');
+    if(tbrToggle) tbrToggle.style.display = (tab === 'tbr') ? '' : 'none';
+    if(tab !== 'tbr') {
+      const qw = document.getElementById('tbr-queue-wrap');
+      if(qw) { qw.classList.remove('visible'); tbrQueueView = 'table'; }
+      const tt = document.getElementById('tbr-btn-table');
+      const tq = document.getElementById('tbr-btn-queue');
+      if(tt) tt.classList.add('active');
+      if(tq) tq.classList.remove('active');
+    }
     // Show bulk select button only on reviews tab
     const btnBulk = document.getElementById('btn-bulk-select');
     if(btnBulk) btnBulk.style.display = (tab === 'reviews') ? '' : 'none';
@@ -4334,6 +4393,13 @@ function switchTab(tab,el){
     if(tab !== 'reviews' && bulkMode) exitBulkMode();
     updateFilterOptions();
     render();
+    // If returning to TBR queue view, re-render queue
+    if(tab === 'tbr' && tbrQueueView === 'queue') {
+      const qw = document.getElementById('tbr-queue-wrap');
+      if(qw) { qw.classList.add('visible'); renderTbrQueue(); }
+      document.getElementById('table-wrap').style.display = 'none';
+      document.getElementById('cards-wrap').style.display = 'none';
+    }
   }
 }
 
@@ -6792,6 +6858,257 @@ async function sendAiMessage(){
 
 function aiSuggest(text){ document.getElementById('ai-input').value=text; sendAiMessage(); }
 
+// ── TBR Priority Queue ──
+let tbrQueueView = 'table'; // 'table' | 'queue'
+
+function tbrSetView(v) {
+  tbrQueueView = v;
+  document.getElementById('tbr-btn-table').classList.toggle('active', v === 'table');
+  document.getElementById('tbr-btn-queue').classList.toggle('active', v === 'queue');
+  document.getElementById('table-wrap').style.display = v === 'table' ? '' : 'none';
+  document.getElementById('cards-wrap').style.display = v === 'table' ? '' : 'none';
+  const qw = document.getElementById('tbr-queue-wrap');
+  if (v === 'queue') { qw.classList.add('visible'); renderTbrQueue(); }
+  else { qw.classList.remove('visible'); }
+}
+
+function tbrPriorityScore(c) {
+  const t = tbrData[c.name] || {};
+  const st = getTBRStatus(c);
+  let score = 0;
+  // Base urgency by status
+  if (st.cls === 'overdue') score += 100;
+  else if (st.cls === 'due-soon') score += 60;
+  else if (st.cls === 'not-scheduled') score += 40;
+  else if (st.cls === 'on-track') score += 20; // tbr1 done, need tbr2
+  else if (st.cls === 'pending') score += 10;
+  // Add days since last visit
+  if (c.lastVisit) {
+    const days = Math.round((TODAY - new Date(c.lastVisit)) / 86400000);
+    score += Math.min(days / 10, 30); // up to 30 bonus points
+  } else {
+    score += 25; // never visited = high priority
+  }
+  return score;
+}
+
+function renderTbrQueue() {
+  const qw = document.getElementById('tbr-queue-wrap');
+  // Group by city/area for geo batching
+  const cityGroups = {};
+  clients.forEach(c => {
+    const st = getTBRStatus(c);
+    if (st.cls === 'completed') return; // skip fully done
+    const city = c.city || 'Unknown';
+    if (!cityGroups[city]) cityGroups[city] = [];
+    cityGroups[city].push(c);
+  });
+
+  // Sort cities by total urgency score
+  const sortedCities = Object.keys(cityGroups).sort((a, b) => {
+    const scoreA = cityGroups[a].reduce((s, c) => s + tbrPriorityScore(c), 0);
+    const scoreB = cityGroups[b].reduce((s, c) => s + tbrPriorityScore(c), 0);
+    return scoreB - scoreA;
+  });
+
+  // Also build a flat top-10 priority list
+  const allActionable = clients
+    .filter(c => {
+      const st = getTBRStatus(c).cls;
+      return st !== 'completed';
+    })
+    .sort((a, b) => tbrPriorityScore(b) - tbrPriorityScore(a))
+    .slice(0, 10);
+
+  let html = '';
+
+  // Top priority section
+  html += '<div class="tbr-queue-section">';
+  html += '<div class="tbr-queue-section-hd">Top 10 by urgency <span class="hd-count">' + allActionable.length + '</span></div>';
+  allActionable.forEach((c, i) => {
+    html += renderTbrQCard(c, i + 1);
+  });
+  html += '</div>';
+
+  // Geo-batched sections
+  html += '<div class="tbr-queue-section">';
+  html += '<div class="tbr-queue-section-hd">Batched by city <span class="hd-count" style="color:var(--accent);">schedule a day-trip</span></div>';
+  sortedCities.forEach(city => {
+    const group = cityGroups[city].sort((a, b) => tbrPriorityScore(b) - tbrPriorityScore(a));
+    if (group.length < 1) return;
+    html += '<div style="margin-bottom:16px;">';
+    html += '<div style="font-family:var(--mono);font-size:11px;color:var(--text-muted);margin-bottom:6px;font-weight:600;">' + city + ' &mdash; ' + group.length + ' client' + (group.length > 1 ? 's' : '') + '</div>';
+    group.forEach((c, i) => { html += renderTbrQCard(c, i + 1); });
+    html += '</div>';
+  });
+  html += '</div>';
+
+  qw.innerHTML = html;
+}
+
+function renderTbrQCard(c, rank) {
+  const t = tbrData[c.name] || {};
+  const st = getTBRStatus(c);
+  const nameEsc = c.name.replace(/'/g, "\'").replace(/"/g, '&quot;');
+  const lastVisitStr = c.lastVisit ? 'Last visit: ' + c.lastVisit : 'No visit on record';
+  const tbrStr = t.tbr1c ? 'TBR 1 done ' + t.tbr1c + ' – need TBR 2' : (t.tbr1 ? 'TBR 1 sched: ' + t.tbr1 : 'No TBR scheduled');
+  const contact = contactsData && contactsData[c.name] && contactsData[c.name][0] ? contactsData[c.name][0].name : '';
+
+  // Action buttons depending on status
+  let actions = '';
+  if (st.cls === 'not-scheduled' || st.cls === 'overdue' || st.cls === 'due-soon') {
+    actions += '<button class="tbr-q-btn" onclick="tbrQuickSchedule('' + nameEsc + '')">📅 Schedule</button>';
+  }
+  if (st.cls === 'pending') {
+    actions += '<button class="tbr-q-btn accent" onclick="tbrMarkDone('' + nameEsc + '', 1)">✓ Mark done</button>';
+  }
+  if (st.cls === 'on-track') { // tbr1 done, need tbr2
+    actions += '<button class="tbr-q-btn" onclick="tbrQuickSchedule('' + nameEsc + '', 2)">📅 Sched TBR 2</button>';
+  }
+  if (st.cls === 'on-track' || st.cls === 'pending') {
+    // also offer mark done for tbr2
+  }
+  actions += '<button class="tbr-q-btn" onclick="openTbrOutreach('' + nameEsc + '')">✉ Draft email</button>';
+  actions += '<button class="tbr-q-btn" onclick="openEdit(' + c.id + ')">edit</button>';
+
+  return '<div class="tbr-q-card">' +
+    '<span class="tbr-q-rank">' + rank + '</span>' +
+    '<div class="tbr-q-info">' +
+      '<div class="tbr-q-name">' + c.name + (contact ? ' <span style="font-weight:400;color:var(--text-muted);font-size:11px;">– ' + contact + '</span>' : '') + '</div>' +
+      '<div class="tbr-q-meta">' + lastVisitStr + ' · ' + tbrStr + '</div>' +
+    '</div>' +
+    '<span>' + badge(st.cls, st.label) + '</span>' +
+    '<div class="tbr-q-actions">' + actions + '</div>' +
+  '</div>';
+}
+
+function tbrQuickSchedule(name, visitNum) {
+  visitNum = visitNum || 1;
+  const dateStr = prompt('Schedule TBR ' + visitNum + ' for ' + name + '\nEnter date (YYYY-MM-DD):', fmtISO(new Date(TODAY.getTime() + 30*86400000)));
+  if (!dateStr) return;
+  if (!tbrData[name]) tbrData[name] = { twice: 'No', tbr1: null, tbr1c: null, tbr2: null, tbr2c: null };
+  if (visitNum === 2) tbrData[name].tbr2 = dateStr;
+  else tbrData[name].tbr1 = dateStr;
+  saveTbrToSupabase(name);
+  renderTbrQueue();
+  renderStats();
+  updateCounts();
+}
+
+function tbrMarkDone(name, visitNum) {
+  const today = fmtISO(TODAY);
+  if (!tbrData[name]) return;
+  if (visitNum === 2) tbrData[name].tbr2c = today;
+  else tbrData[name].tbr1c = today;
+  saveTbrToSupabase(name);
+  renderTbrQueue();
+  renderStats();
+  updateCounts();
+}
+
+async function saveTbrToSupabase(name) {
+  // Mirror the pattern used by saveEditVisit — update tbrData row in Supabase if available
+  // Falls back gracefully if no Supabase configured
+  try {
+    const t = tbrData[name];
+    if (!t) return;
+    const payload = {
+      tbr_twice: t.twice || 'No',
+      tbr1: t.tbr1 || null,
+      tbr1c: t.tbr1c || null,
+      tbr2: t.tbr2 || null,
+      tbr2c: t.tbr2c || null
+    };
+    await fetch(SUPA_URL + '/rest/v1/clients?name=eq.' + encodeURIComponent(name), {
+      method: 'PATCH',
+      headers: { ...sbHeaders(), 'Prefer': 'return=minimal' },
+      body: JSON.stringify(payload)
+    });
+  } catch(e) { console.warn('TBR save failed', e); }
+}
+
+// ── TBR Outreach Email Draft ──
+let tbrOutreachClient = null;
+
+async function openTbrOutreach(name) {
+  const key = getAiKey();
+  if (!key) { openAiKeyModal(); return; }
+  tbrOutreachClient = name;
+  document.getElementById('tbr-outreach-title').textContent = 'Outreach – ' + name;
+  const body = document.getElementById('tbr-outreach-body');
+  body.innerHTML = '<div class="tbr-outreach-generating">Drafting email…</div>';
+  document.getElementById('tbr-outreach-overlay').classList.add('open');
+
+  const c = clients.find(x => x.name === name);
+  const t = tbrData[name] || {};
+  const contacts = (contactsData && contactsData[name]) || [];
+  const primaryContact = contacts[0] || {};
+  const lastVisit = c && c.lastVisit ? c.lastVisit : 'not recorded';
+  const tbrHistory = t.tbr1c ? 'TBR 1 completed ' + t.tbr1c : (t.tbr1 ? 'TBR 1 scheduled ' + t.tbr1 : 'no TBR on record');
+
+  const prompt = `You are David, an Account Manager at Valley Techlogic (VTL), a Managed Service Provider in California's Central Valley. 
+Write a short, natural, friendly outreach email to schedule an in-person Technical Business Review (TBR) with a client.
+
+Client: ${name}
+City: ${c ? c.city : ''}
+Primary contact: ${primaryContact.name || 'the team'} (${primaryContact.position || ''})
+Last in-person visit: ${lastVisit}
+TBR history: ${tbrHistory}
+Today: ${fmtISO(TODAY)}
+
+Guidelines:
+- Keep it short (3–4 sentences max)
+- Conversational, not corporate — David writes the way he talks
+- Mention that a TBR is a chance to review their tech, address any open items, and plan ahead
+- Suggest a couple of flexible time options without naming specific dates
+- Sign off as David from Valley Techlogic
+- Output ONLY the email body (no subject line in the body, no markdown)
+
+Also output a suggested subject line on the very first line, prefixed with "SUBJECT: "`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 500, messages: [{ role: 'user', content: prompt }] })
+    });
+    const data = await res.json();
+    if (data.error) { body.innerHTML = '<div class="tbr-outreach-generating">⚠ ' + (data.error.message || 'API error') + '</div>'; return; }
+    const text = (data.content || []).map(b => b.text || '').join('');
+    const lines = text.split('\n');
+    let subject = '';
+    let emailBody = text;
+    if (lines[0].startsWith('SUBJECT:')) {
+      subject = lines[0].replace('SUBJECT:', '').trim();
+      emailBody = lines.slice(1).join('\n').trim();
+    }
+    const toStr = primaryContact.email ? primaryContact.email : (primaryContact.name ? primaryContact.name : name);
+    body.innerHTML =
+      '<div><div class="tbr-outreach-label">To</div><div class="tbr-outreach-email-to">' + toStr + '</div></div>' +
+      '<div><div class="tbr-outreach-label">Subject</div><input class="tbr-outreach-subject" id="tbr-subject-input" value="' + subject.replace(/"/g,'&quot;') + '"></div>' +
+      '<div><div class="tbr-outreach-label">Body</div><textarea class="tbr-outreach-textarea" id="tbr-body-input">' + emailBody.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</textarea></div>';
+  } catch(e) {
+    body.innerHTML = '<div class="tbr-outreach-generating">⚠ Network error: ' + (e.message || e) + '</div>';
+  }
+}
+
+function closeTbrOutreach() {
+  document.getElementById('tbr-outreach-overlay').classList.remove('open');
+  tbrOutreachClient = null;
+}
+
+function copyTbrDraft() {
+  const subEl = document.getElementById('tbr-subject-input');
+  const bodyEl = document.getElementById('tbr-body-input');
+  if (!bodyEl) return;
+  const text = (subEl ? 'Subject: ' + subEl.value + '\n\n' : '') + bodyEl.value;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('.tbr-outreach-copy-btn');
+    if (btn) { btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = 'Copy email'; }, 2000); }
+  });
+}
+
+
 
 // ── Report History ──
 let repHistClient = null;
@@ -7912,5 +8229,20 @@ async function bulkLogEmail() {
   <button class="bulk-bar-btn bulk-bar-btn-cancel" onclick="exitBulkMode()">✕ Cancel</button>
 </div>
 
+
+<!-- TBR Outreach Modal -->
+<div class="tbr-outreach-overlay" id="tbr-outreach-overlay" onclick="if(event.target===this)closeTbrOutreach()">
+  <div class="tbr-outreach-modal">
+    <div class="tbr-outreach-hd">
+      <h3 id="tbr-outreach-title">Draft outreach email</h3>
+      <button class="modal-close" onclick="closeTbrOutreach()">✕</button>
+    </div>
+    <div class="tbr-outreach-body" id="tbr-outreach-body"></div>
+    <div class="tbr-outreach-footer">
+      <button class="tbr-outreach-copy-btn" onclick="copyTbrDraft()">Copy email</button>
+      <button class="tbr-outreach-copy-btn" style="background:var(--accent);color:#fff;border-color:var(--accent);" onclick="closeTbrOutreach()">Done</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
