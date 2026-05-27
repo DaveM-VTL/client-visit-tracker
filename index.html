@@ -6858,87 +6858,76 @@ async function sendAiMessage(){
 
 function aiSuggest(text){ document.getElementById('ai-input').value=text; sendAiMessage(); }
 
-// ── TBR Priority Queue ──
-let tbrQueueView = 'table'; // 'table' | 'queue'
+// -- TBR Priority Queue --
+let tbrQueueView = 'table';
 
 function tbrSetView(v) {
   tbrQueueView = v;
-  document.getElementById('tbr-btn-table').classList.toggle('active', v === 'table');
-  document.getElementById('tbr-btn-queue').classList.toggle('active', v === 'queue');
+  var btnT = document.getElementById('tbr-btn-table');
+  var btnQ = document.getElementById('tbr-btn-queue');
+  if(btnT) btnT.classList.toggle('active', v === 'table');
+  if(btnQ) btnQ.classList.toggle('active', v === 'queue');
   document.getElementById('table-wrap').style.display = v === 'table' ? '' : 'none';
   document.getElementById('cards-wrap').style.display = v === 'table' ? '' : 'none';
-  const qw = document.getElementById('tbr-queue-wrap');
-  if (v === 'queue') { qw.classList.add('visible'); renderTbrQueue(); }
+  var qw = document.getElementById('tbr-queue-wrap');
+  if(v === 'queue') { qw.classList.add('visible'); renderTbrQueue(); }
   else { qw.classList.remove('visible'); }
 }
 
 function tbrPriorityScore(c) {
-  const t = tbrData[c.name] || {};
-  const st = getTBRStatus(c);
-  let score = 0;
-  // Base urgency by status
-  if (st.cls === 'overdue') score += 100;
-  else if (st.cls === 'due-soon') score += 60;
-  else if (st.cls === 'not-scheduled') score += 40;
-  else if (st.cls === 'on-track') score += 20; // tbr1 done, need tbr2
-  else if (st.cls === 'pending') score += 10;
-  // Add days since last visit
-  if (c.lastVisit) {
-    const days = Math.round((TODAY - new Date(c.lastVisit)) / 86400000);
-    score += Math.min(days / 10, 30); // up to 30 bonus points
+  var t = tbrData[c.name] || {};
+  var st = getTBRStatus(c);
+  var score = 0;
+  if(st.cls === 'overdue') score += 100;
+  else if(st.cls === 'due-soon') score += 60;
+  else if(st.cls === 'not-scheduled') score += 40;
+  else if(st.cls === 'on-track') score += 20;
+  else if(st.cls === 'pending') score += 10;
+  if(c.lastVisit) {
+    var days = Math.round((TODAY - new Date(c.lastVisit)) / 86400000);
+    score += Math.min(days / 10, 30);
   } else {
-    score += 25; // never visited = high priority
+    score += 25;
   }
   return score;
 }
 
 function renderTbrQueue() {
-  const qw = document.getElementById('tbr-queue-wrap');
-  // Group by city/area for geo batching
-  const cityGroups = {};
-  clients.forEach(c => {
-    const st = getTBRStatus(c);
-    if (st.cls === 'completed') return; // skip fully done
-    const city = c.city || 'Unknown';
-    if (!cityGroups[city]) cityGroups[city] = [];
+  var qw = document.getElementById('tbr-queue-wrap');
+  var cityGroups = {};
+  clients.forEach(function(c) {
+    var st = getTBRStatus(c);
+    if(st.cls === 'completed') return;
+    var city = c.city || 'Unknown';
+    if(!cityGroups[city]) cityGroups[city] = [];
     cityGroups[city].push(c);
   });
 
-  // Sort cities by total urgency score
-  const sortedCities = Object.keys(cityGroups).sort((a, b) => {
-    const scoreA = cityGroups[a].reduce((s, c) => s + tbrPriorityScore(c), 0);
-    const scoreB = cityGroups[b].reduce((s, c) => s + tbrPriorityScore(c), 0);
-    return scoreB - scoreA;
+  var sortedCities = Object.keys(cityGroups).sort(function(a, b) {
+    var sA = cityGroups[a].reduce(function(s,c){ return s + tbrPriorityScore(c); }, 0);
+    var sB = cityGroups[b].reduce(function(s,c){ return s + tbrPriorityScore(c); }, 0);
+    return sB - sA;
   });
 
-  // Also build a flat top-10 priority list
-  const allActionable = clients
-    .filter(c => {
-      const st = getTBRStatus(c).cls;
-      return st !== 'completed';
-    })
-    .sort((a, b) => tbrPriorityScore(b) - tbrPriorityScore(a))
-    .slice(0, 10);
+  var allActionable = clients.filter(function(c) {
+    return getTBRStatus(c).cls !== 'completed';
+  }).sort(function(a,b){ return tbrPriorityScore(b) - tbrPriorityScore(a); }).slice(0, 10);
 
-  let html = '';
+  var html = '';
 
-  // Top priority section
   html += '<div class="tbr-queue-section">';
   html += '<div class="tbr-queue-section-hd">Top 10 by urgency <span class="hd-count">' + allActionable.length + '</span></div>';
-  allActionable.forEach((c, i) => {
-    html += renderTbrQCard(c, i + 1);
-  });
+  allActionable.forEach(function(c, i) { html += renderTbrQCard(c, i + 1); });
   html += '</div>';
 
-  // Geo-batched sections
   html += '<div class="tbr-queue-section">';
-  html += '<div class="tbr-queue-section-hd">Batched by city <span class="hd-count" style="color:var(--accent);">schedule a day-trip</span></div>';
-  sortedCities.forEach(city => {
-    const group = cityGroups[city].sort((a, b) => tbrPriorityScore(b) - tbrPriorityScore(a));
-    if (group.length < 1) return;
+  html += '<div class="tbr-queue-section-hd">Batched by city <span class="hd-count" style="color:var(--accent);">plan a day-trip</span></div>';
+  sortedCities.forEach(function(city) {
+    var group = cityGroups[city].slice().sort(function(a,b){ return tbrPriorityScore(b) - tbrPriorityScore(a); });
+    if(group.length < 1) return;
     html += '<div style="margin-bottom:16px;">';
     html += '<div style="font-family:var(--mono);font-size:11px;color:var(--text-muted);margin-bottom:6px;font-weight:600;">' + city + ' &mdash; ' + group.length + ' client' + (group.length > 1 ? 's' : '') + '</div>';
-    group.forEach((c, i) => { html += renderTbrQCard(c, i + 1); });
+    group.forEach(function(c, i) { html += renderTbrQCard(c, i + 1); });
     html += '</div>';
   });
   html += '</div>';
@@ -6947,35 +6936,32 @@ function renderTbrQueue() {
 }
 
 function renderTbrQCard(c, rank) {
-  const t = tbrData[c.name] || {};
-  const st = getTBRStatus(c);
-  const nameEsc = c.name.replace(/'/g, "\'").replace(/"/g, '&quot;');
-  const lastVisitStr = c.lastVisit ? 'Last visit: ' + c.lastVisit : 'No visit on record';
-  const tbrStr = t.tbr1c ? 'TBR 1 done ' + t.tbr1c + ' – need TBR 2' : (t.tbr1 ? 'TBR 1 sched: ' + t.tbr1 : 'No TBR scheduled');
-  const contact = contactsData && contactsData[c.name] && contactsData[c.name][0] ? contactsData[c.name][0].name : '';
+  var t = tbrData[c.name] || {};
+  var st = getTBRStatus(c);
+  var nameEsc = c.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+  var lastVisitStr = c.lastVisit ? 'Last visit: ' + c.lastVisit : 'No visit on record';
+  var tbrStr = t.tbr1c ? ('TBR 1 done ' + t.tbr1c + ' - need TBR 2') : (t.tbr1 ? 'TBR 1 sched: ' + t.tbr1 : 'No TBR scheduled');
+  var contacts = (contactsData && contactsData[c.name]) || [];
+  var contact = contacts[0] ? contacts[0].name : '';
 
-  // Action buttons depending on status
-  let actions = '';
-  if (st.cls === 'not-scheduled' || st.cls === 'overdue' || st.cls === 'due-soon') {
-    actions += '<button class="tbr-q-btn" onclick="tbrQuickSchedule('' + nameEsc + '')">📅 Schedule</button>';
+  var actions = '';
+  if(st.cls === 'not-scheduled' || st.cls === 'overdue' || st.cls === 'due-soon') {
+    actions += '<button class="tbr-q-btn" onclick="tbrQuickSchedule(\'' + nameEsc + '\')">Schedule</button>';
   }
-  if (st.cls === 'pending') {
-    actions += '<button class="tbr-q-btn accent" onclick="tbrMarkDone('' + nameEsc + '', 1)">✓ Mark done</button>';
+  if(st.cls === 'pending') {
+    actions += '<button class="tbr-q-btn accent" onclick="tbrMarkDone(\'' + nameEsc + '\', 1)">Mark done</button>';
   }
-  if (st.cls === 'on-track') { // tbr1 done, need tbr2
-    actions += '<button class="tbr-q-btn" onclick="tbrQuickSchedule('' + nameEsc + '', 2)">📅 Sched TBR 2</button>';
+  if(st.cls === 'on-track') {
+    actions += '<button class="tbr-q-btn" onclick="tbrQuickSchedule(\'' + nameEsc + '\', 2)">Sched TBR 2</button>';
   }
-  if (st.cls === 'on-track' || st.cls === 'pending') {
-    // also offer mark done for tbr2
-  }
-  actions += '<button class="tbr-q-btn" onclick="openTbrOutreach('' + nameEsc + '')">✉ Draft email</button>';
+  actions += '<button class="tbr-q-btn" onclick="openTbrOutreach(\'' + nameEsc + '\')">Draft email</button>';
   actions += '<button class="tbr-q-btn" onclick="openEdit(' + c.id + ')">edit</button>';
 
   return '<div class="tbr-q-card">' +
     '<span class="tbr-q-rank">' + rank + '</span>' +
     '<div class="tbr-q-info">' +
-      '<div class="tbr-q-name">' + c.name + (contact ? ' <span style="font-weight:400;color:var(--text-muted);font-size:11px;">– ' + contact + '</span>' : '') + '</div>' +
-      '<div class="tbr-q-meta">' + lastVisitStr + ' · ' + tbrStr + '</div>' +
+      '<div class="tbr-q-name">' + c.name + (contact ? ' <span style="font-weight:400;color:var(--text-muted);font-size:11px;">- ' + contact + '</span>' : '') + '</div>' +
+      '<div class="tbr-q-meta">' + lastVisitStr + ' &middot; ' + tbrStr + '</div>' +
     '</div>' +
     '<span>' + badge(st.cls, st.label) + '</span>' +
     '<div class="tbr-q-actions">' + actions + '</div>' +
@@ -6984,10 +6970,11 @@ function renderTbrQCard(c, rank) {
 
 function tbrQuickSchedule(name, visitNum) {
   visitNum = visitNum || 1;
-  const dateStr = prompt('Schedule TBR ' + visitNum + ' for ' + name + '\nEnter date (YYYY-MM-DD):', fmtISO(new Date(TODAY.getTime() + 30*86400000)));
-  if (!dateStr) return;
-  if (!tbrData[name]) tbrData[name] = { twice: 'No', tbr1: null, tbr1c: null, tbr2: null, tbr2c: null };
-  if (visitNum === 2) tbrData[name].tbr2 = dateStr;
+  var suggested = fmtISO(new Date(TODAY.getTime() + 30 * 86400000));
+  var dateStr = prompt('Schedule TBR ' + visitNum + ' for ' + name + '\nEnter date (YYYY-MM-DD):', suggested);
+  if(!dateStr) return;
+  if(!tbrData[name]) tbrData[name] = { twice: 'No', tbr1: null, tbr1c: null, tbr2: null, tbr2c: null };
+  if(visitNum === 2) tbrData[name].tbr2 = dateStr;
   else tbrData[name].tbr1 = dateStr;
   saveTbrToSupabase(name);
   renderTbrQueue();
@@ -6996,9 +6983,9 @@ function tbrQuickSchedule(name, visitNum) {
 }
 
 function tbrMarkDone(name, visitNum) {
-  const today = fmtISO(TODAY);
-  if (!tbrData[name]) return;
-  if (visitNum === 2) tbrData[name].tbr2c = today;
+  var today = fmtISO(TODAY);
+  if(!tbrData[name]) return;
+  if(visitNum === 2) tbrData[name].tbr2c = today;
   else tbrData[name].tbr1c = today;
   saveTbrToSupabase(name);
   renderTbrQueue();
@@ -7007,12 +6994,10 @@ function tbrMarkDone(name, visitNum) {
 }
 
 async function saveTbrToSupabase(name) {
-  // Mirror the pattern used by saveEditVisit — update tbrData row in Supabase if available
-  // Falls back gracefully if no Supabase configured
   try {
-    const t = tbrData[name];
-    if (!t) return;
-    const payload = {
+    var t = tbrData[name];
+    if(!t) return;
+    var payload = {
       tbr_twice: t.twice || 'No',
       tbr1: t.tbr1 || null,
       tbr1c: t.tbr1c || null,
@@ -7021,74 +7006,83 @@ async function saveTbrToSupabase(name) {
     };
     await fetch(SUPA_URL + '/rest/v1/clients?name=eq.' + encodeURIComponent(name), {
       method: 'PATCH',
-      headers: { ...sbHeaders(), 'Prefer': 'return=minimal' },
+      headers: Object.assign({}, sbHeaders(), {'Prefer': 'return=minimal'}),
       body: JSON.stringify(payload)
     });
   } catch(e) { console.warn('TBR save failed', e); }
 }
 
-// ── TBR Outreach Email Draft ──
-let tbrOutreachClient = null;
+// -- TBR Outreach Email Draft --
+var tbrOutreachClient = null;
 
 async function openTbrOutreach(name) {
-  const key = getAiKey();
-  if (!key) { openAiKeyModal(); return; }
+  var key = getAiKey();
+  if(!key) { openAiKeyModal(); return; }
   tbrOutreachClient = name;
-  document.getElementById('tbr-outreach-title').textContent = 'Outreach – ' + name;
-  const body = document.getElementById('tbr-outreach-body');
-  body.innerHTML = '<div class="tbr-outreach-generating">Drafting email…</div>';
+  document.getElementById('tbr-outreach-title').textContent = 'Outreach - ' + name;
+  var body = document.getElementById('tbr-outreach-body');
+  body.innerHTML = '<div class="tbr-outreach-generating">Drafting email...</div>';
   document.getElementById('tbr-outreach-overlay').classList.add('open');
 
-  const c = clients.find(x => x.name === name);
-  const t = tbrData[name] || {};
-  const contacts = (contactsData && contactsData[name]) || [];
-  const primaryContact = contacts[0] || {};
-  const lastVisit = c && c.lastVisit ? c.lastVisit : 'not recorded';
-  const tbrHistory = t.tbr1c ? 'TBR 1 completed ' + t.tbr1c : (t.tbr1 ? 'TBR 1 scheduled ' + t.tbr1 : 'no TBR on record');
+  var c = clients.find(function(x){ return x.name === name; });
+  var t = tbrData[name] || {};
+  var contacts = (contactsData && contactsData[name]) || [];
+  var primaryContact = contacts[0] || {};
+  var lastVisit = (c && c.lastVisit) ? c.lastVisit : 'not recorded';
+  var tbrHistory = t.tbr1c ? ('TBR 1 completed ' + t.tbr1c) : (t.tbr1 ? ('TBR 1 scheduled ' + t.tbr1) : 'no TBR on record');
 
-  const prompt = `You are David, an Account Manager at Valley Techlogic (VTL), a Managed Service Provider in California's Central Valley. 
-Write a short, natural, friendly outreach email to schedule an in-person Technical Business Review (TBR) with a client.
-
-Client: ${name}
-City: ${c ? c.city : ''}
-Primary contact: ${primaryContact.name || 'the team'} (${primaryContact.position || ''})
-Last in-person visit: ${lastVisit}
-TBR history: ${tbrHistory}
-Today: ${fmtISO(TODAY)}
-
-Guidelines:
-- Keep it short (3–4 sentences max)
-- Conversational, not corporate — David writes the way he talks
-- Mention that a TBR is a chance to review their tech, address any open items, and plan ahead
-- Suggest a couple of flexible time options without naming specific dates
-- Sign off as David from Valley Techlogic
-- Output ONLY the email body (no subject line in the body, no markdown)
-
-Also output a suggested subject line on the very first line, prefixed with "SUBJECT: "`;
+  var prompt = 'You are David, an Account Manager at Valley Techlogic (VTL), a Managed Service Provider in California\'s Central Valley.\n' +
+    'Write a short, natural, friendly outreach email to schedule an in-person Technical Business Review (TBR) with a client.\n\n' +
+    'Client: ' + name + '\n' +
+    'City: ' + (c ? c.city : '') + '\n' +
+    'Primary contact: ' + (primaryContact.name || 'the team') + ' (' + (primaryContact.position || '') + ')\n' +
+    'Last in-person visit: ' + lastVisit + '\n' +
+    'TBR history: ' + tbrHistory + '\n' +
+    'Today: ' + fmtISO(TODAY) + '\n\n' +
+    'Guidelines:\n' +
+    '- Keep it short (3-4 sentences max)\n' +
+    '- Conversational, not corporate - David writes the way he talks\n' +
+    '- Mention that a TBR is a chance to review their tech, address any open items, and plan ahead\n' +
+    '- Suggest flexible time options without naming specific dates\n' +
+    '- Sign off as David from Valley Techlogic\n' +
+    '- Output ONLY the email body (no subject line in the body, no markdown)\n\n' +
+    'Also output a suggested subject line on the very first line, prefixed with "SUBJECT: "';
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    var res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 500, messages: [{ role: 'user', content: prompt }] })
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 500,
+        messages: [{ role: 'user', content: prompt }]
+      })
     });
-    const data = await res.json();
-    if (data.error) { body.innerHTML = '<div class="tbr-outreach-generating">⚠ ' + (data.error.message || 'API error') + '</div>'; return; }
-    const text = (data.content || []).map(b => b.text || '').join('');
-    const lines = text.split('\n');
-    let subject = '';
-    let emailBody = text;
-    if (lines[0].startsWith('SUBJECT:')) {
-      subject = lines[0].replace('SUBJECT:', '').trim();
-      emailBody = lines.slice(1).join('\n').trim();
+    var data = await res.json();
+    if(data.error) {
+      body.innerHTML = '<div class="tbr-outreach-generating">Error: ' + (data.error.message || 'API error') + '</div>';
+      return;
     }
-    const toStr = primaryContact.email ? primaryContact.email : (primaryContact.name ? primaryContact.name : name);
+    var text = (data.content || []).map(function(b){ return b.text || ''; }).join('');
+    var emailLines = text.split('\n');
+    var subject = '';
+    var emailBody = text;
+    if(emailLines[0] && emailLines[0].indexOf('SUBJECT:') === 0) {
+      subject = emailLines[0].replace('SUBJECT:', '').trim();
+      emailBody = emailLines.slice(1).join('\n').trim();
+    }
+    var toStr = primaryContact.email ? primaryContact.email : (primaryContact.name ? primaryContact.name : name);
     body.innerHTML =
       '<div><div class="tbr-outreach-label">To</div><div class="tbr-outreach-email-to">' + toStr + '</div></div>' +
-      '<div><div class="tbr-outreach-label">Subject</div><input class="tbr-outreach-subject" id="tbr-subject-input" value="' + subject.replace(/"/g,'&quot;') + '"></div>' +
+      '<div><div class="tbr-outreach-label">Subject</div><input class="tbr-outreach-subject" id="tbr-subject-input" value="' + subject.replace(/"/g, '&quot;') + '"></div>' +
       '<div><div class="tbr-outreach-label">Body</div><textarea class="tbr-outreach-textarea" id="tbr-body-input">' + emailBody.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</textarea></div>';
   } catch(e) {
-    body.innerHTML = '<div class="tbr-outreach-generating">⚠ Network error: ' + (e.message || e) + '</div>';
+    body.innerHTML = '<div class="tbr-outreach-generating">Network error: ' + (e.message || e) + '</div>';
   }
 }
 
@@ -7098,15 +7092,22 @@ function closeTbrOutreach() {
 }
 
 function copyTbrDraft() {
-  const subEl = document.getElementById('tbr-subject-input');
-  const bodyEl = document.getElementById('tbr-body-input');
-  if (!bodyEl) return;
-  const text = (subEl ? 'Subject: ' + subEl.value + '\n\n' : '') + bodyEl.value;
-  navigator.clipboard.writeText(text).then(() => {
-    const btn = document.querySelector('.tbr-outreach-copy-btn');
-    if (btn) { btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = 'Copy email'; }, 2000); }
+  var subEl = document.getElementById('tbr-subject-input');
+  var bodyEl = document.getElementById('tbr-body-input');
+  if(!bodyEl) return;
+  var text = (subEl ? 'Subject: ' + subEl.value + '\n\n' : '') + bodyEl.value;
+  navigator.clipboard.writeText(text).then(function() {
+    var btns = document.querySelectorAll('.tbr-outreach-copy-btn');
+    btns.forEach(function(btn) {
+      if(btn.textContent === 'Copy email') {
+        btn.textContent = 'Copied!';
+        setTimeout(function(){ btn.textContent = 'Copy email'; }, 2000);
+      }
+    });
   });
 }
+
+
 
 
 
