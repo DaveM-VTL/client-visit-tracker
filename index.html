@@ -7759,27 +7759,18 @@ function todoDueTimeChange(id, val) {
 }
 
 function todoAddDueTime(id) {
-  // Create a temporary time input, trigger it, then save the value
+  // Show an inline time picker directly in the todo item
   const el = document.getElementById('todo-item-' + id);
   if(!el) return;
-  const tmp = document.createElement('input');
-  tmp.type = 'time';
-  tmp.style.position = 'fixed';
-  tmp.style.opacity = '0';
-  tmp.style.pointerEvents = 'none';
-  document.body.appendChild(tmp);
-  tmp.focus();
-  tmp.click();
-  tmp.onchange = function() {
-    if(tmp.value) todoDueTimeChange(id, tmp.value);
-    document.body.removeChild(tmp);
-  };
-  tmp.onblur = function() {
-    setTimeout(() => {
-      if(tmp.value) todoDueTimeChange(id, tmp.value);
-      if(tmp.parentNode) document.body.removeChild(tmp);
-    }, 200);
-  };
+  const timeSection = el.querySelector('.todo-due-time');
+  if(!timeSection) return;
+  timeSection.innerHTML = `<input type="time" id="todo-time-picker-${id}"
+    style="font-family:var(--mono);font-size:11px;border:1px solid var(--border);border-radius:4px;padding:2px 6px;background:var(--surface);color:var(--accent);cursor:pointer;"
+    onchange="todoDueTimeChange(${id}, this.value); todoRenderList();"
+    onblur="if(!this.value){ todoRenderList(); }"
+  >`;
+  const inp = document.getElementById('todo-time-picker-' + id);
+  if(inp) { inp.focus(); inp.click(); }
 }
 
 function todoItemHTML(item) {
