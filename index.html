@@ -7758,20 +7758,7 @@ function todoDueTimeChange(id, val) {
   if(item) { item.dueTime = val; todoSave(); }
 }
 
-function todoAddDueTime(id) {
-  // Show an inline time picker directly in the todo item
-  const el = document.getElementById('todo-item-' + id);
-  if(!el) return;
-  const timeSection = el.querySelector('.todo-due-time');
-  if(!timeSection) return;
-  timeSection.innerHTML = `<input type="time" id="todo-time-picker-${id}"
-    style="font-family:var(--mono);font-size:11px;border:1px solid var(--border);border-radius:4px;padding:2px 6px;background:var(--surface);color:var(--accent);cursor:pointer;"
-    onchange="todoDueTimeChange(${id}, this.value); todoRenderList();"
-    onblur="if(!this.value){ todoRenderList(); }"
-  >`;
-  const inp = document.getElementById('todo-time-picker-' + id);
-  if(inp) { inp.focus(); inp.click(); }
-}
+
 
 function todoItemHTML(item) {
   const esc = (item.text||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
@@ -7779,9 +7766,12 @@ function todoItemHTML(item) {
   const nowHHMM = new Date().toTimeString().slice(0,5);
   const isDueNow = !item.done && timeVal && todoActiveDay === todayStr() && timeVal <= nowHHMM;
 
-  const timeSection = timeVal
-    ? `<div class="todo-due-time">⏰ ${timeVal} <span style="cursor:pointer;opacity:0.6;" onclick="todoDueTimeChange(${item.id},'')">✕</span></div>`
-    : `<div class="todo-due-time"><button style="background:none;border:none;cursor:pointer;font-family:var(--mono);font-size:9px;color:var(--text-muted);padding:0;opacity:0.5;" onclick="todoAddDueTime(${item.id})">⏰ add time</button></div>`;
+  const timeSection = `<div class="todo-due-time">
+    <input type="time" value="${timeVal}"
+      style="font-family:var(--mono);font-size:10px;border:none;background:transparent;color:var(--text-muted);cursor:pointer;padding:0;width:${timeVal ? '80px' : '100px'};opacity:${timeVal ? '1' : '0.45'};"
+      onchange="todoDueTimeChange(${item.id}, this.value); todoRenderList();"
+      title="Set alert time"
+    >${timeVal ? `<span style="cursor:pointer;opacity:0.5;font-size:10px;margin-left:2px;" onclick="todoDueTimeChange(${item.id},''); todoRenderList();" title="Clear">✕</span>` : ''}</div>`;
 
   const rolledTag = item.rolledFrom
     ? `<span style="font-family:var(--mono);font-size:9px;color:var(--text-muted);opacity:0.7;margin-left:4px;vertical-align:middle;" title="Rolled over from ${item.rolledFrom}">↩ carried</span>`
