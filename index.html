@@ -2584,7 +2584,79 @@
     color: var(--text-muted);
     letter-spacing: 0.04em;
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
   }
+  .todo-footer-text { flex: 1; }
+  .todo-log-btn {
+    flex-shrink: 0;
+    padding: 5px 11px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: none;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    cursor: pointer;
+    letter-spacing: 0.03em;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .todo-log-btn:hover { border-color: var(--accent); color: var(--accent); }
+  /* Daily Log Modal */
+  .daily-log-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(26,24,20,0.5); z-index: 400;
+    align-items: center; justify-content: center; padding: 20px;
+  }
+  .daily-log-overlay.open { display: flex; }
+  .daily-log-panel {
+    background: var(--surface); border-radius: var(--radius-lg);
+    width: 100%; max-width: 520px; max-height: 80vh;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-lg);
+    display: flex; flex-direction: column;
+  }
+  .daily-log-header {
+    padding: 18px 20px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .daily-log-header h3 { font-size: 14px; font-weight: 600; }
+  .daily-log-header p { font-size: 11px; color: var(--text-muted); font-family: var(--mono); margin-top: 2px; }
+  .daily-log-body {
+    flex: 1; overflow-y: auto; padding: 16px 20px;
+  }
+  .daily-log-textarea {
+    width: 100%; min-height: 260px;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--bg); color: var(--text);
+    font-family: var(--mono); font-size: 12px; line-height: 1.7;
+    padding: 12px 14px; resize: vertical; outline: none;
+  }
+  .daily-log-textarea:focus { border-color: var(--accent); }
+  .daily-log-footer {
+    padding: 12px 20px; border-top: 1px solid var(--border);
+    display: flex; gap: 8px; align-items: center;
+  }
+  .daily-log-scope {
+    display: flex; gap: 4px; margin-right: auto;
+  }
+  .daily-log-scope-btn {
+    padding: 5px 11px; border: 1px solid var(--border);
+    border-radius: var(--radius); background: none;
+    font-family: var(--mono); font-size: 10px; color: var(--text-muted);
+    cursor: pointer; transition: all 0.15s;
+  }
+  .daily-log-scope-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+  .daily-log-copy-btn {
+    padding: 8px 18px; border-radius: var(--radius);
+    background: var(--accent); color: #fff; border: none;
+    font-family: var(--sans); font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: opacity 0.15s;
+  }
+  .daily-log-copy-btn:hover { opacity: 0.85; }
   @media (max-width: 768px) {
     .todo-week-header { padding: 10px 14px; }
     .todo-input-wrap { padding: 10px 14px; }
@@ -3154,7 +3226,30 @@
 </div>
 
 
-<!-- Report History Panel -->
+<!-- Daily Log Modal -->
+<div class="daily-log-overlay" id="daily-log-overlay" onclick="if(event.target===this)closeDailyLog()">
+  <div class="daily-log-panel">
+    <div class="daily-log-header">
+      <div>
+        <h3>📋 Daily Activity Log</h3>
+        <p id="daily-log-subtitle">Ready to copy into your timesheet</p>
+      </div>
+      <button class="modal-close" onclick="closeDailyLog()">✕</button>
+    </div>
+    <div class="daily-log-body">
+      <textarea class="daily-log-textarea" id="daily-log-textarea" spellcheck="false"></textarea>
+    </div>
+    <div class="daily-log-footer">
+      <div class="daily-log-scope">
+        <button class="daily-log-scope-btn active" id="dlscope-day" onclick="dailyLogSetScope('day')">Today</button>
+        <button class="daily-log-scope-btn" id="dlscope-week" onclick="dailyLogSetScope('week')">Full Week</button>
+      </div>
+      <button class="daily-log-copy-btn" id="daily-log-copy-btn" onclick="dailyLogCopy()">Copy</button>
+    </div>
+  </div>
+</div>
+
+
 <div class="rep-hist-overlay" id="rep-hist-overlay" onclick="if(event.target===this)closeReportHistory()">
   <div class="rep-hist-panel">
     <div class="rep-hist-header">
@@ -7734,7 +7829,7 @@ function todoRenderList() {
 
   if(!total) {
     list.innerHTML = `<div class="todo-empty">${dayLabel}${isToday?' — today':''}<br>No tasks yet — add one above</div>`;
-    if(footer) footer.textContent = 'Tip: plan the full week on Monday, then check off each day';
+    if(footer) footer.innerHTML = `<span class="todo-footer-text">Tip: plan the full week on Monday, then check off each day</span><button class="todo-log-btn" onclick="openDailyLog('week')">📋 Weekly Log</button>`;
     return;
   }
 
@@ -7752,7 +7847,7 @@ function todoRenderList() {
   }
 
   list.innerHTML = html;
-  if(footer) footer.textContent = (total - done) + ' task' + (total-done!==1?'s':'') + ' remaining for ' + dayLabel;
+  if(footer) footer.innerHTML = `<span class="todo-footer-text">${(total - done) + ' task' + (total-done!==1?'s':'') + ' remaining for ' + dayLabel}</span><button class="todo-log-btn" onclick="openDailyLog('day')">📋 Daily Log</button>`;
 
   list.querySelectorAll('.todo-text').forEach(el => {
     // Auto-expand to fit full content on initial render
@@ -7777,9 +7872,109 @@ function todoDueTimeChange(id, val) {
   if(item) { item.dueTime = val; todoSave(); }
 }
 
+let dailyLogScope = 'day';
 
+function openDailyLog(scope) {
+  dailyLogScope = scope || 'day';
+  document.getElementById('daily-log-overlay').classList.add('open');
+  dailyLogRender();
+}
 
+function closeDailyLog() {
+  document.getElementById('daily-log-overlay').classList.remove('open');
+}
+
+function dailyLogSetScope(scope) {
+  dailyLogScope = scope;
+  document.getElementById('dlscope-day').classList.toggle('active', scope === 'day');
+  document.getElementById('dlscope-week').classList.toggle('active', scope === 'week');
+  dailyLogRender();
+}
+
+function dailyLogRender() {
+  const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const monday = getMonday(todoWeekOffset);
+  let text = '';
+
+  if(dailyLogScope === 'day') {
+    // Single day
+    const day = todoActiveDay || todayStr();
+    const items = todoWeekData[day] || [];
+    const dObj = new Date(day + 'T12:00:00');
+    const label = dayNames[dObj.getDay()] + ', ' + dObj.toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'});
+    text = label + '\n' + '─'.repeat(label.length) + '\n';
+    if(!items.length) {
+      text += '(no tasks)\n';
+    } else {
+      const pending = items.filter(t => !t.done);
+      const done = items.filter(t => t.done);
+      done.forEach(t => {
+        const time = t.dueTime ? ' [' + formatTimeTo12h(t.dueTime) + ']' : '';
+        text += '✓ ' + t.text + time + '\n';
+      });
+      pending.forEach(t => {
+        const time = t.dueTime ? ' [' + formatTimeTo12h(t.dueTime) + ']' : '';
+        text += '○ ' + t.text + time + '\n';
+      });
+    }
+    document.getElementById('daily-log-subtitle').textContent = label;
+  } else {
+    // Full week
+    const weekLabel = 'Week of ' + monday.toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'});
+    document.getElementById('daily-log-subtitle').textContent = weekLabel;
+    text = weekLabel + '\n' + '═'.repeat(Math.min(weekLabel.length, 40)) + '\n\n';
+    for(let i = 0; i < 7; i++) {
+      const d = new Date(monday);
+      d.setDate(d.getDate() + i);
+      const iso = d.toISOString().slice(0,10);
+      const items = todoWeekData[iso] || [];
+      if(!items.length) continue; // skip empty days
+      const label = dayNames[d.getDay()] + ', ' + d.toLocaleDateString('en-US', {month:'long', day:'numeric'});
+      text += label + '\n' + '─'.repeat(label.length) + '\n';
+      const pending = items.filter(t => !t.done);
+      const done = items.filter(t => t.done);
+      done.forEach(t => {
+        const time = t.dueTime ? ' [' + formatTimeTo12h(t.dueTime) + ']' : '';
+        text += '✓ ' + t.text + time + '\n';
+      });
+      pending.forEach(t => {
+        const time = t.dueTime ? ' [' + formatTimeTo12h(t.dueTime) + ']' : '';
+        text += '○ ' + t.text + time + '\n';
+      });
+      text += '\n';
+    }
+    if(text.trim().endsWith('═'.repeat(Math.min(weekLabel.length, 40)))) {
+      text += '(no tasks this week)\n';
+    }
+  }
+  document.getElementById('daily-log-textarea').value = text.trim();
+}
+
+function formatTimeTo12h(hhmm) {
+  if(!hhmm) return '';
+  const [h, m] = hhmm.split(':').map(Number);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  return h12 + ':' + String(m).padStart(2,'0') + ' ' + ampm;
+}
+
+async function dailyLogCopy() {
+  const ta = document.getElementById('daily-log-textarea');
+  const btn = document.getElementById('daily-log-copy-btn');
+  try {
+    await navigator.clipboard.writeText(ta.value);
+    btn.textContent = '✓ Copied!';
+    setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+  } catch(e) {
+    ta.select();
+    document.execCommand('copy');
+    btn.textContent = '✓ Copied!';
+    setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+  }
+}
 function todoItemHTML(item) {
+
+
   const esc = (item.text||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
   const timeVal = item.dueTime || '';
   const nowHHMM = new Date().toTimeString().slice(0,5);
