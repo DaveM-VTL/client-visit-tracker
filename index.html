@@ -3662,7 +3662,7 @@ function getPhoneStatus(c){
 function getTBRStatus(c){
   const t=tbrData[c.name];
   if(!t||!t.tbr1)return{label:'Not scheduled',cls:'not-scheduled'};
-  const daysSince=date=>Math.round((new Date()-new Date(date))/(1000*60*60*24));
+  const daysSince=date=>{const dt=parseDate(date);if(!dt)return 0;return Math.round((dt-TODAY)/(1000*60*60*24))*-1;};
   if(t.twice==='Yes'){
     // Twice/year: overdue if >182 days (~6 months) since last completed visit
     if(t.tbr1c&&t.tbr2c){
