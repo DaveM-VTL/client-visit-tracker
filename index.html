@@ -3675,10 +3675,10 @@ function getTBRStatus(c){
       const sinceV1=daysSince(t.tbr1c);
       if(sinceV1>182)return{label:'Overdue',cls:'overdue'};
       if(sinceV1>122)return{label:'Schedule Soon!',cls:'due-soon'};
-      if(t.tbr2){const d=daysFrom(new Date(t.tbr2));return d<0?{label:'Visit 2 overdue',cls:'overdue'}:{label:'Visit 2 pending',cls:'pending'};}
+      if(t.tbr2){const d=daysFrom(parseDate(t.tbr2));return d<0?{label:'Visit 2 overdue',cls:'overdue'}:{label:'Visit 2 pending',cls:'pending'};}
       return{label:'Visit 1 done',cls:'on-track'};
     }
-    const d=daysFrom(new Date(t.tbr1));return d<0?{label:'Visit 1 overdue',cls:'overdue'}:{label:'Visit 1 pending',cls:'pending'};
+    const d=daysFrom(parseDate(t.tbr1));return d<0?{label:'Visit 1 overdue',cls:'overdue'}:{label:'Visit 1 pending',cls:'pending'};
   }
   // Once/year: overdue if >365 days since last completed TBR
   if(t.tbr1c){
@@ -3687,7 +3687,7 @@ function getTBRStatus(c){
     if(sinceV1>305)return{label:'Schedule Soon!',cls:'due-soon'};
     return{label:'Completed',cls:'completed'};
   }
-  const d=daysFrom(new Date(t.tbr1));return d<0?{label:'Overdue',cls:'overdue'}:{label:'Pending',cls:'pending'};
+  const d=daysFrom(parseDate(t.tbr1));return d<0?{label:'Overdue',cls:'overdue'}:{label:'Pending',cls:'pending'};
 }
 function getReviewStatus(c){
   const r=reviewData[c.name];
