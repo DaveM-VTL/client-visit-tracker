@@ -3682,6 +3682,7 @@ function getTBRStatus(c){
   }
   // Once/year: overdue if >365 days since last completed TBR
   if(t.tbr1c){
+    if(t.tbr2){const d=daysFrom(parseDate(t.tbr2));return d<0?{label:'Visit 2 overdue',cls:'overdue'}:{label:'Visit 2 pending',cls:'pending'};}
     const sinceV1=daysSince(t.tbr1c);
     if(sinceV1>365)return{label:'Overdue',cls:'overdue'};
     if(sinceV1>305)return{label:'Schedule Soon!',cls:'due-soon'};
