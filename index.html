@@ -3423,6 +3423,11 @@ function copyPhone(e, num) {
     navigator.clipboard.writeText(num).catch(() => {});
   }
 }
+function telHref(num) {
+  // Strip everything except digits and leading + for a clean tel: URI
+  if (!num) return '#';
+  return 'tel:' + num.replace(/[^\d+]/g, '');
+}
 function parseDate(d){
   if(!d) return null;
   if(d instanceof Date) return d;
@@ -3921,11 +3926,11 @@ function nameCell(c){
   const addr = [c.address, c.city].filter(Boolean).join(', ') || 'No address on file';
 
   const mainPhoneHtml = c.mainPhone
-    ? `<div style="margin-top:5px;"><a href="tel:${c.mainPhone}" onclick="copyPhone(event,c.mainPhone)" style="color:var(--accent);text-decoration:none;font-size:12px;font-weight:500;">📞 ${c.mainPhone}</a></div>`
+    ? `<div style="margin-top:5px;"><a href="${telHref(c.mainPhone)}" onclick="copyPhone(event,c.mainPhone)" style="color:var(--accent);text-decoration:none;font-size:12px;font-weight:500;">📞 ${c.mainPhone}</a></div>`
     : '';
 
   let contactsHtml = contacts.filter(ct => ct.name).map(ct => {
-    const phone = ct.phone ? `<a href="tel:${ct.phone}" onclick="copyPhone(event,ct.phone)" style="color:var(--accent);text-decoration:none">${ct.phone}</a>` : '';
+    const phone = ct.phone ? `<a href="${telHref(ct.phone)}" onclick="copyPhone(event,ct.phone)" style="color:var(--accent);text-decoration:none">${ct.phone}</a>` : '';
     const email = ct.email ? `<a href="mailto:${ct.email}" style="color:var(--accent);text-decoration:none;font-size:10px">${ct.email}</a>` : '';
     const pos = ct.position ? `<span style="color:var(--text-muted);font-size:10px"> · ${ct.position}</span>` : '';
     return `<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border)">
@@ -3973,7 +3978,7 @@ function renderCards(rows){
         <div class="card-detail-row"><span class="card-detail-label">Second visit</span><span class="card-detail-val">${fmt(c.lastVisit2)}</span></div>
         ${c.scheduledVisit ? `<div class="card-detail-row"><span class="card-detail-label">Scheduled visit</span><span class="card-detail-val" style="color:#5a2da0;font-weight:600;">📅 ${fmt(c.scheduledVisit)}</span></div>` : ''}
         <div class="card-detail-row"><span class="card-detail-label">Address</span><span class="card-detail-val">${[c.address,c.city].filter(Boolean).join(', ')||'—'}</span></div>
-        ${c.mainPhone ? `<div class="card-detail-row"><span class="card-detail-label">Main Phone</span><a href="tel:${c.mainPhone}" onclick="copyPhone(event,c.mainPhone)" style="font-family:var(--mono);font-size:12px;color:var(--accent);text-decoration:none;">${c.mainPhone}</a></div>` : ''}
+        ${c.mainPhone ? `<div class="card-detail-row"><span class="card-detail-label">Main Phone</span><a href="${telHref(c.mainPhone)}" onclick="copyPhone(event,c.mainPhone)" style="font-family:var(--mono);font-size:12px;color:var(--accent);text-decoration:none;">${c.mainPhone}</a></div>` : ''}
         ${cardContacts(c.name)}`;
       return cardHTML(c, color, st, summary, details, note, noteEsc);
     } else if(currentTab==='phone'){
@@ -4098,7 +4103,7 @@ function cardContacts(name){
     html += `<div class="card-detail-row" style="flex-direction:column;align-items:flex-start;gap:2px">
       <span class="card-detail-label">${ct.position || 'Contact'}</span>
       <span style="font-size:13px;font-weight:500">${ct.name}</span>
-      ${ct.phone ? `<a href="tel:${ct.phone}" onclick="copyPhone(event,ct.phone)" style="font-size:12px;color:var(--accent);text-decoration:none">${ct.phone}</a>` : ''}
+      ${ct.phone ? `<a href="${telHref(ct.phone)}" onclick="copyPhone(event,ct.phone)" style="font-size:12px;color:var(--accent);text-decoration:none">${ct.phone}</a>` : ''}
       ${ct.email ? `<a href="mailto:${ct.email}" style="font-size:11px;color:var(--accent);text-decoration:none;word-break:break-all">${ct.email}</a>` : ''}
     </div>`;
   });
@@ -4281,7 +4286,7 @@ function renderClients() {
         <span class="client-dot" style="background:${color}"></span>${c.name}
       </td>
       <td class="td-city">${c.city||'—'}</td>
-      <td style="font-family:var(--mono);font-size:11px;">${c.mainPhone ? `<a href="tel:${c.mainPhone}" onclick="copyPhone(event,c.mainPhone);event.stopPropagation();" style="color:var(--accent);text-decoration:none;">📞 ${c.mainPhone}</a>` : '<span style="color:var(--border)">—</span>'}</td>
+      <td style="font-family:var(--mono);font-size:11px;">${c.mainPhone ? `<a href="${telHref(c.mainPhone)}" onclick="copyPhone(event,c.mainPhone);event.stopPropagation();" style="color:var(--accent);text-decoration:none;">📞 ${c.mainPhone}</a>` : '<span style="color:var(--border)">—</span>'}</td>
       <td style="font-size:12px;color:var(--text-muted);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${contactSummary}</td>
       <td style="font-size:11px;font-family:var(--mono);">${website ? `<a href="${website}" target="_blank" style="color:var(--accent);text-decoration:none;" onclick="event.stopPropagation()">🌐 ${website.replace(/https?:\/\//,'').replace(/\/$/,'').substring(0,30)}</a>` : '<span style="color:var(--border)">—</span>'}</td>
       <td style="padding-right:32px;"><button class="edit-btn" onclick="event.stopPropagation();openEdit(${c.id})">edit</button></td>
@@ -4289,7 +4294,7 @@ function renderClients() {
 
     if(isExp) {
       const contactCards = contacts.filter(ct=>ct.name).map(ct => {
-        const phoneLink = ct.phone ? `<a href="tel:${ct.phone}" onclick="copyPhone(event,ct.phone)">📞 ${ct.phone}</a>` : '';
+        const phoneLink = ct.phone ? `<a href="${telHref(ct.phone)}" onclick="copyPhone(event,ct.phone)">📞 ${ct.phone}</a>` : '';
         const emailLink = ct.email ? `<a href="mailto:${ct.email}">✉ ${ct.email}</a>` : '';
         return `<div class="dir-contact-card">
           <div class="dir-contact-name">${ct.name}</div>
@@ -4308,7 +4313,7 @@ function renderClients() {
 
       const addr = [c.address, c.city].filter(Boolean).join(', ');
       const addrRow = addr ? `<div style="font-family:var(--mono);font-size:11px;color:var(--text-muted);">📍 ${addr}</div>` : '';
-      const mainPhoneRow = c.mainPhone ? `<div style="font-family:var(--mono);font-size:11px;color:var(--text-muted);margin-top:4px;"><a href="tel:${c.mainPhone}" onclick="copyPhone(event,c.mainPhone)" style="color:var(--accent);text-decoration:none;font-size:12px;font-weight:500;">📞 ${c.mainPhone}</a> <span style="font-size:10px;color:var(--border)">main</span></div>` : '';
+      const mainPhoneRow = c.mainPhone ? `<div style="font-family:var(--mono);font-size:11px;color:var(--text-muted);margin-top:4px;"><a href="${telHref(c.mainPhone)}" onclick="copyPhone(event,c.mainPhone)" style="color:var(--accent);text-decoration:none;font-size:12px;font-weight:500;">📞 ${c.mainPhone}</a> <span style="font-size:10px;color:var(--border)">main</span></div>` : '';
 
       html += `<tr class="client-dir-detail">
         <td colspan="${colCount}">
@@ -4336,7 +4341,7 @@ function renderClients() {
     const isExp = expandedClientIds.has(c.id);
 
     const contactCards = contacts.filter(ct=>ct.name).map(ct => {
-      const phoneLink = ct.phone ? `<a href="tel:${ct.phone}" onclick="copyPhone(event,ct.phone)" style="color:var(--accent);display:block;font-size:12px;font-family:var(--mono);">📞 ${ct.phone}</a>` : '';
+      const phoneLink = ct.phone ? `<a href="${telHref(ct.phone)}" onclick="copyPhone(event,ct.phone)" style="color:var(--accent);display:block;font-size:12px;font-family:var(--mono);">📞 ${ct.phone}</a>` : '';
       const emailLink = ct.email ? `<a href="mailto:${ct.email}" style="color:var(--accent);display:block;font-size:11px;font-family:var(--mono);overflow:hidden;text-overflow:ellipsis;">✉ ${ct.email}</a>` : '';
       return `<div class="dir-contact-card" style="max-width:100%;">
         <div class="dir-contact-name">${ct.name}</div>
@@ -4347,13 +4352,13 @@ function renderClients() {
 
     const wsRow = website ? `<div style="padding-top:8px;border-top:1px solid var(--border);"><a href="${website}" target="_blank" style="color:var(--accent);font-size:11px;font-family:var(--mono);">🌐 ${website.replace(/https?:\/\//,'').replace(/\/$/,'')}</a></div>` : '';
     const addr = [c.address, c.city].filter(Boolean).join(', ');
-    const mainPhoneMobile = c.mainPhone ? `<a href="tel:${c.mainPhone}" onclick="copyPhone(event,c.mainPhone)" style="color:var(--accent);font-family:var(--mono);font-size:11px;text-decoration:none;">📞 ${c.mainPhone}</a>` : '';
+    const mainPhoneMobile = c.mainPhone ? `<a href="${telHref(c.mainPhone)}" onclick="copyPhone(event,c.mainPhone)" style="color:var(--accent);font-family:var(--mono);font-size:11px;text-decoration:none;">📞 ${c.mainPhone}</a>` : '';
 
     return `<div class="client-card" style="--client-color:${color}" id="cdir-${c.id}">
       <div class="card-main" onclick="toggleClientDir(${c.id})">
         <div class="card-left">
           <div class="card-name"><span class="client-dot" style="background:${color}"></span>${c.name}</div>
-          <div class="card-due">${addr||'No address'}${c.mainPhone ? ` · <a href="tel:${c.mainPhone}" onclick="copyPhone(event,c.mainPhone);event.stopPropagation();" style="color:var(--accent);text-decoration:none;">${c.mainPhone}</a>` : ''}</div>
+          <div class="card-due">${addr||'No address'}${c.mainPhone ? ` · <a href="${telHref(c.mainPhone)}" onclick="copyPhone(event,c.mainPhone);event.stopPropagation();" style="color:var(--accent);text-decoration:none;">${c.mainPhone}</a>` : ''}</div>
         </div>
         <div class="card-right">
           <span style="font-size:11px;color:var(--text-muted);font-family:var(--mono);">${contacts.filter(ct=>ct.name).length} contact${contacts.filter(ct=>ct.name).length!==1?'s':''}</span>
