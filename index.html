@@ -3655,8 +3655,11 @@ let clients = [
 let nextId=58, currentTab='inperson', editingId=null;
 
 function getIPStatus(c){
-  if(!c.lastVisit)return{label:'Not yet visited',cls:'not-visited',days:null,nextDue:null};
-  const next=addDays(new Date(c.lastVisit),182);
+  // Use whichever of the two in-person slots is more recent — they aren't
+  // guaranteed to be stored in chronological order (slot 2 isn't always the newer one).
+  const mostRecent = [c.lastVisit, c.lastVisit2].filter(Boolean).sort().pop();
+  if(!mostRecent)return{label:'Not yet visited',cls:'not-visited',days:null,nextDue:null};
+  const next=addDays(new Date(mostRecent),182);
   const d=daysFrom(next);
   if(d<0)return{label:'Overdue',cls:'overdue',days:d,nextDue:next};
   if(d<=30)return{label:'Due soon',cls:'due-soon',days:d,nextDue:next};
