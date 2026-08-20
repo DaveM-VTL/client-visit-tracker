@@ -398,6 +398,7 @@
   .badge-not-visited, .badge-not-scheduled, .badge-not-sent { background: var(--surface2); color: var(--text-muted); }
   .badge-completed, .badge-reviewed { background: var(--success-light); color: var(--success); }
   .badge-pending { background: var(--info-light); color: var(--info); }
+  .badge-missed { background: #f5e3ef; color: #7a1f5c; }
 
   /* ── TBR Priority Queue ── */
   .tbr-view-toggle { display:flex; gap:6px; padding:14px 20px 0; }
@@ -3322,12 +3323,9 @@
           <div class="field"><label>Twice per year?</label>
             <select id="f-tbr-twice"><option value="No">No</option><option value="Yes">Yes</option></select>
           </div>
-          <div class="field"></div>
-          <div class="field"><label>Visit 1 scheduled</label><input id="f-tbr1" type="date"></div>
-          <div class="field"><label>Visit 1 completed</label><input id="f-tbr1c" type="date"></div>
-          <div class="field"><label>Visit 2 scheduled</label><input id="f-tbr2" type="date"></div>
-          <div class="field"><label>Visit 2 completed</label><input id="f-tbr2c" type="date"></div>
         </div>
+        <div id="tbr-entries-list" style="display:flex;flex-direction:column;gap:8px;margin-top:12px;"></div>
+        <button type="button" class="tbr-outreach-copy-btn" style="margin-top:10px;" onclick="addTbrEntryRow()">+ Add TBR</button>
       </div>
       <div class="modal-section">
         <div class="section-label">Google review</div>
@@ -3538,12 +3536,13 @@ const phoneData = {
   'Yarra, Rivas, and Associates':{ph1:'2026-03-04',ph2:'2026-04-22',ph1c:null,ph2c:null},
 };
 
+// Each client: { twice: 'Yes'|'No', entries: [{scheduled, completed}, ...] } — one entry per TBR ever done/scheduled, unlimited.
 const tbrData = {
-  'Dependable Precision Manufacturing':{twice:'No',tbr1:'2026-02-26',tbr1c:'2026-02-26',tbr2:null,tbr2c:null},
-  'Natural Vision':{twice:'No',tbr1:'2026-04-01',tbr1c:null,tbr2:null,tbr2c:null},
-  'Ortho Spine Advanced Health':{twice:'No',tbr1:'2026-04-16',tbr1c:null,tbr2:null,tbr2c:null},
-  'Pacific Ultrapower Chinese Station':{twice:'No',tbr1:'2026-04-30',tbr1c:null,tbr2:null,tbr2c:null},
-  'Rico, Pfitzer, Pires Insurance Agency, Inc.':{twice:'No',tbr1:'2026-01-22',tbr1c:'2026-01-22',tbr2:null,tbr2c:null},
+  'Dependable Precision Manufacturing':{twice:'No',entries:[{scheduled:'2026-02-26',completed:'2026-02-26'}]},
+  'Natural Vision':{twice:'No',entries:[{scheduled:'2026-04-01',completed:null}]},
+  'Ortho Spine Advanced Health':{twice:'No',entries:[{scheduled:'2026-04-16',completed:null}]},
+  'Pacific Ultrapower Chinese Station':{twice:'No',entries:[{scheduled:'2026-04-30',completed:null}]},
+  'Rico, Pfitzer, Pires Insurance Agency, Inc.':{twice:'No',entries:[{scheduled:'2026-01-22',completed:'2026-01-22'}]},
 };
 
 const reviewData = {
@@ -3673,36 +3672,55 @@ function getPhoneStatus(c){
   if(p.ph1){const d=daysFrom(new Date(p.ph1));return d<0?{label:'Visit 1 overdue',cls:'overdue'}:{label:'Visit 1 pending',cls:'pending'};}
   return{label:'Not scheduled',cls:'not-scheduled'};
 }
+// ── TBR entry helpers (entries = unlimited list of {scheduled, completed} pairs) ──
+function tbrEntries(name){
+  const t=tbrData[name];
+  if(!t||!Array.isArray(t.entries))return[];
+  return t.entries.filter(e=>e&&(e.scheduled||e.completed));
+}
+function tbrLastCompleted(name){
+  const done=tbrEntries(name).map(e=>e.completed).filter(Boolean).sort();
+  return done.length?done[done.length-1]:null;
+}
+// A "missed" entry is one that was scheduled, the date has passed, and it was never marked completed
+// (and no later completed TBR shows the visit actually happened around/after that date).
+function tbrMissedEntries(name){
+  const last=tbrLastCompleted(name);
+  return tbrEntries(name).filter(e=>{
+    if(e.completed||!e.scheduled)return false;
+    if(daysFrom(parseDate(e.scheduled))>=0)return false; // still in the future — not missed, just pending
+    if(last&&last>=e.scheduled)return false; // a later completed TBR supersedes this stale scheduled slot
+    return true;
+  });
+}
+function tbrUpcomingEntries(name){
+  return tbrEntries(name).filter(e=>!e.completed&&e.scheduled&&daysFrom(parseDate(e.scheduled))>=0)
+    .sort((a,b)=>a.scheduled.localeCompare(b.scheduled));
+}
 function getTBRStatus(c){
   const t=tbrData[c.name];
-  if(!t||!t.tbr1)return{label:'Not scheduled',cls:'not-scheduled'};
-  const daysSince=date=>{const dt=parseDate(date);if(!dt)return 0;return Math.round((dt-TODAY)/(1000*60*60*24))*-1;};
-  if(t.twice==='Yes'){
-    // Twice/year: overdue if >182 days (~6 months) since last completed visit
-    if(t.tbr1c&&t.tbr2c){
-      const lastDone=daysSince(t.tbr2c>t.tbr1c?t.tbr2c:t.tbr1c);
-      if(lastDone>182)return{label:'Overdue',cls:'overdue'};
-      if(lastDone>122)return{label:'Schedule Soon!',cls:'due-soon'};
-      return{label:'Completed',cls:'completed'};
-    }
-    if(t.tbr1c){
-      if(t.tbr2){const d=daysFrom(parseDate(t.tbr2));return d<0?{label:'Visit 2 overdue',cls:'overdue'}:{label:'Visit 2 pending',cls:'pending'};}
-      const sinceV1=daysSince(t.tbr1c);
-      if(sinceV1>182)return{label:'Overdue',cls:'overdue'};
-      if(sinceV1>122)return{label:'Schedule Soon!',cls:'due-soon'};
-      return{label:'Visit 1 done',cls:'on-track'};
-    }
-    const d=daysFrom(parseDate(t.tbr1));return d<0?{label:'Visit 1 overdue',cls:'overdue'}:{label:'Visit 1 pending',cls:'pending'};
-  }
-  // Once/year: overdue if >365 days since last completed TBR
-  if(t.tbr1c){
-    if(t.tbr2){const d=daysFrom(parseDate(t.tbr2));return d<0?{label:'Visit 2 overdue',cls:'overdue'}:{label:'Visit 2 pending',cls:'pending'};}
-    const sinceV1=daysSince(t.tbr1c);
-    if(sinceV1>365)return{label:'Overdue',cls:'overdue'};
-    if(sinceV1>305)return{label:'Schedule Soon!',cls:'due-soon'};
+  const entries=tbrEntries(c.name);
+  if(!entries.length)return{label:'Not scheduled',cls:'not-scheduled'};
+  const lastCompleted=tbrLastCompleted(c.name);
+  const missed=tbrMissedEntries(c.name);
+  const upcoming=tbrUpcomingEntries(c.name);
+  const twice=t&&t.twice==='Yes';
+  const overdueDays=twice?182:365;
+  const dueSoonDays=twice?122:305;
+  // Overdue is determined ONLY by how long it's been since the last completed TBR — not by
+  // whether some earlier scheduled date happens to have passed.
+  if(lastCompleted){
+    const since=-daysFrom(parseDate(lastCompleted));
+    if(since>overdueDays)return{label:'Overdue',cls:'overdue'};
+    if(missed.length)return{label:'Missed visit',cls:'missed'};
+    if(since>dueSoonDays)return{label:'Schedule soon!',cls:'due-soon'};
+    if(upcoming.length)return{label:'Visit scheduled',cls:'pending'};
     return{label:'Completed',cls:'completed'};
   }
-  const d=daysFrom(parseDate(t.tbr1));return d<0?{label:'Overdue',cls:'overdue'}:{label:'Pending',cls:'pending'};
+  // Never completed one yet
+  if(missed.length)return{label:'Missed visit',cls:'missed'};
+  if(upcoming.length)return{label:'Pending',cls:'pending'};
+  return{label:'Not scheduled',cls:'not-scheduled'};
 }
 function getReviewStatus(c){
   const r=reviewData[c.name];
@@ -3743,11 +3761,11 @@ function getReportStatus(c){
 const filterOptions={
   inperson:['all','overdue','due-soon','on-track','not-visited'],
   phone:['all','overdue','pending','completed','not-scheduled'],
-  tbr:['all','overdue','due-soon','pending','completed','not-scheduled'],
+  tbr:['all','overdue','missed','due-soon','pending','completed','not-scheduled'],
   reviews:['all','reviewed','sent','not-sent'],
   reports:['all','overdue','due-soon','on-track','not-sent'],
 };
-const filterLabels={all:'All statuses',overdue:'Overdue','due-soon':'Due soon','on-track':'On track','not-visited':'Not yet visited',pending:'Pending',completed:'Completed','not-scheduled':'Not scheduled',reviewed:'Reviewed',sent:'Awaiting review','not-sent':'Not sent'};
+const filterLabels={all:'All statuses',overdue:'Overdue',missed:'Missed visit','due-soon':'Due soon','on-track':'On track','not-visited':'Not yet visited',pending:'Pending',completed:'Completed','not-scheduled':'Not scheduled',reviewed:'Reviewed',sent:'Awaiting review','not-sent':'Not sent'};
 const tabTitles={clients:'Clients',inperson:'In-person visits',phone:'Phone visits',tbr:'TBRs',reviews:'Google reviews',reports:'The Valley View',map:'Map',calendar:'Calendar'};
 
 function updateFilterOptions(){
@@ -3760,7 +3778,7 @@ function updateSidebarCounts(){
   document.getElementById('cnt-cli').textContent = clients.length;
   const ipOverdue=clients.filter(c=>getIPStatus(c).cls==='overdue').length;
   const phOverdue=clients.filter(c=>getPhoneStatus(c).cls==='overdue').length;
-  const tbrPending=clients.filter(c=>['overdue','due-soon','pending'].includes(getTBRStatus(c).cls)).length;
+  const tbrPending=clients.filter(c=>['overdue','missed','due-soon','pending'].includes(getTBRStatus(c).cls)).length;
   const revPending=clients.filter(c=>getReviewStatus(c).cls==='sent').length;
   const repDue=clients.filter(c=>['overdue','due-soon','not-sent'].includes(getReportStatus(c).cls)).length;
   document.getElementById('cnt-ip').textContent=ipOverdue>0?ipOverdue+'↑':clients.length;
@@ -3807,12 +3825,15 @@ function renderStats(){
           <div class="stat-cell"><div class="stat-num" style="color:#c47eb5;">${totalEmails}</div><div class="stat-lbl">Emails logged</div></div>`;
   } else if(currentTab==='tbr'){
     const comp=clients.filter(c=>getTBRStatus(c).cls==='completed').length;
-    const pend=clients.filter(c=>['pending','overdue'].includes(getTBRStatus(c).cls)).length;
+    const overdue=clients.filter(c=>getTBRStatus(c).cls==='overdue').length;
+    const missed=clients.filter(c=>getTBRStatus(c).cls==='missed').length;
+    const pend=clients.filter(c=>['pending','due-soon'].includes(getTBRStatus(c).cls)).length;
     const ns=clients.filter(c=>getTBRStatus(c).cls==='not-scheduled').length;
     html=`<div class="stat-cell"><div class="stat-num num-success">${comp}</div><div class="stat-lbl">Completed</div></div>
-          <div class="stat-cell"><div class="stat-num num-warning">${pend}</div><div class="stat-lbl">Pending / overdue</div></div>
-          <div class="stat-cell"><div class="stat-num">${ns}</div><div class="stat-lbl">Not scheduled</div></div>
-          <div class="stat-cell"><div class="stat-num num-info">${clients.length}</div><div class="stat-lbl">Total clients</div></div>`;
+          <div class="stat-cell"><div class="stat-num num-danger">${overdue}</div><div class="stat-lbl">Overdue (1yr+)</div></div>
+          <div class="stat-cell"><div class="stat-num" style="color:#7a1f5c;">${missed}</div><div class="stat-lbl">Missed visit</div></div>
+          <div class="stat-cell"><div class="stat-num num-warning">${pend}</div><div class="stat-lbl">Pending / due soon</div></div>
+          <div class="stat-cell"><div class="stat-num">${ns}</div><div class="stat-lbl">Not scheduled</div></div>`;
   } else if(currentTab==='reports'){
     const sent=clients.filter(c=>getReportStatus(c).cls==='on-track').length;
     const due=clients.filter(c=>getReportStatus(c).cls==='due-soon').length;
@@ -3998,14 +4019,18 @@ function renderCards(rows){
     } else if(currentTab==='tbr'){
       const t = tbrData[c.name]||{};
       const st = getTBRStatus(c);
-      const nextUp = t.tbr1c ? fmt(t.tbr2) : fmt(t.tbr1);
+      const entries = tbrEntries(c.name).slice().sort((a,b)=>(a.scheduled||a.completed||'').localeCompare(b.scheduled||b.completed||''));
+      const upcoming = tbrUpcomingEntries(c.name)[0];
+      const nextUp = upcoming ? fmt(upcoming.scheduled) : null;
       summary = `<div class="card-due">Next TBR: ${nextUp||'—'}</div>`;
+      const rows = entries.length ? entries.map(e=>{
+        const missedThis = !e.completed && e.scheduled && daysFrom(parseDate(e.scheduled))<0 && tbrMissedEntries(c.name).some(m=>m.scheduled===e.scheduled);
+        const statusTxt = e.completed ? 'Done '+fmt(e.completed) : (missedThis ? 'Missed' : (e.scheduled ? 'Scheduled' : ''));
+        return `<div class="card-detail-row"><span class="card-detail-label">${fmt(e.scheduled)}</span><span class="card-detail-val">${statusTxt}</span></div>`;
+      }).join('') : `<div class="card-detail-row"><span class="card-detail-label">TBRs</span><span class="card-detail-val">None on record</span></div>`;
       details = `
         <div class="card-detail-row"><span class="card-detail-label">Twice/year</span><span class="card-detail-val">${t.twice||'No'}</span></div>
-        <div class="card-detail-row"><span class="card-detail-label">Visit 1 scheduled</span><span class="card-detail-val">${fmt(t.tbr1)}</span></div>
-        <div class="card-detail-row"><span class="card-detail-label">Visit 1 done</span><span class="card-detail-val">${fmt(t.tbr1c)}</span></div>
-        <div class="card-detail-row"><span class="card-detail-label">Visit 2 scheduled</span><span class="card-detail-val">${fmt(t.tbr2)}</span></div>
-        <div class="card-detail-row"><span class="card-detail-label">Visit 2 done</span><span class="card-detail-val">${fmt(t.tbr2c)}</span></div>`;
+        ${rows}`;
       return cardHTML(c, color, st, summary, details, note, noteEsc);
     } else if(currentTab==='reviews'){
       const r = reviewData[c.name]||{};
@@ -4199,12 +4224,15 @@ function render(){
     html+='</tbody></table>';
   } else if(currentTab==='tbr'){
     const customThCells = getCustomCols('tbr').map(col=>`<th class="th-custom">${col.label}</th>`).join('');
-    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>Twice/year</th><th>Visit 1 scheduled</th><th>Visit 1 done</th><th>Visit 2 scheduled</th><th>Visit 2 done</th><th>Status</th><th>Notes</th>${customThCells}${renderAddColTh('tbr')}<th></th></tr></thead><tbody>`;
+    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>Twice/year</th><th>Last TBR done</th><th>Next TBR scheduled</th><th># completed</th><th>Status</th><th>Notes</th>${customThCells}${renderAddColTh('tbr')}<th></th></tr></thead><tbody>`;
     rows.forEach((c,i)=>{
       const t=tbrData[c.name]||{};const st=getTBRStatus(c);
       const color=getClientColor(c.name);
       const note=notesData[c.name]||'';
-      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${t.twice||'No'}</td><td class="td-date">${fmt(t.tbr1)}</td><td class="td-date">${fmt(t.tbr1c)}</td><td class="td-date">${fmt(t.tbr2)}</td><td class="td-date">${fmt(t.tbr2c)}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td>${renderCustomCells('tbr',c.name)}<td></td><td><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
+      const lastDone=tbrLastCompleted(c.name);
+      const nextEntry=tbrUpcomingEntries(c.name)[0];
+      const doneCount=tbrEntries(c.name).filter(e=>e.completed).length;
+      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${t.twice||'No'}</td><td class="td-date">${fmt(lastDone)}</td><td class="td-date">${fmt(nextEntry&&nextEntry.scheduled)}</td><td class="td-date">${doneCount}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td>${renderCustomCells('tbr',c.name)}<td></td><td><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
     });
     html+='</tbody></table>';
   } else if(currentTab==='reviews'){
@@ -4753,7 +4781,7 @@ function exportCSV(){
     ...contactHeaders,
     'Last In-Person Visit 1','Last In-Person Visit 2',
     'Phone Visit 1 Scheduled','Phone Visit 2 Scheduled','Phone Visit 1 Completed','Phone Visit 2 Completed',
-    'TBR Twice/Year','TBR Visit 1 Scheduled','TBR Visit 1 Completed','TBR Visit 2 Scheduled','TBR Visit 2 Completed',
+    'TBR Twice/Year','TBR History (scheduled/completed pairs)',
     'Review Request Sent','Review Request Person','Review Date','Reviewer Name',
     'Last Report Sent',
     'Notes'
@@ -4777,7 +4805,7 @@ function exportCSV(){
       ...ctFields,
       fmtD(c.lastVisit), fmtD(c.lastVisit2),
       fmtD(p.ph1), fmtD(p.ph2), fmtD(p.ph1c), fmtD(p.ph2c),
-      t.twice||'', fmtD(t.tbr1), fmtD(t.tbr1c), fmtD(t.tbr2), fmtD(t.tbr2c),
+      t.twice||'', tbrEntries(c.name).map(e=>(e.scheduled||'?')+(e.completed?' (done '+e.completed+')':' (not done)')).join('; '),
       fmtD(r.sent), r.person||'', fmtD(r.reviewed), r.reviewer||'',
       fmtD(rep.lastSent),
       note
@@ -4852,8 +4880,9 @@ function exportCSV(){
 function openAdd(){
   editingId=null;
   document.getElementById('modal-title').textContent='Add client';
-  ['f-name','f-addr','f-city','f-main-phone','f-last','f-last2','f-scheduled','f-ph1','f-ph2','f-ph1c','f-ph2c','f-tbr1','f-tbr1c','f-tbr2','f-tbr2c','f-rev-sent','f-rev-person','f-rev-date','f-rev-reviewer','f-rep-sent'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
+  ['f-name','f-addr','f-city','f-main-phone','f-last','f-last2','f-scheduled','f-ph1','f-ph2','f-ph1c','f-ph2c','f-rev-sent','f-rev-person','f-rev-date','f-rev-reviewer','f-rep-sent'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
   document.getElementById('f-tbr-twice').value='No';
+  renderTbrEntryRows([]);
   document.getElementById('f-notes').value='';
   document.getElementById('f-website').value='';
   renderContactRows([{}]);
@@ -4881,10 +4910,7 @@ function openEdit(id){
   document.getElementById('f-ph1c').value=p.ph1c||'';
   document.getElementById('f-ph2c').value=p.ph2c||'';
   document.getElementById('f-tbr-twice').value=t.twice||'No';
-  document.getElementById('f-tbr1').value=t.tbr1||'';
-  document.getElementById('f-tbr1c').value=t.tbr1c||'';
-  document.getElementById('f-tbr2').value=t.tbr2||'';
-  document.getElementById('f-tbr2c').value=t.tbr2c||'';
+  renderTbrEntryRows(t.entries||[]);
   document.getElementById('f-rev-sent').value=r.sent||'';
   document.getElementById('f-rev-person').value=r.person||'';
   document.getElementById('f-rev-date').value=r.reviewed||'';
@@ -5002,6 +5028,38 @@ function contactRowDragEnd(){
 
 function escHtml(s){return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
+// ── TBR entry rows (dynamic, unlimited) ──
+function renderTbrEntryRows(entries){
+  const wrap=document.getElementById('tbr-entries-list');
+  wrap.innerHTML='';
+  const list=(entries&&entries.length)?entries.slice():[];
+  list.sort((a,b)=>(a.scheduled||a.completed||'').localeCompare(b.scheduled||b.completed||''));
+  if(!list.length) list.push({scheduled:'',completed:''});
+  list.forEach(e=>addTbrEntryRow(e));
+}
+function addTbrEntryRow(e){
+  e=e||{scheduled:'',completed:''};
+  const wrap=document.getElementById('tbr-entries-list');
+  const row=document.createElement('div');
+  row.className='tbr-entry-row';
+  row.style='display:flex;gap:8px;align-items:flex-end;';
+  row.innerHTML=`<div class="field"><label>Scheduled</label><input type="date" class="tbr-entry-scheduled" value="${e.scheduled||''}"></div>
+    <div class="field"><label>Completed</label><input type="date" class="tbr-entry-completed" value="${e.completed||''}"></div>
+    <button type="button" class="tbr-q-btn" onclick="this.parentElement.remove()">remove</button>`;
+  wrap.appendChild(row);
+}
+function collectTbrEntries(){
+  const rows=document.querySelectorAll('#tbr-entries-list .tbr-entry-row');
+  const entries=[];
+  rows.forEach(row=>{
+    const sched=row.querySelector('.tbr-entry-scheduled').value||null;
+    const comp=row.querySelector('.tbr-entry-completed').value||null;
+    if(sched||comp) entries.push({scheduled:sched,completed:comp});
+  });
+  entries.sort((a,b)=>(a.scheduled||a.completed||'').localeCompare(b.scheduled||b.completed||''));
+  return entries;
+}
+
 function addContactRow(){
   const container=document.getElementById('contacts-container');
   const idx=container.children.length;
@@ -5099,23 +5157,25 @@ function getDashboardItems(){
 
     // TBR
     const tbr = getTBRStatus(c);
-    if(tbr.cls !== 'completed' && tbr.cls !== 'on-track'){
+    if(tbr.cls !== 'completed'){
       let urgency = 0;
-      const t = tbrData[c.name] || {};
+      const lastDone = tbrLastCompleted(c.name);
+      const hasEntries = tbrEntries(c.name).length > 0;
       if(tbr.cls === 'overdue'){
-        const ref = t.tbr1c ? t.tbr2 : t.tbr1;
-        const d = ref ? Math.abs(daysFrom(ref)) : 0;
+        const d = lastDone ? Math.abs(daysFrom(lastDone)) : 0;
         urgency = 2600 + d;
-      } else if(tbr.cls === 'due-soon'){ urgency = 900; }
+      } else if(tbr.cls === 'missed'){ urgency = 2000; }
+      else if(tbr.cls === 'due-soon'){ urgency = 900; }
       else if(tbr.cls === 'not-scheduled'){ urgency = 300; }
       else { urgency = 550; }
-      if(tbr.cls !== 'not-scheduled' || (t && t.tbr1)){
+      if(tbr.cls !== 'not-scheduled' || hasEntries){
+        const nextEntry = tbrUpcomingEntries(c.name)[0];
         items.push({
           client: c.name, city: c.city,
           type: 'TBR', icon: '📋',
           label: tbr.label,
           cls: tbr.cls,
-          detail: t.tbr1 ? 'TBR 1: ' + fmt(t.tbr1) : 'Not scheduled',
+          detail: lastDone ? 'Last TBR: ' + fmt(lastDone) : (nextEntry ? 'Next TBR: ' + fmt(nextEntry.scheduled) : 'Not scheduled'),
           urgency,
           tabTarget: 'tbr'
         });
@@ -5250,7 +5310,7 @@ function saveClient(){
   if(!name)return;
   const data={name,address:document.getElementById('f-addr').value.trim(),city:document.getElementById('f-city').value.trim()||'Merced',lastVisit:document.getElementById('f-last').value||null,lastVisit2:document.getElementById('f-last2').value||null};
   phoneData[name]={ph1:document.getElementById('f-ph1').value||null,ph2:document.getElementById('f-ph2').value||null,ph1c:document.getElementById('f-ph1c').value||null,ph2c:document.getElementById('f-ph2c').value||null};
-  tbrData[name]={twice:document.getElementById('f-tbr-twice').value,tbr1:document.getElementById('f-tbr1').value||null,tbr1c:document.getElementById('f-tbr1c').value||null,tbr2:document.getElementById('f-tbr2').value||null,tbr2c:document.getElementById('f-tbr2c').value||null};
+  tbrData[name]={twice:document.getElementById('f-tbr-twice').value,entries:collectTbrEntries()};
   reviewData[name]={sent:document.getElementById('f-rev-sent').value||null,person:document.getElementById('f-rev-person').value||null,reviewed:document.getElementById('f-rev-date').value||null,reviewer:document.getElementById('f-rev-reviewer').value||null};
   reportData[name]={lastSent:document.getElementById('f-rep-sent').value||null};
   const newContacts=readContactRows();
@@ -5424,7 +5484,15 @@ async function loadFromSupabase(){
 
     if(t && t.length > 0){
       t.forEach(row => {
-        tbrData[row.name] = { twice: row.twice, tbr1: row.tbr1, tbr1c: row.tbr1c, tbr2: row.tbr2, tbr2c: row.tbr2c };
+        let entries = row.visits;
+        if(typeof entries === 'string'){ try{ entries = JSON.parse(entries); }catch(e){ entries = null; } }
+        if(!Array.isArray(entries)){
+          // Fall back to legacy fixed-slot columns for rows that haven't been migrated yet
+          entries = [];
+          if(row.tbr1 || row.tbr1c) entries.push({ scheduled: row.tbr1 || null, completed: row.tbr1c || null });
+          if(row.tbr2 || row.tbr2c) entries.push({ scheduled: row.tbr2 || null, completed: row.tbr2c || null });
+        }
+        tbrData[row.name] = { twice: row.twice || 'No', entries };
       });
     }
 
@@ -5531,13 +5599,11 @@ async function saveClientToSupabase(){
     ph2c: document.getElementById('f-ph2c').value || null
   };
 
+  const tbrEntriesToSave = collectTbrEntries();
   const tbrRow = {
     name,
     twice: document.getElementById('f-tbr-twice').value,
-    tbr1: document.getElementById('f-tbr1').value || null,
-    tbr1c: document.getElementById('f-tbr1c').value || null,
-    tbr2: document.getElementById('f-tbr2').value || null,
-    tbr2c: document.getElementById('f-tbr2c').value || null
+    visits: tbrEntriesToSave
   };
 
   const reviewRow = {
@@ -5565,7 +5631,7 @@ async function saveClientToSupabase(){
     // update local data too
     const data = { id: clientRow.id, name, address: clientRow.address, city: clientRow.city, lastVisit: clientRow.last_visit, lastVisit2: clientRow.last_visit2, scheduledVisit: clientRow.scheduled_visit, mainPhone: clientRow.main_phone || null };
     phoneData[name] = { ph1: phoneRow.ph1, ph2: phoneRow.ph2, ph1c: phoneRow.ph1c, ph2c: phoneRow.ph2c };
-    tbrData[name] = { twice: tbrRow.twice, tbr1: tbrRow.tbr1, tbr1c: tbrRow.tbr1c, tbr2: tbrRow.tbr2, tbr2c: tbrRow.tbr2c };
+    tbrData[name] = { twice: tbrRow.twice, entries: tbrEntriesToSave };
     reviewData[name] = { sent: reviewRow.sent, person: reviewRow.person, reviewed: reviewRow.reviewed, reviewer: reviewRow.reviewer };
     reportData[name] = { lastSent: repSent };
     notesData[name] = note;
@@ -6885,11 +6951,11 @@ function buildClientContext(){
       ctx += `  Phone 1 scheduled: ${ph.ph1||'—'}, completed: ${ph.ph1c||'—'}\n`;
       ctx += `  Phone 2 scheduled: ${ph.ph2||'—'}, completed: ${ph.ph2c||'—'}\n`;
     } else { ctx += `  Phone visits: not scheduled\n`; }
-    const tbr = tbrData[c.name];
-    if(tbr){
-      ctx += `  TBR: scheduled ${tbr.tbr1||'—'}, completed ${tbr.tbr1c||'—'}`;
-      if(tbr.twice==='Yes') ctx += `, 2nd: ${tbr.tbr2||'—'} / ${tbr.tbr2c||'—'}`;
-      ctx += '\n';
+    const tbrEntriesForCtx = tbrEntries(c.name);
+    if(tbrEntriesForCtx.length){
+      ctx += `  TBR history (${tbrEntriesForCtx.length}): ` + tbrEntriesForCtx.map(e=>(e.scheduled||'?')+(e.completed?' (done '+e.completed+')':' (not completed)')).join('; ') + '\n';
+      const st = getTBRStatus(c);
+      ctx += `  TBR status: ${st.label}\n`;
     } else { ctx += `  TBR: not scheduled\n`; }
     const rev = reviewData[c.name];
     if(rev){
@@ -7004,13 +7070,12 @@ function tbrSetView(v) {
 }
 
 function tbrPriorityScore(c) {
-  var t = tbrData[c.name] || {};
   var st = getTBRStatus(c);
   var score = 0;
   if(st.cls === 'overdue') score += 100;
+  else if(st.cls === 'missed') score += 80;
   else if(st.cls === 'due-soon') score += 60;
   else if(st.cls === 'not-scheduled') score += 40;
-  else if(st.cls === 'on-track') score += 20;
   else if(st.cls === 'pending') score += 10;
   if(c.lastVisit) {
     var days = Math.round((TODAY - new Date(c.lastVisit)) / 86400000);
@@ -7065,23 +7130,24 @@ function renderTbrQueue() {
 }
 
 function renderTbrQCard(c, rank) {
-  var t = tbrData[c.name] || {};
   var st = getTBRStatus(c);
   var nameEsc = c.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
   var lastVisitStr = c.lastVisit ? 'Last visit: ' + c.lastVisit : 'No visit on record';
-  var tbrStr = t.tbr1c ? ('TBR 1 done ' + t.tbr1c + ' - need TBR 2') : (t.tbr1 ? 'TBR 1 sched: ' + t.tbr1 : 'No TBR scheduled');
+  var lastDone = tbrLastCompleted(c.name);
+  var nextEntry = tbrUpcomingEntries(c.name)[0];
+  var missedCount = tbrMissedEntries(c.name).length;
+  var tbrStr = lastDone ? ('Last TBR done ' + lastDone) : 'No TBR completed yet';
+  if(nextEntry) tbrStr += ' - next sched ' + nextEntry.scheduled;
+  if(missedCount) tbrStr += ' - ' + missedCount + ' missed';
   var contacts = (contactsData && contactsData[c.name]) || [];
   var contact = contacts[0] ? contacts[0].name : '';
 
   var actions = '';
-  if(st.cls === 'not-scheduled' || st.cls === 'overdue' || st.cls === 'due-soon') {
+  if(['not-scheduled','overdue','missed','due-soon'].includes(st.cls)) {
     actions += '<button class="tbr-q-btn" onclick="tbrQuickSchedule(\'' + nameEsc + '\')">Schedule</button>';
   }
   if(st.cls === 'pending') {
-    actions += '<button class="tbr-q-btn accent" onclick="tbrMarkDone(\'' + nameEsc + '\', 1)">Mark done</button>';
-  }
-  if(st.cls === 'on-track') {
-    actions += '<button class="tbr-q-btn" onclick="tbrQuickSchedule(\'' + nameEsc + '\', 2)">Sched TBR 2</button>';
+    actions += '<button class="tbr-q-btn accent" onclick="tbrMarkDone(\'' + nameEsc + '\')">Mark done</button>';
   }
   actions += '<button class="tbr-q-btn" onclick="openTbrOutreach(\'' + nameEsc + '\')">Draft email</button>';
   actions += '<button class="tbr-q-btn" onclick="openEdit(' + c.id + ')">edit</button>';
@@ -7097,25 +7163,27 @@ function renderTbrQCard(c, rank) {
   '</div>';
 }
 
-function tbrQuickSchedule(name, visitNum) {
-  visitNum = visitNum || 1;
+function tbrQuickSchedule(name) {
   var suggested = fmtISO(new Date(TODAY.getTime() + 30 * 86400000));
-  var dateStr = prompt('Schedule TBR ' + visitNum + ' for ' + name + '\nEnter date (YYYY-MM-DD):', suggested);
+  var dateStr = prompt('Schedule a TBR for ' + name + '\nEnter date (YYYY-MM-DD):', suggested);
   if(!dateStr) return;
-  if(!tbrData[name]) tbrData[name] = { twice: 'No', tbr1: null, tbr1c: null, tbr2: null, tbr2c: null };
-  if(visitNum === 2) tbrData[name].tbr2 = dateStr;
-  else tbrData[name].tbr1 = dateStr;
+  if(!tbrData[name]) tbrData[name] = { twice: 'No', entries: [] };
+  if(!Array.isArray(tbrData[name].entries)) tbrData[name].entries = [];
+  tbrData[name].entries.push({ scheduled: dateStr, completed: null });
   saveTbrToSupabase(name);
   renderTbrQueue();
   renderStats();
   updateCounts();
 }
 
-function tbrMarkDone(name, visitNum) {
+function tbrMarkDone(name) {
   var today = fmtISO(TODAY);
-  if(!tbrData[name]) return;
-  if(visitNum === 2) tbrData[name].tbr2c = today;
-  else tbrData[name].tbr1c = today;
+  if(!tbrData[name] || !Array.isArray(tbrData[name].entries)) return;
+  // Complete the earliest not-yet-completed entry (upcoming or missed); if none, log a new one.
+  var candidates = tbrData[name].entries.filter(function(e){ return e && e.scheduled && !e.completed; })
+    .sort(function(a,b){ return a.scheduled.localeCompare(b.scheduled); });
+  if(candidates.length){ candidates[0].completed = today; }
+  else{ tbrData[name].entries.push({ scheduled: today, completed: today }); }
   saveTbrToSupabase(name);
   renderTbrQueue();
   renderStats();
@@ -7126,19 +7194,13 @@ async function saveTbrToSupabase(name) {
   try {
     var t = tbrData[name];
     if(!t) return;
-    var payload = {
-      tbr_twice: t.twice || 'No',
-      tbr1: t.tbr1 || null,
-      tbr1c: t.tbr1c || null,
-      tbr2: t.tbr2 || null,
-      tbr2c: t.tbr2c || null
-    };
-    await fetch(SUPA_URL + '/rest/v1/clients?name=eq.' + encodeURIComponent(name), {
-      method: 'PATCH',
-      headers: Object.assign({}, sbHeaders(), {'Prefer': 'return=minimal'}),
-      body: JSON.stringify(payload)
+    // Correct table: tbr_visits, keyed by name — not the clients table.
+    await sbUpsert('tbr_visits', {
+      name: name,
+      twice: t.twice || 'No',
+      visits: Array.isArray(t.entries) ? t.entries : []
     });
-  } catch(e) { console.warn('TBR save failed', e); }
+  } catch(e) { console.warn('TBR save failed', e); showStatus('TBR save failed', false); }
 }
 
 // -- TBR Outreach Email Draft --
@@ -7158,7 +7220,14 @@ async function openTbrOutreach(name) {
   var contacts = (contactsData && contactsData[name]) || [];
   var primaryContact = contacts[0] || {};
   var lastVisit = (c && c.lastVisit) ? c.lastVisit : 'not recorded';
-  var tbrHistory = t.tbr1c ? ('TBR 1 completed ' + t.tbr1c) : (t.tbr1 ? ('TBR 1 scheduled ' + t.tbr1) : 'no TBR on record');
+  var tbrHistory = (function(){
+    var last = tbrLastCompleted(name);
+    var next = tbrUpcomingEntries(name)[0];
+    if(last && next) return 'last TBR completed ' + last + ', next scheduled ' + next.scheduled;
+    if(last) return 'last TBR completed ' + last;
+    if(next) return 'TBR scheduled for ' + next.scheduled;
+    return 'no TBR on record';
+  })();
 
   var prompt = 'You are David, an Account Manager at Valley Techlogic (VTL), a Managed Service Provider in California\'s Central Valley.\n' +
     'Write a short, natural, friendly outreach email to schedule an in-person Technical Business Review (TBR) with a client.\n\n' +
