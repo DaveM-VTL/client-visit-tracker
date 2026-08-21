@@ -444,6 +444,11 @@
   .tbr-sched-input { font-size:12px; padding:4px 8px; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface); color:var(--text); font-family:var(--mono); }
   .badge-sent { background: var(--warning-light); color: var(--warning); }
   .badge-scheduled-visit { background: #f0e8ff; color: #5a2da0; }
+  .tbr-confirm-tag { font-family:var(--mono); font-size:10px; letter-spacing:0.02em; padding:1px 7px; border-radius:10px; margin-left:6px; white-space:nowrap; display:inline-block; }
+  .tbr-confirm-yes { background: var(--success-light); color: var(--success); }
+  .tbr-confirm-no { background: var(--warning-light); color: var(--warning); }
+  .tbr-entry-confirm-field { display:flex; align-items:center; gap:6px; font-size:12px; padding-bottom:8px; }
+  .tbr-entry-confirm-field label { font-size:11px; color:var(--text-muted); white-space:nowrap; }
 
   /* ── Bulk select bar ── */
   .bulk-bar {
@@ -3697,6 +3702,17 @@ function tbrUpcomingEntries(name){
   return tbrEntries(name).filter(e=>!e.completed&&e.scheduled&&daysFrom(parseDate(e.scheduled))>=0)
     .sort((a,b)=>a.scheduled.localeCompare(b.scheduled));
 }
+// A scheduled-but-not-yet-completed TBR can be a preliminary hold or a client-confirmed appointment.
+function tbrConfirmText(e){
+  if(!e||!e.scheduled||e.completed) return '';
+  return e.confirmed ? 'Confirmed' : 'Preliminary';
+}
+function tbrConfirmTag(e){
+  if(!e||!e.scheduled||e.completed) return '';
+  return e.confirmed
+    ? '<span class="tbr-confirm-tag tbr-confirm-yes">✓ Confirmed</span>'
+    : '<span class="tbr-confirm-tag tbr-confirm-no">◷ Preliminary</span>';
+}
 function getTBRStatus(c){
   const t=tbrData[c.name];
   const entries=tbrEntries(c.name);
@@ -4022,10 +4038,10 @@ function renderCards(rows){
       const entries = tbrEntries(c.name).slice().sort((a,b)=>(a.scheduled||a.completed||'').localeCompare(b.scheduled||b.completed||''));
       const upcoming = tbrUpcomingEntries(c.name)[0];
       const nextUp = upcoming ? fmt(upcoming.scheduled) : null;
-      summary = `<div class="card-due">Next TBR: ${nextUp||'—'}</div>`;
+      summary = `<div class="card-due">Next TBR: ${nextUp||'—'}${upcoming?tbrConfirmTag(upcoming):''}</div>`;
       const rows = entries.length ? entries.map(e=>{
         const missedThis = !e.completed && e.scheduled && daysFrom(parseDate(e.scheduled))<0 && tbrMissedEntries(c.name).some(m=>m.scheduled===e.scheduled);
-        const statusTxt = e.completed ? 'Done '+fmt(e.completed) : (missedThis ? 'Missed' : (e.scheduled ? 'Scheduled' : ''));
+        const statusTxt = e.completed ? 'Done '+fmt(e.completed) : (missedThis ? 'Missed' : (e.scheduled ? 'Scheduled'+tbrConfirmTag(e) : ''));
         return `<div class="card-detail-row"><span class="card-detail-label">${fmt(e.scheduled)}</span><span class="card-detail-val">${statusTxt}</span></div>`;
       }).join('') : `<div class="card-detail-row"><span class="card-detail-label">TBRs</span><span class="card-detail-val">None on record</span></div>`;
       details = `
@@ -4232,7 +4248,7 @@ function render(){
       const lastDone=tbrLastCompleted(c.name);
       const nextEntry=tbrUpcomingEntries(c.name)[0];
       const doneCount=tbrEntries(c.name).filter(e=>e.completed).length;
-      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${t.twice||'No'}</td><td class="td-date">${fmt(lastDone)}</td><td class="td-date">${fmt(nextEntry&&nextEntry.scheduled)}</td><td class="td-date">${doneCount}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td>${renderCustomCells('tbr',c.name)}<td></td><td><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
+      html+=`<tr class="has-color" style="--client-color:${color}"><td class="td-num">${i+1}</td><td class="td-name">${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${t.twice||'No'}</td><td class="td-date">${fmt(lastDone)}</td><td class="td-date">${fmt(nextEntry&&nextEntry.scheduled)}${nextEntry?tbrConfirmTag(nextEntry):''}</td><td class="td-date">${doneCount}</td><td>${badge(st.cls,st.label)}</td><td class="notes-cell">${renderNote(c.name,note)}</td>${renderCustomCells('tbr',c.name)}<td></td><td><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
     });
     html+='</tbody></table>';
   } else if(currentTab==='reviews'){
@@ -4805,7 +4821,7 @@ function exportCSV(){
       ...ctFields,
       fmtD(c.lastVisit), fmtD(c.lastVisit2),
       fmtD(p.ph1), fmtD(p.ph2), fmtD(p.ph1c), fmtD(p.ph2c),
-      t.twice||'', tbrEntries(c.name).map(e=>(e.scheduled||'?')+(e.completed?' (done '+e.completed+')':' (not done)')).join('; '),
+      t.twice||'', tbrEntries(c.name).map(e=>(e.scheduled||'?')+(e.completed?' (done '+e.completed+')':' (not done, '+(e.confirmed?'confirmed':'preliminary')+')')).join('; '),
       fmtD(r.sent), r.person||'', fmtD(r.reviewed), r.reviewer||'',
       fmtD(rep.lastSent),
       note
@@ -5034,17 +5050,18 @@ function renderTbrEntryRows(entries){
   wrap.innerHTML='';
   const list=(entries&&entries.length)?entries.slice():[];
   list.sort((a,b)=>(a.scheduled||a.completed||'').localeCompare(b.scheduled||b.completed||''));
-  if(!list.length) list.push({scheduled:'',completed:''});
+  if(!list.length) list.push({scheduled:'',completed:'',confirmed:false});
   list.forEach(e=>addTbrEntryRow(e));
 }
 function addTbrEntryRow(e){
-  e=e||{scheduled:'',completed:''};
+  e=e||{scheduled:'',completed:'',confirmed:false};
   const wrap=document.getElementById('tbr-entries-list');
   const row=document.createElement('div');
   row.className='tbr-entry-row';
-  row.style='display:flex;gap:8px;align-items:flex-end;';
+  row.style='display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;';
   row.innerHTML=`<div class="field"><label>Scheduled</label><input type="date" class="tbr-entry-scheduled" value="${e.scheduled||''}"></div>
     <div class="field"><label>Completed</label><input type="date" class="tbr-entry-completed" value="${e.completed||''}"></div>
+    <div class="tbr-entry-confirm-field"><input type="checkbox" class="tbr-entry-confirmed" ${e.confirmed?'checked':''}><label>Confirmed by client</label></div>
     <button type="button" class="tbr-q-btn" onclick="this.parentElement.remove()">remove</button>`;
   wrap.appendChild(row);
 }
@@ -5054,7 +5071,8 @@ function collectTbrEntries(){
   rows.forEach(row=>{
     const sched=row.querySelector('.tbr-entry-scheduled').value||null;
     const comp=row.querySelector('.tbr-entry-completed').value||null;
-    if(sched||comp) entries.push({scheduled:sched,completed:comp});
+    const confirmed=row.querySelector('.tbr-entry-confirmed').checked;
+    if(sched||comp) entries.push({scheduled:sched,completed:comp,confirmed:confirmed});
   });
   entries.sort((a,b)=>(a.scheduled||a.completed||'').localeCompare(b.scheduled||b.completed||''));
   return entries;
@@ -5175,7 +5193,7 @@ function getDashboardItems(){
           type: 'TBR', icon: '📋',
           label: tbr.label,
           cls: tbr.cls,
-          detail: lastDone ? 'Last TBR: ' + fmt(lastDone) : (nextEntry ? 'Next TBR: ' + fmt(nextEntry.scheduled) : 'Not scheduled'),
+          detail: lastDone ? 'Last TBR: ' + fmt(lastDone) : (nextEntry ? 'Next TBR: ' + fmt(nextEntry.scheduled) + ' (' + tbrConfirmText(nextEntry) + ')' : 'Not scheduled'),
           urgency,
           tabTarget: 'tbr'
         });
@@ -6953,7 +6971,7 @@ function buildClientContext(){
     } else { ctx += `  Phone visits: not scheduled\n`; }
     const tbrEntriesForCtx = tbrEntries(c.name);
     if(tbrEntriesForCtx.length){
-      ctx += `  TBR history (${tbrEntriesForCtx.length}): ` + tbrEntriesForCtx.map(e=>(e.scheduled||'?')+(e.completed?' (done '+e.completed+')':' (not completed)')).join('; ') + '\n';
+      ctx += `  TBR history (${tbrEntriesForCtx.length}): ` + tbrEntriesForCtx.map(e=>(e.scheduled||'?')+(e.completed?' (done '+e.completed+')':' (not completed, '+(e.confirmed?'confirmed':'preliminary')+')')).join('; ') + '\n';
       const st = getTBRStatus(c);
       ctx += `  TBR status: ${st.label}\n`;
     } else { ctx += `  TBR: not scheduled\n`; }
@@ -7137,7 +7155,7 @@ function renderTbrQCard(c, rank) {
   var nextEntry = tbrUpcomingEntries(c.name)[0];
   var missedCount = tbrMissedEntries(c.name).length;
   var tbrStr = lastDone ? ('Last TBR done ' + lastDone) : 'No TBR completed yet';
-  if(nextEntry) tbrStr += ' - next sched ' + nextEntry.scheduled;
+  if(nextEntry) tbrStr += ' - next sched ' + nextEntry.scheduled + ' (' + tbrConfirmText(nextEntry) + ')';
   if(missedCount) tbrStr += ' - ' + missedCount + ' missed';
   var contacts = (contactsData && contactsData[c.name]) || [];
   var contact = contacts[0] ? contacts[0].name : '';
@@ -7145,6 +7163,9 @@ function renderTbrQCard(c, rank) {
   var actions = '';
   if(['not-scheduled','overdue','missed','due-soon'].includes(st.cls)) {
     actions += '<button class="tbr-q-btn" onclick="tbrQuickSchedule(\'' + nameEsc + '\')">Schedule</button>';
+  }
+  if(nextEntry && !nextEntry.confirmed) {
+    actions += '<button class="tbr-q-btn accent" onclick="tbrQuickConfirm(\'' + nameEsc + '\')">Confirm</button>';
   }
   if(st.cls === 'pending') {
     actions += '<button class="tbr-q-btn accent" onclick="tbrMarkDone(\'' + nameEsc + '\')">Mark done</button>';
@@ -7158,7 +7179,7 @@ function renderTbrQCard(c, rank) {
       '<div class="tbr-q-name">' + c.name + (contact ? ' <span style="font-weight:400;color:var(--text-muted);font-size:11px;">- ' + contact + '</span>' : '') + '</div>' +
       '<div class="tbr-q-meta">' + lastVisitStr + ' &middot; ' + tbrStr + '</div>' +
     '</div>' +
-    '<span>' + badge(st.cls, st.label) + '</span>' +
+    '<span>' + badge(st.cls, st.label) + (nextEntry ? tbrConfirmTag(nextEntry) : '') + '</span>' +
     '<div class="tbr-q-actions">' + actions + '</div>' +
   '</div>';
 }
@@ -7167,9 +7188,23 @@ function tbrQuickSchedule(name) {
   var suggested = fmtISO(new Date(TODAY.getTime() + 30 * 86400000));
   var dateStr = prompt('Schedule a TBR for ' + name + '\nEnter date (YYYY-MM-DD):', suggested);
   if(!dateStr) return;
+  var confirmed = confirm('Has the client already CONFIRMED this date?\n\nOK = Confirmed\nCancel = Preliminary / tentative hold');
   if(!tbrData[name]) tbrData[name] = { twice: 'No', entries: [] };
   if(!Array.isArray(tbrData[name].entries)) tbrData[name].entries = [];
-  tbrData[name].entries.push({ scheduled: dateStr, completed: null });
+  tbrData[name].entries.push({ scheduled: dateStr, completed: null, confirmed: confirmed });
+  saveTbrToSupabase(name);
+  renderTbrQueue();
+  renderStats();
+  updateCounts();
+}
+
+function tbrQuickConfirm(name) {
+  if(!tbrData[name] || !Array.isArray(tbrData[name].entries)) return;
+  var next = tbrUpcomingEntries(name)[0];
+  if(!next) return;
+  var entry = tbrData[name].entries.find(function(e){ return e && e.scheduled === next.scheduled && !e.completed; });
+  if(!entry) return;
+  entry.confirmed = true;
   saveTbrToSupabase(name);
   renderTbrQueue();
   renderStats();
@@ -7223,9 +7258,9 @@ async function openTbrOutreach(name) {
   var tbrHistory = (function(){
     var last = tbrLastCompleted(name);
     var next = tbrUpcomingEntries(name)[0];
-    if(last && next) return 'last TBR completed ' + last + ', next scheduled ' + next.scheduled;
+    if(last && next) return 'last TBR completed ' + last + ', next ' + (next.confirmed?'confirmed':'tentatively scheduled') + ' for ' + next.scheduled;
     if(last) return 'last TBR completed ' + last;
-    if(next) return 'TBR scheduled for ' + next.scheduled;
+    if(next) return 'TBR ' + (next.confirmed?'confirmed':'tentatively scheduled') + ' for ' + next.scheduled;
     return 'no TBR on record';
   })();
 
@@ -7242,6 +7277,7 @@ async function openTbrOutreach(name) {
     '- Conversational, not corporate - David writes the way he talks\n' +
     '- Mention that a TBR is a chance to review their tech, address any open items, and plan ahead\n' +
     '- Suggest flexible time options without naming specific dates\n' +
+    '- If the TBR history shows a date that is only "tentatively scheduled", politely ask the client to confirm that date works; if it is already "confirmed", do not ask them to confirm again - just say you\'re looking forward to it\n' +
     '- Sign off as David from Valley Techlogic\n' +
     '- Output ONLY the email body (no subject line in the body, no markdown)\n\n' +
     'Also output a suggested subject line on the very first line, prefixed with "SUBJECT: "';
