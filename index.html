@@ -4162,7 +4162,14 @@ function cardContacts(name){
 
 function toggleCard(id){
   const card = document.getElementById('card-'+id);
-  if(card) card.classList.toggle('expanded');
+  if(!card) return;
+  card.classList.toggle('expanded');
+  if(card.classList.contains('expanded')){
+    setTimeout(() => {
+      const btn = card.querySelector('.card-edit-btn');
+      (btn || card).scrollIntoView({behavior:'smooth', block:'end'});
+    }, 50);
+  }
 }
 
 function badge(cls,label){return`<span class="badge badge-${cls}">${label}</span>`;}
@@ -4293,9 +4300,17 @@ function render(){
 let expandedClientIds = new Set();
 
 function toggleClientDir(id) {
+  const nowExpanding = !expandedClientIds.has(id);
   if(expandedClientIds.has(id)) expandedClientIds.delete(id);
   else expandedClientIds.add(id);
   renderClients();
+  if(nowExpanding){
+    setTimeout(() => {
+      const card = document.getElementById('cdir-'+id);
+      const btn = card && card.querySelector('.card-edit-btn');
+      (btn || card)?.scrollIntoView({behavior:'smooth', block:'end'});
+    }, 50);
+  }
 }
 
 function renderClients() {
@@ -5678,7 +5693,7 @@ window.addEventListener('resize', () => render());
 // Fix cards bottom padding for mobile tab bar
 if(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)){
   const style = document.createElement('style');
-  style.textContent = '.cards-wrap { padding-bottom: 160px !important; } #dash-content { padding-bottom: 160px !important; }';
+  style.textContent = '.cards-wrap { padding-bottom: calc(220px + env(safe-area-inset-bottom, 0px)) !important; } #dash-content { padding-bottom: calc(220px + env(safe-area-inset-bottom, 0px)) !important; }';
   document.head.appendChild(style);
 }
 
