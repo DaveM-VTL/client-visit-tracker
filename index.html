@@ -3117,6 +3117,9 @@
 
       <!-- Clients directory view -->
       <div id="clients-view">
+        <div style="display:flex;justify-content:flex-end;padding:10px 24px 0;">
+          <button id="clients-archived-toggle" class="edit-btn" onclick="toggleArchivedView()" style="font-size:11px;"></button>
+        </div>
         <div class="clients-table-wrap" id="clients-table-wrap"></div>
         <div class="cards-wrap" id="clients-cards-wrap" style="display:none;"></div>
       </div>
@@ -3365,6 +3368,7 @@
       </div>
     </div>
     <div class="modal-footer">
+      <button class="btn-cancel" id="modal-archive-btn" onclick="if(editingId) archiveClient(editingId)" style="margin-right:auto;color:var(--danger);border-color:var(--danger-light);">Archive client</button>
       <button class="btn-cancel" onclick="closeModal()">Cancel</button>
       <button class="btn-save" onclick="saveClient()">Save changes</button>
     </div>
@@ -3655,6 +3659,12 @@ let clients = [
   {id:54,name:'Wood Connection',address:'4701 N Star Way',city:'Modesto',lastVisit:'2026-02-26',lastVisit2:null},
   {id:55,name:'Yarra, Rivas, and Associates',address:'2000 Fresno Street',city:'Fresno',lastVisit:'2026-01-14',lastVisit2:null},
 ];
+
+// Archived (soft-deleted) clients — kept out of `clients` and every view/report/search
+// that reads from it, but preserved (with all related Supabase rows) so they can be
+// restored, or permanently deleted later from the Archived list in Clients Directory.
+let archivedClients = [];
+let showingArchived = false;
 
 let nextId=58, currentTab='inperson', editingId=null;
 
@@ -4314,6 +4324,11 @@ function toggleClientDir(id) {
 }
 
 function renderClients() {
+  const toggleBtn = document.getElementById('clients-archived-toggle');
+  if(toggleBtn) toggleBtn.textContent = showingArchived ? '← Back to active clients' : ('Archived (' + archivedClients.length + ')');
+
+  if(showingArchived) { renderArchivedClients(); return; }
+
   const q = (document.getElementById('search').value || '').toLowerCase();
   const rows = clients.filter(c => !q || c.name.toLowerCase().includes(q) || (c.city||'').toLowerCase().includes(q));
 
@@ -4384,6 +4399,9 @@ function renderClients() {
             ${mainPhoneRow}
             <div class="dir-contacts-grid">${contactCards || '<span style="font-family:var(--mono);font-size:11px;color:var(--border)">No contacts on file</span>'}</div>
             ${websiteRow}
+            <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+              <button class="edit-btn" onclick="event.stopPropagation();archiveClient(${c.id})" style="color:var(--danger);border-color:var(--danger-light);">Archive client</button>
+            </div>
           </div>
         </td>
       </tr>`;
@@ -4435,10 +4453,68 @@ function renderClients() {
         </div>
         <div class="card-actions">
           <button class="card-edit-btn" onclick="openEdit(${c.id})">Edit client</button>
+          <button class="card-edit-btn" onclick="archiveClient(${c.id})" style="color:var(--danger);border-color:var(--danger-light);">Archive</button>
         </div>
       </div>` : ''}
     </div>`;
   }).join('');
+}
+
+// Simplified read-only-ish view of soft-deleted clients: Restore brings them straight
+// back into the active directory; Delete forever cascades through every related table.
+function renderArchivedClients() {
+  const q = (document.getElementById('search').value || '').toLowerCase();
+  const rows = archivedClients.filter(c => !q || c.name.toLowerCase().includes(q) || (c.city||'').toLowerCase().includes(q));
+
+  let html = `<table>
+    <thead>
+      <tr>
+        <th style="padding-left:32px;">#</th>
+        <th>Client</th>
+        <th>City</th>
+        <th>Archived</th>
+        <th style="padding-right:32px;"></th>
+      </tr>
+    </thead>
+    <tbody>`;
+
+  if(!rows.length){
+    html += `<tr><td colspan="5" style="padding:32px;text-align:center;font-family:var(--mono);font-size:12px;color:var(--text-muted);">No archived clients${q?' matching your search':''}.</td></tr>`;
+  }
+
+  rows.forEach((c, i) => {
+    const color = getClientColor(c.name);
+    html += `<tr class="has-color" style="--client-color:${color}">
+      <td class="td-num" style="padding-left:32px;">${i+1}</td>
+      <td class="td-name"><span class="client-dot" style="background:${color}"></span>${c.name}</td>
+      <td class="td-city">${c.city||'—'}</td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--text-muted);">${c.archivedAt ? fmt(c.archivedAt.slice(0,10)) : '—'}</td>
+      <td style="padding-right:32px;white-space:nowrap;">
+        <button class="edit-btn" onclick="restoreClient(${c.id})">Restore</button>
+        <button class="edit-btn" onclick="permanentlyDeleteClient(${c.id})" style="color:var(--danger);border-color:var(--danger-light);">Delete forever</button>
+      </td>
+    </tr>`;
+  });
+
+  html += '</tbody></table>';
+  document.getElementById('clients-table-wrap').innerHTML = html;
+
+  const mobileWrap = document.getElementById('clients-cards-wrap');
+  mobileWrap.innerHTML = rows.length ? rows.map(c => {
+    const color = getClientColor(c.name);
+    return `<div class="client-card" style="--client-color:${color}">
+      <div class="card-main">
+        <div class="card-left">
+          <div class="card-name"><span class="client-dot" style="background:${color}"></span>${c.name}</div>
+          <div class="card-due">${c.city||''}${c.archivedAt ? ' · Archived '+fmt(c.archivedAt.slice(0,10)) : ''}</div>
+        </div>
+      </div>
+      <div class="card-actions">
+        <button class="card-edit-btn" onclick="restoreClient(${c.id})">Restore</button>
+        <button class="card-edit-btn" onclick="permanentlyDeleteClient(${c.id})" style="color:var(--danger);border-color:var(--danger-light);">Delete forever</button>
+      </div>
+    </div>`;
+  }).join('') : `<p style="text-align:center;padding:40px;font-family:var(--mono);font-size:12px;color:var(--text-muted);">No archived clients${q?' matching your search':''}.</p>`;
 }
 
 function switchTab(tab,el){
@@ -4911,6 +4987,7 @@ function exportCSV(){
 function openAdd(){
   editingId=null;
   document.getElementById('modal-title').textContent='Add client';
+  document.getElementById('modal-archive-btn').style.display='none';
   ['f-name','f-addr','f-city','f-main-phone','f-last','f-last2','f-scheduled','f-ph1','f-ph2','f-ph1c','f-ph2c','f-rev-sent','f-rev-person','f-rev-date','f-rev-reviewer','f-rep-sent'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
   document.getElementById('f-tbr-twice').value='No';
   renderTbrEntryRows([]);
@@ -4929,6 +5006,7 @@ function openEdit(id){
   const t=tbrData[c.name]||{};
   const r=reviewData[c.name]||{};
   document.getElementById('modal-title').textContent='Edit — '+c.name;
+  document.getElementById('modal-archive-btn').style.display='';
   document.getElementById('f-name').value=c.name;
   document.getElementById('f-addr').value=c.address;
   document.getElementById('f-city').value=c.city;
@@ -5431,7 +5509,8 @@ async function sbUpsert(table, row){
 }
 
 async function sbDelete(table, column, value){
-  let res = await fetch(SUPA_URL + '/rest/v1/' + table + '?' + column + '=eq.' + value, {
+  const q = encodeURIComponent(value);
+  let res = await fetch(SUPA_URL + '/rest/v1/' + table + '?' + column + '=eq.' + q, {
     method: 'DELETE',
     headers: sbHeaders()
   });
@@ -5439,11 +5518,15 @@ async function sbDelete(table, column, value){
   if(res.status === 401){
     const refreshed = await sbRefreshToken();
     if(refreshed){
-      await fetch(SUPA_URL + '/rest/v1/' + table + '?' + column + '=eq.' + value, {
+      res = await fetch(SUPA_URL + '/rest/v1/' + table + '?' + column + '=eq.' + q, {
         method: 'DELETE',
         headers: sbHeaders()
       });
     }
+  }
+  if(!res.ok){
+    const errText = await res.text().catch(() => res.statusText);
+    throw new Error('Supabase delete error on ' + table + ' (' + res.status + '): ' + errText);
   }
 }
 
@@ -5481,7 +5564,7 @@ async function loadFromSupabase(){
       const localMap = {};
       clients.forEach(lc => localMap[lc.name] = lc);
 
-      clients = c.map(row => {
+      const allRows = c.map(row => {
         const local = localMap[row.name] || {};
         // Load contacts/website back into clientProfiles
         if(row.contacts){
@@ -5500,11 +5583,16 @@ async function loadFromSupabase(){
           lastVisit: row.last_visit || local.lastVisit || null,
           lastVisit2: row.last_visit2 || local.lastVisit2 || null,
           scheduledVisit: row.scheduled_visit || null,
-          mainPhone: row.main_phone || null
+          mainPhone: row.main_phone || null,
+          archived: !!row.archived,
+          archivedAt: row.archived_at || null
         };
       });
+      clients = allRows.filter(cl => !cl.archived);
+      archivedClients = allRows.filter(cl => cl.archived);
       clients.sort((a,b) => a.name.localeCompare(b.name));
-      nextId = Math.max(...clients.map(c => c.id)) + 1;
+      archivedClients.sort((a,b) => (b.archivedAt||'').localeCompare(a.archivedAt||''));
+      nextId = Math.max(0, ...allRows.map(c => c.id)) + 1;
       colorIndex = 0;
       clients.forEach(cl => getClientColor(cl.name));
     }
@@ -5717,6 +5805,98 @@ setInterval(() => {
 
 // Override saveClient to use Supabase
 saveClient = saveClientToSupabase;
+
+// ── Archive / restore / permanently delete a client ──
+// Archiving is the normal "delete" a user should reach for: it pulls the client out of
+// `clients` (so it disappears from every tab, search, the dashboard, the map, and the AI
+// context, since they all read from that one array) but leaves every related Supabase row
+// untouched, so restoring brings everything back exactly as it was.
+async function archiveClient(id){
+  const c = clients.find(x => x.id === id);
+  if(!c) return;
+  if(!confirm('Archive ' + c.name + '?\n\nThey\'ll disappear from all tabs, search, the map, and reports — but nothing is deleted. You can restore them anytime from Clients \u2192 Archived.')) return;
+  const archivedAt = new Date().toISOString();
+  try {
+    showStatus('Archiving...', true);
+    await sbUpsert('clients', { id: c.id, name: c.name, archived: true, archived_at: archivedAt });
+    c.archived = true;
+    c.archivedAt = archivedAt;
+    clients = clients.filter(x => x.id !== id);
+    archivedClients.unshift(c);
+    if(document.getElementById('modal').classList.contains('open')) closeModal();
+    renderClients();
+    render();
+    showStatus('Archived ' + c.name, true);
+  } catch(e){
+    console.error('Archive failed', e);
+    showStatus('Archive failed', false);
+  }
+}
+
+async function restoreClient(id){
+  const c = archivedClients.find(x => x.id === id);
+  if(!c) return;
+  try {
+    showStatus('Restoring...', true);
+    await sbUpsert('clients', { id: c.id, name: c.name, archived: false, archived_at: null });
+    c.archived = false;
+    c.archivedAt = null;
+    archivedClients = archivedClients.filter(x => x.id !== id);
+    clients.push(c);
+    clients.sort((a,b) => a.name.localeCompare(b.name));
+    renderClients();
+    render();
+    showStatus('Restored ' + c.name, true);
+  } catch(e){
+    console.error('Restore failed', e);
+    showStatus('Restore failed', false);
+  }
+}
+
+// Only reachable from the Archived list. Requires typing the exact client name, then
+// deletes the client row plus every related row across the app's other tables.
+async function permanentlyDeleteClient(id){
+  const c = archivedClients.find(x => x.id === id);
+  if(!c) return;
+  const typed = prompt('This PERMANENTLY deletes ' + c.name + ' and all of their visit history, phone visits, TBRs, reviews, and reports. This cannot be undone.\n\nType the client name exactly to confirm:');
+  if(typed === null) return;
+  if(typed !== c.name){ alert('That didn\'t match — nothing was deleted.'); return; }
+  try {
+    showStatus('Deleting...', true);
+    const results = await Promise.allSettled([
+      sbDelete('clients', 'id', c.id),
+      sbDelete('phone_visits', 'name', c.name),
+      sbDelete('tbr_visits', 'name', c.name),
+      sbDelete('review_data', 'name', c.name),
+      sbDelete('report_data', 'name', c.name),
+      sbDelete('notes', 'name', c.name),
+      sbDelete('visit_log', 'client_name', c.name),
+      sbDelete('appointments', 'client_name', c.name),
+      sbDelete('report_history', 'client_name', c.name),
+      sbDelete('review_email_log', 'client_name', c.name)
+    ]);
+    const failed = results.filter(r => r.status === 'rejected');
+    if(failed.length) failed.forEach(f => console.error('Permanent delete: a related table failed', f.reason));
+
+    archivedClients = archivedClients.filter(x => x.id !== id);
+    delete phoneData[c.name]; delete tbrData[c.name]; delete reviewData[c.name];
+    delete reportData[c.name]; delete notesData[c.name]; delete clientProfiles[c.name];
+    delete visitLog[c.name]; delete reportHistory[c.name]; delete reviewEmailLog[c.name];
+    if(clientAreaData[c.name]){ delete clientAreaData[c.name]; saveAreasToSupabase(); }
+
+    renderClients();
+    render();
+    showStatus(failed.length ? (c.name + ' deleted, but some history may remain') : (c.name + ' permanently deleted'), !failed.length);
+  } catch(e){
+    console.error('Permanent delete failed', e);
+    showStatus('Delete failed', false);
+  }
+}
+
+function toggleArchivedView(){
+  showingArchived = !showingArchived;
+  renderClients();
+}
 
 // ── Map tab ──
 let mapMode = 'browse'; // 'browse' | 'route'
