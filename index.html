@@ -3699,11 +3699,12 @@ let showingArchived = false;
 let nextId=58, currentTab='inperson', editingId=null;
 
 function getIPStatus(c){
-  // Use whichever of the two in-person slots is more recent — they aren't
-  // guaranteed to be stored in chronological order (slot 2 isn't always the newer one).
-  const mostRecent = [c.lastVisit, c.lastVisit2].filter(Boolean).sort().pop();
+  // "Last in-person contact" now pulls from every source that counts as an in-person
+  // touch — the two legacy date slots, any Formal/Ad hoc entry in the visit log, and
+  // any completed TBR (a TBR counts as an in-person visit) — not just the two slots.
+  const mostRecent = lastInPersonDate(c);
   if(!mostRecent)return{label:'Not yet visited',cls:'not-visited',days:null,nextDue:null};
-  const next=addDays(new Date(mostRecent),182);
+  const next=addDays(mostRecent,182);
   const d=daysFrom(next);
   if(d<0)return{label:'Overdue',cls:'overdue',days:d,nextDue:next};
   if(d<=30)return{label:'Due soon',cls:'due-soon',days:d,nextDue:next};
@@ -3711,9 +3712,27 @@ function getIPStatus(c){
 }
 function getPhoneStatus(c){
   const p=phoneData[c.name]||{};
-  if(!p.ph1&&!p.ph2)return{label:'Not scheduled',cls:'not-scheduled'};
-  if(p.ph1c&&p.ph2c)return{label:'Completed',cls:'completed'};
-  if(p.ph1c){if(p.ph2){const d=daysFrom(new Date(p.ph2));return d<0?{label:'Visit 2 overdue',cls:'overdue'}:{label:'Visit 2 pending',cls:'pending'};}return{label:'Visit 1 done',cls:'on-track'};}
+  // Any logged "Phone" visit-log entry counts as a completed phone contact too —
+  // not just the two formal ph1c/ph2c slots — so ongoing ad hoc calls clear "Overdue".
+  const logDates = getVisitLog(c.name).filter(v=>v.type==='phone'&&v.date).map(v=>v.date);
+  const doneDates = [p.ph1c, p.ph2c, ...logDates].filter(Boolean);
+  const mostRecent = doneDates.length ? doneDates.sort().pop() : null;
+
+  if(!p.ph1 && !p.ph2 && !mostRecent) return {label:'Not scheduled', cls:'not-scheduled'};
+
+  if(mostRecent){
+    // A formally scheduled second visit that's now overdue still takes priority over
+    // "Completed", so the formal schedule keeps being tracked even once ad hoc calls exist.
+    if(p.ph1c && p.ph2 && !p.ph2c){
+      const d2=daysFrom(new Date(p.ph2));
+      return d2<0?{label:'Visit 2 overdue',cls:'overdue',days:d2,nextDue:parseDate(p.ph2)}:{label:'Visit 2 pending',cls:'pending',days:d2,nextDue:parseDate(p.ph2)};
+    }
+    const next=addDays(mostRecent,182);
+    const d=daysFrom(next);
+    if(d<0)return{label:'Overdue',cls:'overdue',days:d,nextDue:next};
+    return{label:'Completed',cls:'completed',days:d,nextDue:next};
+  }
+
   if(p.ph1){const d=daysFrom(new Date(p.ph1));return d<0?{label:'Visit 1 overdue',cls:'overdue'}:{label:'Visit 1 pending',cls:'pending'};}
   return{label:'Not scheduled',cls:'not-scheduled'};
 }
