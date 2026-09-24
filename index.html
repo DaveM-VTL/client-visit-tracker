@@ -147,6 +147,7 @@
   .dot-map { background: #e07b54; }
   .dot-cal { background: #9b72cf; }
   .dot-ai  { background: #e8a045; }
+  .dot-cadence { background: #e0607a; }
   .mobile-only-nav { display: none; }
   .topbar-mobile-actions { display: none; }
 
@@ -420,6 +421,17 @@
   .tbr-q-btn:hover { background:var(--surface2); }
   .tbr-q-btn.accent { background:var(--accent); color:#fff; border-color:var(--accent); }
   .tbr-q-btn.accent:hover { opacity:0.85; }
+  /* ── Cadence tab ── */
+  .cad-chip { font-family:var(--mono); font-size:10px; font-weight:600; padding:3px 9px; border-radius:3px; text-transform:uppercase; letter-spacing:0.03em; white-space:nowrap; }
+  .cad-overdue { background:var(--danger-light); color:var(--danger); }
+  .cad-due-soon { background:var(--warning-light); color:var(--warning); }
+  .cad-on-track { background:var(--success-light); color:var(--success); }
+  .cadence-filters { display:flex; gap:8px; flex-wrap:wrap; align-items:center; padding:16px 20px 12px; }
+  .cadence-filter-btn { font-family:var(--mono); font-size:11px; font-weight:600; padding:6px 12px; border-radius:var(--radius); border:1px solid var(--border); background:var(--surface); color:var(--text-muted); cursor:pointer; white-space:nowrap; transition:all 0.15s; }
+  .cadence-filter-btn:hover { border-color:#aaa; }
+  .cadence-filter-btn.active { background:var(--text); color:#fff; border-color:var(--text); }
+  .cadence-search { flex:1; min-width:140px; max-width:260px; padding:6px 10px; border:1px solid var(--border); border-radius:var(--radius); font-family:var(--sans); font-size:12px; background:var(--surface); color:var(--text); }
+  .cadence-legend { font-family:var(--mono); font-size:10px; color:var(--text-muted); padding:0 20px 10px; }
   .tbr-q-geo { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:4px; }
   .tbr-q-geo-badge { font-size:10px; font-family:var(--mono); padding:2px 7px; border-radius:10px; background:var(--surface2); color:var(--text-muted); }
 
@@ -2898,6 +2910,11 @@
         <span class="nav-count" id="cnt-cli">—</span>
       </button>
       <div class="nav-label">Trackers</div>
+      <button class="nav-item" onclick="switchTab('cadence',this)">
+        <span class="nav-dot dot-cadence"></span>
+        Cadence
+        <span class="nav-count" id="cnt-cad">—</span>
+      </button>
       <button class="nav-item active" onclick="switchTab('inperson',this)">
         <span class="nav-dot dot-ip"></span>
         In-person
@@ -3122,6 +3139,19 @@
         </div>
         <div class="clients-table-wrap" id="clients-table-wrap"></div>
         <div class="cards-wrap" id="clients-cards-wrap" style="display:none;"></div>
+      </div>
+
+      <!-- Cadence view -->
+      <div id="cadence-view" style="display:none; flex-direction:column; min-height:calc(100vh - 57px); overflow-y:auto;">
+        <div class="cadence-filters">
+          <input type="text" class="cadence-search" placeholder="Search clients..." oninput="cadenceSetSearch(this.value)">
+          <button class="cadence-filter-btn active" data-f="all" onclick="cadenceSetFilter('all')">All <span id="cad-cnt-all">—</span></button>
+          <button class="cadence-filter-btn" data-f="overdue" onclick="cadenceSetFilter('overdue')">Overdue <span id="cad-cnt-overdue">—</span></button>
+          <button class="cadence-filter-btn" data-f="due-soon" onclick="cadenceSetFilter('due-soon')">Due soon <span id="cad-cnt-due-soon">—</span></button>
+          <button class="cadence-filter-btn" data-f="on-track" onclick="cadenceSetFilter('on-track')">On track <span id="cad-cnt-on-track">—</span></button>
+        </div>
+        <div class="cadence-legend">Sorted by urgency — most overdue first. Tap a client to open their visit log. Contact = any touchpoint, due monthly. In-person = visit or TBR, due yearly. TBR = due yearly.</div>
+        <div id="cadence-list" style="padding:4px 20px 24px;"></div>
       </div>
 
       <!-- Calendar view -->
@@ -3784,6 +3814,46 @@ function getReportStatus(c){
   return {label, cls:'on-track', style:`background:${mc.bg};color:${mc.color};border:none;`};
 }
 
+// ── Cadence (combined contact / in-person / TBR schedule) ──
+// Rules: any touchpoint (phone, in-person, TBR) counts toward "contact" and must happen
+// at least once a month. TBRs count as in-person visits. In-person (formal/ad hoc visit,
+// or a completed TBR) must happen at least once a year. TBR must separately happen at
+// least once a year.
+function lastInPersonDate(c){
+  const dates = [c.lastVisit, c.lastVisit2, tbrLastCompleted(c.name)].filter(Boolean);
+  getVisitLog(c.name).forEach(v=>{ if((v.type==='formal'||v.type==='adhoc') && v.date) dates.push(v.date); });
+  return dates.length ? dates.sort().pop() : null;
+}
+function lastAnyContactDate(c){
+  const p = phoneData[c.name]||{};
+  const dates = [lastInPersonDate(c), p.ph1c, p.ph2c].filter(Boolean);
+  getVisitLog(c.name).forEach(v=>{ if(v.date) dates.push(v.date); });
+  return dates.length ? dates.sort().pop() : null;
+}
+function cadenceItem(lastDate, intervalDays, dueSoonWindow, neverLabel){
+  if(!lastDate) return {cls:'overdue', label:neverLabel||'never', lastDate:null, nextDue:null, days:-99999};
+  const next = addDays(lastDate, intervalDays);
+  const d = daysFrom(next);
+  if(d<0) return {cls:'overdue', label:Math.abs(d)+'d overdue', lastDate, nextDue:next, days:d};
+  if(d<=dueSoonWindow) return {cls:'due-soon', label:(d===0?'due today':'due in '+d+'d'), lastDate, nextDue:next, days:d};
+  return {cls:'on-track', label:'due in '+d+'d', lastDate, nextDue:next, days:d};
+}
+function getCadence(c){
+  return {
+    contact:  cadenceItem(lastAnyContactDate(c), 30, 7, 'no contact yet'),
+    inperson: cadenceItem(lastInPersonDate(c), 365, 60, 'never visited'),
+    tbr:      cadenceItem(tbrLastCompleted(c.name), 365, 60, 'no TBR yet'),
+  };
+}
+function cadenceSortKey(c){
+  const cad = getCadence(c);
+  return Math.min(cad.contact.days, cad.inperson.days, cad.tbr.days);
+}
+function cadenceChip(name, item){
+  const tip = item.nextDue ? ` title="Next due ${fmt(item.nextDue)}"` : '';
+  return `<span class="cad-chip cad-${item.cls}"${tip}>${name}: ${item.label}</span>`;
+}
+
 const filterOptions={
   inperson:['all','overdue','due-soon','on-track','not-visited'],
   phone:['all','overdue','pending','completed','not-scheduled'],
@@ -3792,7 +3862,7 @@ const filterOptions={
   reports:['all','overdue','due-soon','on-track','not-sent'],
 };
 const filterLabels={all:'All statuses',overdue:'Overdue',missed:'Missed visit','due-soon':'Due soon','on-track':'On track','not-visited':'Not yet visited',pending:'Pending',completed:'Completed','not-scheduled':'Not scheduled',reviewed:'Reviewed',sent:'Awaiting review','not-sent':'Not sent'};
-const tabTitles={clients:'Clients',inperson:'In-person visits',phone:'Phone visits',tbr:'TBRs',reviews:'Google reviews',reports:'The Valley View',map:'Map',calendar:'Calendar'};
+const tabTitles={clients:'Clients',inperson:'In-person visits',phone:'Phone visits',tbr:'TBRs',reviews:'Google reviews',reports:'The Valley View',map:'Map',calendar:'Calendar',cadence:'Client Cadence'};
 
 function updateFilterOptions(){
   const sel=document.getElementById('filter');
@@ -3812,6 +3882,11 @@ function updateSidebarCounts(){
   document.getElementById('cnt-tbr').textContent=tbrPending>0?tbrPending:'—';
   document.getElementById('cnt-rev').textContent=revPending>0?revPending+'↑':'—';
   document.getElementById('cnt-rep').textContent=repDue>0?repDue+'↑':'—';
+  const cadEl = document.getElementById('cnt-cad');
+  if(cadEl){
+    const cadOverdue = clients.filter(c=>cadenceClassSet(c).includes('overdue')).length;
+    cadEl.textContent = cadOverdue>0 ? cadOverdue+'↑' : clients.length;
+  }
   // Dashboard count — total action items across all trackers
   const dashEl = document.getElementById('cnt-dash');
   if(dashEl){
@@ -4527,6 +4602,7 @@ function switchTab(tab,el){
   const dashView = document.getElementById('dashboard-view');
   const mapView = document.getElementById('map-view');
   const calView = document.getElementById('calendar-view');
+  const cadView = document.getElementById('cadence-view');
   const tableWrap = document.getElementById('table-wrap');
   const cardsWrap = document.getElementById('cards-wrap');
   const statsBar = document.getElementById('stats-bar');
@@ -4535,8 +4611,9 @@ function switchTab(tab,el){
   const filterSel = document.getElementById('filter');
   const btnAdd = document.querySelector('.btn-add');
 
-  // Always hide dashboard unless explicitly switching to it
+  // Always hide dashboard/cadence unless explicitly switching to them
   if(dashView) dashView.style.display = 'none';
+  if(cadView) cadView.style.display = 'none';
 
   if(tab === 'dashboard'){
     clientsView.style.display = 'none';
@@ -4587,6 +4664,21 @@ function switchTab(tab,el){
     if(btnAdd) btnAdd.style.display = 'none';
     if(topbar) topbar.innerHTML = 'Map <span>' + clients.length + ' clients</span>';
     setMapMode(mapMode);
+  } else if(tab === 'cadence'){
+    clientsView.style.display = 'none';
+    mapView.style.display = 'none';
+    calView.style.display = 'none';
+    if(cadView) cadView.style.display = 'flex';
+    document.getElementById('ai-view').style.display = 'none';
+    document.getElementById('todo-view').style.display = 'none';
+    tableWrap.style.display = 'none';
+    cardsWrap.style.display = 'none';
+    statsBar.style.display = 'none';
+    if(searchWrap) searchWrap.style.display = 'none';
+    if(filterSel) filterSel.style.display = 'none';
+    if(btnAdd) btnAdd.style.display = 'none';
+    if(topbar) topbar.innerHTML = 'Cadence <span>contact schedule</span>';
+    renderCadenceView();
   } else if(tab === 'calendar'){
     clientsView.style.display = 'none';
     mapView.style.display = 'none';
@@ -5781,7 +5873,7 @@ window.addEventListener('resize', () => render());
 // Fix cards bottom padding for mobile tab bar
 if(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)){
   const style = document.createElement('style');
-  style.textContent = '.cards-wrap { padding-bottom: calc(220px + env(safe-area-inset-bottom, 0px)) !important; } #dash-content { padding-bottom: calc(220px + env(safe-area-inset-bottom, 0px)) !important; }';
+  style.textContent = '.cards-wrap { padding-bottom: calc(220px + env(safe-area-inset-bottom, 0px)) !important; } #dash-content { padding-bottom: calc(220px + env(safe-area-inset-bottom, 0px)) !important; } #cadence-list { padding-bottom: calc(220px + env(safe-area-inset-bottom, 0px)) !important; }';
   document.head.appendChild(style);
 }
 
@@ -7265,6 +7357,87 @@ async function sendAiMessage(){
 }
 
 function aiSuggest(text){ document.getElementById('ai-input').value=text; sendAiMessage(); }
+
+// -- Cadence tab --
+let cadenceFilter = 'all';
+let cadenceQuery = '';
+
+function cadenceSetFilter(f){
+  cadenceFilter = f;
+  document.querySelectorAll('.cadence-filter-btn').forEach(b=>b.classList.toggle('active', b.dataset.f===f));
+  renderCadenceView();
+}
+function cadenceSetSearch(v){
+  cadenceQuery = (v||'').toLowerCase();
+  renderCadenceView();
+}
+function cadenceJumpToClient(name){
+  const nb = document.querySelector(".nav-item[onclick*=\"'inperson'\"]");
+  if(nb) switchTab('inperson', nb);
+  const searchEl = document.getElementById('search');
+  if(searchEl) searchEl.value = name;
+  setTimeout(()=>{
+    render();
+    const c = clients.find(x=>x.name===name);
+    if(c && !expandedRows.has(c.id)){ expandedRows.add(c.id); render(); }
+  }, 60);
+}
+function cadenceCardHtml(c, rank){
+  const cad = getCadence(c);
+  const color = getClientColor(c.name);
+  const nameEsc = c.name.replace(/'/g,"\\'").replace(/"/g,'&quot;');
+  return `<div class="tbr-q-card has-color" style="--client-color:${color};border-left:3px solid var(--client-color);cursor:pointer;" onclick="cadenceJumpToClient('${nameEsc}')">
+    <span class="tbr-q-rank">${rank}</span>
+    <div class="tbr-q-info">
+      <div class="tbr-q-name">${c.name}<span style="font-weight:400;color:var(--text-muted);font-size:11px;"> · ${c.city}</span></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">
+        ${cadenceChip('Contact', cad.contact)}
+        ${cadenceChip('In-person', cad.inperson)}
+        ${cadenceChip('TBR', cad.tbr)}
+      </div>
+    </div>
+    <div class="tbr-q-actions"><button class="tbr-q-btn" onclick="event.stopPropagation();openEdit(${c.id})">edit</button></div>
+  </div>`;
+}
+function cadenceClassSet(c){
+  const cad = getCadence(c);
+  return [cad.contact.cls, cad.inperson.cls, cad.tbr.cls];
+}
+function renderCadenceView(){
+  const base = clients.filter(c=>{
+    if(!cadenceQuery) return true;
+    return c.name.toLowerCase().includes(cadenceQuery) || (c.city||'').toLowerCase().includes(cadenceQuery);
+  });
+
+  const counts = {all:0, overdue:0, 'due-soon':0, 'on-track':0};
+  base.forEach(c=>{
+    counts.all++;
+    const cls = cadenceClassSet(c);
+    if(cls.includes('overdue')) counts.overdue++;
+    else if(cls.includes('due-soon')) counts['due-soon']++;
+    else counts['on-track']++;
+  });
+  const setCnt = (id,v)=>{ const el=document.getElementById(id); if(el) el.textContent=v; };
+  setCnt('cad-cnt-all', counts.all);
+  setCnt('cad-cnt-overdue', counts.overdue);
+  setCnt('cad-cnt-due-soon', counts['due-soon']);
+  setCnt('cad-cnt-on-track', counts['on-track']);
+
+  let list = base.filter(c=>{
+    if(cadenceFilter==='all') return true;
+    const cls = cadenceClassSet(c);
+    if(cadenceFilter==='overdue') return cls.includes('overdue');
+    if(cadenceFilter==='due-soon') return !cls.includes('overdue') && cls.includes('due-soon');
+    if(cadenceFilter==='on-track') return cls.every(x=>x==='on-track');
+    return true;
+  });
+  list = list.slice().sort((a,b)=>cadenceSortKey(a)-cadenceSortKey(b));
+
+  const wrap = document.getElementById('cadence-list');
+  if(!wrap) return;
+  if(!list.length){ wrap.innerHTML = '<div class="empty-state"><p>No clients match.</p></div>'; return; }
+  wrap.innerHTML = list.map((c,i)=>cadenceCardHtml(c,i+1)).join('');
+}
 
 // -- TBR Priority Queue --
 let tbrQueueView = 'table';
