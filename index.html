@@ -3714,9 +3714,7 @@ function getPhoneStatus(c){
   const p=phoneData[c.name]||{};
   // Any logged "Phone" visit-log entry counts as a completed phone contact too —
   // not just the two formal ph1c/ph2c slots — so ongoing ad hoc calls clear "Overdue".
-  const logDates = getVisitLog(c.name).filter(v=>v.type==='phone'&&v.date).map(v=>v.date);
-  const doneDates = [p.ph1c, p.ph2c, ...logDates].filter(Boolean);
-  const mostRecent = doneDates.length ? doneDates.sort().pop() : null;
+  const mostRecent = lastPhoneContactDate(c);
 
   if(!p.ph1 && !p.ph2 && !mostRecent) return {label:'Not scheduled', cls:'not-scheduled'};
 
@@ -3847,6 +3845,12 @@ function lastAnyContactDate(c){
   const p = phoneData[c.name]||{};
   const dates = [lastInPersonDate(c), p.ph1c, p.ph2c].filter(Boolean);
   getVisitLog(c.name).forEach(v=>{ if(v.date) dates.push(v.date); });
+  return dates.length ? dates.sort().pop() : null;
+}
+function lastPhoneContactDate(c){
+  const p = phoneData[c.name]||{};
+  const dates = [p.ph1c, p.ph2c].filter(Boolean);
+  getVisitLog(c.name).forEach(v=>{ if(v.type==='phone' && v.date) dates.push(v.date); });
   return dates.length ? dates.sort().pop() : null;
 }
 function cadenceItem(lastDate, intervalDays, dueSoonWindow, neverLabel){
@@ -4122,8 +4126,8 @@ function renderCards(rows){
         ? ipLog.map(v=>`<div class="card-detail-row"><span class="card-detail-label">${fmt(v.date)} ${v.type==='formal'?'(Formal)':'(Ad hoc)'}</span><span class="card-detail-val">${(v.note||'').replace(/</g,'&lt;')||'—'}</span></div>`).join('')
         : '';
       details = `
-        <div class="card-detail-row"><span class="card-detail-label">Last visit</span><span class="card-detail-val">${fmt(c.lastVisit)}</span></div>
-        <div class="card-detail-row"><span class="card-detail-label">Second visit</span><span class="card-detail-val">${fmt(c.lastVisit2)}</span></div>
+        <div class="card-detail-row"><span class="card-detail-label">Most recent visit</span><span class="card-detail-val">${fmt(lastInPersonDate(c))}</span></div>
+        <div class="card-detail-row"><span class="card-detail-label">Legacy slot 1 / 2</span><span class="card-detail-val" style="color:var(--text-muted);">${fmt(c.lastVisit)} / ${fmt(c.lastVisit2)}</span></div>
         ${c.scheduledVisit ? `<div class="card-detail-row"><span class="card-detail-label">Scheduled visit</span><span class="card-detail-val" style="color:#5a2da0;font-weight:600;">📅 ${fmt(c.scheduledVisit)}</span></div>` : ''}
         <div class="card-detail-row"><span class="card-detail-label">Address</span><span class="card-detail-val">${[c.address,c.city].filter(Boolean).join(', ')||'—'}</span></div>
         ${c.mainPhone ? `<div class="card-detail-row"><span class="card-detail-label">Main Phone</span><a href="${telHref(c.mainPhone)}" onclick="copyPhone(event,c.mainPhone)" style="font-family:var(--mono);font-size:12px;color:var(--accent);text-decoration:none;">${c.mainPhone}</a></div>` : ''}
@@ -4140,6 +4144,7 @@ function renderCards(rows){
         ? phoneLog.map(v=>`<div class="card-detail-row"><span class="card-detail-label">${fmt(v.date)}</span><span class="card-detail-val">${(v.note||'Call logged').replace(/</g,'&lt;')}</span></div>`).join('')
         : '<div class="card-detail-row"><span class="card-detail-label">Contacts</span><span class="card-detail-val">None logged yet</span></div>';
       details = `
+        <div class="card-detail-row"><span class="card-detail-label">Last contact (any)</span><span class="card-detail-val">${fmt(lastPhoneContactDate(c))}</span></div>
         <div class="card-detail-row"><span class="card-detail-label">Visit 1 scheduled</span><span class="card-detail-val">${fmt(p.ph1)}</span></div>
         <div class="card-detail-row"><span class="card-detail-label">Visit 1 done</span><span class="card-detail-val">${fmt(p.ph1c)}</span></div>
         <div class="card-detail-row"><span class="card-detail-label">Visit 2 scheduled</span><span class="card-detail-val">${fmt(p.ph2)}</span></div>
@@ -4214,12 +4219,26 @@ async function quickLogVisit(clientId, type){
     try { await sbUpsert('clients', {id: c.id, name: c.name, address: c.address, city: c.city, last_visit: date, last_visit2: c.lastVisit2 || null}); } catch(e){}
   }
   try {
-    await fetch(SUPA_URL + '/rest/v1/visit_log', {
+    const res = await fetch(SUPA_URL + '/rest/v1/visit_log', {
       method: 'POST',
       headers: { ...sbHeaders(), 'Prefer': 'resolution=merge-duplicates,return=minimal' },
       body: JSON.stringify({id, client_name: c.name, date, type, note: null, next_due: null})
     });
-  } catch(e){ console.warn('quickLogVisit save failed:', e); }
+    if(!res.ok){
+      visitLog[c.name] = visitLog[c.name].filter(v => v.id !== id); // roll back local state
+      if(btn){ btn.textContent = 'Save failed — tap to retry'; btn.style.opacity = '1'; }
+      alert('Save failed — this ' + (type==='formal'?'visit':'call') + ' was NOT saved. Please try again.');
+      render();
+      return;
+    }
+  } catch(e){
+    console.warn('quickLogVisit save failed:', e);
+    visitLog[c.name] = visitLog[c.name].filter(v => v.id !== id); // roll back local state
+    if(btn){ btn.textContent = 'Save failed — tap to retry'; btn.style.opacity = '1'; }
+    alert('Save failed — check your connection and try again.');
+    render();
+    return;
+  }
 
   if(btn){
     btn.textContent = type === 'formal' ? '✓ Visited!' : '✓ Called!';
@@ -4324,7 +4343,7 @@ function render(){
   let html='';
   if(currentTab==='inperson'){
     const customThCells = getCustomCols('inperson').map(col=>`<th class="th-custom">${col.label}</th>`).join('');
-    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>Last visit</th><th>Next due</th><th>Days until due</th><th>Status</th><th>Scheduled</th><th>Visits</th><th>Notes</th>${customThCells}${renderAddColTh('inperson')}<th></th></tr></thead><tbody>`;
+    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>Most recent visit</th><th>Next due</th><th>Days until due</th><th>Status</th><th>Scheduled</th><th>Visits</th><th>Notes</th>${customThCells}${renderAddColTh('inperson')}<th></th></tr></thead><tbody>`;
     rows.forEach((c,i)=>{
       const st=getIPStatus(c);
       const ds=st.days!==null?(st.days<0?`${Math.abs(st.days)} days ago`:`${st.days} days`):'—';
@@ -4336,7 +4355,7 @@ function render(){
         <td class="td-num">${i+1}</td>
         <td class="td-name"><span class="expand-chevron">▶</span>${nameCell(c)}</td>
         <td class="td-city">${c.city}</td>
-        <td class="td-date">${fmt(c.lastVisit)}</td>
+        <td class="td-date">${fmt(lastInPersonDate(c))}</td>
         <td class="td-date">${st.nextDue?fmt(st.nextDue):'—'}</td>
         <td class="td-days">${ds}</td>
         <td>${badge(st.cls,st.label)}</td>
@@ -4352,13 +4371,13 @@ function render(){
     html+='</tbody></table>';
   } else if(currentTab==='phone'){
     const customThCells = getCustomCols('phone').map(col=>`<th class="th-custom">${col.label}</th>`).join('');
-    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>Visit 1 scheduled</th><th>Visit 2 scheduled</th><th>Visit 1 done</th><th>Visit 2 done</th><th>Status</th><th>Contacts</th><th>Notes</th>${customThCells}${renderAddColTh('phone')}<th></th></tr></thead><tbody>`;
+    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>Visit 1 scheduled</th><th>Visit 2 scheduled</th><th>Visit 1 done</th><th>Visit 2 done</th><th>Last contact</th><th>Status</th><th>Contacts</th><th>Notes</th>${customThCells}${renderAddColTh('phone')}<th></th></tr></thead><tbody>`;
     rows.forEach((c,i)=>{
       const p=phoneData[c.name]||{};const st=getPhoneStatus(c);
       const color=getClientColor(c.name);
       const note=notesData[c.name]||'';
       const isExp=expandedRows.has(c.id);
-      html+=`<tr class="has-color client-main-row${isExp?' row-expanded':''}" style="--client-color:${color}" onclick="toggleRow(${c.id})"><td class="td-num">${i+1}</td><td class="td-name"><span class="expand-chevron">▶</span>${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(p.ph1)}</td><td class="td-date">${fmt(p.ph2)}</td><td class="td-date">${fmt(p.ph1c)}</td><td class="td-date">${fmt(p.ph2c)}</td><td>${badge(st.cls,st.label)}</td><td>${renderVisitCountBadge(c.name)}</td><td class="notes-cell" onclick="event.stopPropagation()">${renderNote(c.name,note)}</td>${renderCustomCells('phone',c.name)}<td></td><td onclick="event.stopPropagation()"><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
+      html+=`<tr class="has-color client-main-row${isExp?' row-expanded':''}" style="--client-color:${color}" onclick="toggleRow(${c.id})"><td class="td-num">${i+1}</td><td class="td-name"><span class="expand-chevron">▶</span>${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(p.ph1)}</td><td class="td-date">${fmt(p.ph2)}</td><td class="td-date">${fmt(p.ph1c)}</td><td class="td-date">${fmt(p.ph2c)}</td><td class="td-date">${fmt(lastPhoneContactDate(c))}</td><td>${badge(st.cls,st.label)}</td><td>${renderVisitCountBadge(c.name)}</td><td class="notes-cell" onclick="event.stopPropagation()">${renderNote(c.name,note)}</td>${renderCustomCells('phone',c.name)}<td></td><td onclick="event.stopPropagation()"><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
       if(isExp) html += renderVisitLogPanel(c);
     });
     html+='</tbody></table>';
@@ -5010,8 +5029,9 @@ function exportCSV(){
   sections.push(row([
     'Client Name','Address','City','Main Phone','Website','Scheduled Visit',
     ...contactHeaders,
-    'Last In-Person Visit 1','Last In-Person Visit 2',
-    'Phone Visit 1 Scheduled','Phone Visit 2 Scheduled','Phone Visit 1 Completed','Phone Visit 2 Completed',
+    'Last In-Person Visit 1','Last In-Person Visit 2','Most Recent In-Person Contact (incl. ad hoc/TBR)',
+    'Phone Visit 1 Scheduled','Phone Visit 2 Scheduled','Phone Visit 1 Completed','Phone Visit 2 Completed','Most Recent Phone Contact (incl. logged calls)',
+    'Visits Logged (Formal/Ad hoc/Phone)',
     'TBR Twice/Year','TBR History (scheduled/completed pairs)',
     'Review Request Sent','Review Request Person','Review Date','Reviewer Name',
     'Last Report Sent',
@@ -5031,11 +5051,13 @@ function exportCSV(){
       const ct = contacts[i]||{};
       ctFields.push(ct.name||'', ct.phone||'', ct.email||'', ct.position||'');
     }
+    const vc = visitCounts(c.name);
     sections.push(row([
       c.name, c.address||'', c.city||'', c.mainPhone||'', website, fmtD(c.scheduledVisit),
       ...ctFields,
-      fmtD(c.lastVisit), fmtD(c.lastVisit2),
-      fmtD(p.ph1), fmtD(p.ph2), fmtD(p.ph1c), fmtD(p.ph2c),
+      fmtD(c.lastVisit), fmtD(c.lastVisit2), fmtD(lastInPersonDate(c)),
+      fmtD(p.ph1), fmtD(p.ph2), fmtD(p.ph1c), fmtD(p.ph2c), fmtD(lastPhoneContactDate(c)),
+      `${vc.formal}F / ${vc.adhoc}A / ${vc.phone}P`,
       t.twice||'', tbrEntries(c.name).map(e=>(e.scheduled||'?')+(e.completed?' (done '+e.completed+')':' (not done, '+(e.confirmed?'confirmed':'preliminary')+')')).join('; '),
       fmtD(r.sent), r.person||'', fmtD(r.reviewed), r.reviewer||'',
       fmtD(rep.lastSent),
@@ -6838,7 +6860,19 @@ async function logVisit(clientId){
     });
     const resJson = await res.json();
     console.log('visit_log save response:', res.status, resJson);
-  } catch(e){ console.warn('visit_log save failed:', e); }
+    if(!res.ok){
+      visitLog[c.name] = visitLog[c.name].filter(v => v.id !== id); // roll back local state
+      alert('Save failed — this visit was NOT saved. Please try again.\n' + (resJson?.message || res.status));
+      render();
+      return;
+    }
+  } catch(e){
+    console.warn('visit_log save failed:', e);
+    visitLog[c.name] = visitLog[c.name].filter(v => v.id !== id); // roll back local state
+    alert('Save failed — this visit was NOT saved. Check your connection and try again.');
+    render();
+    return;
+  }
   render();
 }
 
