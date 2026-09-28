@@ -139,8 +139,6 @@
     border-radius: 50%;
     flex-shrink: 0;
   }
-  .dot-ip { background: #6db88a; }
-  .dot-ph { background: #6ab0d4; }
   .dot-tbr { background: #d4a96a; }
   .dot-rev { background: #c47eb5; }
   .dot-rep { background: #7ab8d4; }
@@ -148,6 +146,7 @@
   .dot-cal { background: #9b72cf; }
   .dot-ai  { background: #e8a045; }
   .dot-cadence { background: #e0607a; }
+  .dot-visits { background: #4a9d8f; }
   .mobile-only-nav { display: none; }
   .topbar-mobile-actions { display: none; }
 
@@ -2927,15 +2926,10 @@
         Cadence
         <span class="nav-count" id="cnt-cad">—</span>
       </button>
-      <button class="nav-item active" onclick="switchTab('inperson',this)">
-        <span class="nav-dot dot-ip"></span>
-        In-person
-        <span class="nav-count" id="cnt-ip">—</span>
-      </button>
-      <button class="nav-item" onclick="switchTab('phone',this)">
-        <span class="nav-dot dot-ph"></span>
-        Phone
-        <span class="nav-count" id="cnt-ph">—</span>
+      <button class="nav-item active" onclick="switchTab('visits',this)">
+        <span class="nav-dot dot-visits"></span>
+        Visits
+        <span class="nav-count" id="cnt-visits">—</span>
       </button>
       <button class="nav-item" onclick="switchTab('tbr',this)">
         <span class="nav-dot dot-tbr"></span>
@@ -3712,7 +3706,7 @@ let clients = [
 let archivedClients = [];
 let showingArchived = false;
 
-let nextId=58, currentTab='inperson', editingId=null;
+let nextId=58, currentTab='visits', editingId=null;
 
 function getIPStatus(c){
   // "Last in-person contact" now pulls from every source that counts as an in-person
@@ -3749,6 +3743,24 @@ function getPhoneStatus(c){
 
   if(p.ph1){const d=daysFrom(new Date(p.ph1));return d<0?{label:'Visit 1 overdue',cls:'overdue'}:{label:'Visit 1 pending',cls:'pending'};}
   return{label:'Not scheduled',cls:'not-scheduled'};
+}
+// ── Combined Visits tab (in-person + phone merged into one view) ──
+// Normalizes the richer per-status vocabulary (not-visited/pending/completed/not-scheduled)
+// down to the same 3-color scale used everywhere else, so the two can sit side by side.
+function chipClsFor(st){
+  if(st.cls==='overdue' || st.cls==='not-visited') return 'overdue';
+  if(st.cls==='due-soon' || st.cls==='pending' || st.cls==='not-scheduled') return 'due-soon';
+  return 'on-track'; // on-track, completed
+}
+function combinedVisitStatus(c){
+  const ip = getIPStatus(c), ph = getPhoneStatus(c);
+  const ipCls = chipClsFor(ip), phCls = chipClsFor(ph);
+  const rank = {overdue:2, 'due-soon':1, 'on-track':0};
+  const worstCls = rank[ipCls] >= rank[phCls] ? ipCls : phCls;
+  return {ip, ph, ipCls, phCls, worstCls};
+}
+function visitChip(icon, label, cls, tip){
+  return `<span class="cad-chip cad-${cls}"${tip?` title="${tip}"`:''}>${icon} ${label}</span>`;
 }
 // ── TBR entry helpers (entries = unlimited list of {scheduled, completed} pairs) ──
 function tbrEntries(name){
@@ -3894,14 +3906,13 @@ function cadenceChip(name, item){
 }
 
 const filterOptions={
-  inperson:['all','overdue','due-soon','on-track','not-visited'],
-  phone:['all','overdue','pending','completed','not-scheduled'],
+  visits:['all','overdue','due-soon','on-track'],
   tbr:['all','overdue','missed','due-soon','pending','completed','not-scheduled'],
   reviews:['all','reviewed','sent','not-sent'],
   reports:['all','overdue','due-soon','on-track','not-sent'],
 };
 const filterLabels={all:'All statuses',overdue:'Overdue',missed:'Missed visit','due-soon':'Due soon','on-track':'On track','not-visited':'Not yet visited',pending:'Pending',completed:'Completed','not-scheduled':'Not scheduled',reviewed:'Reviewed',sent:'Awaiting review','not-sent':'Not sent'};
-const tabTitles={clients:'Clients',inperson:'In-person visits',phone:'Phone visits',tbr:'TBRs',reviews:'Google reviews',reports:'The Valley View',map:'Map',calendar:'Calendar',cadence:'Client Cadence'};
+const tabTitles={clients:'Clients',visits:'Visits',tbr:'TBRs',reviews:'Google reviews',reports:'The Valley View',map:'Map',calendar:'Calendar',cadence:'Client Cadence'};
 
 function updateFilterOptions(){
   const sel=document.getElementById('filter');
@@ -3911,13 +3922,11 @@ function updateFilterOptions(){
 
 function updateSidebarCounts(){
   document.getElementById('cnt-cli').textContent = clients.length;
-  const ipOverdue=clients.filter(c=>getIPStatus(c).cls==='overdue').length;
-  const phOverdue=clients.filter(c=>getPhoneStatus(c).cls==='overdue').length;
+  const visitsOverdue=clients.filter(c=>combinedVisitStatus(c).worstCls==='overdue').length;
   const tbrPending=clients.filter(c=>['overdue','missed','due-soon','pending'].includes(getTBRStatus(c).cls)).length;
   const revPending=clients.filter(c=>getReviewStatus(c).cls==='sent').length;
   const repDue=clients.filter(c=>['overdue','due-soon','not-sent'].includes(getReportStatus(c).cls)).length;
-  document.getElementById('cnt-ip').textContent=ipOverdue>0?ipOverdue+'↑':clients.length;
-  document.getElementById('cnt-ph').textContent=phOverdue>0?phOverdue+'↑':clients.length;
+  document.getElementById('cnt-visits').textContent=visitsOverdue>0?visitsOverdue+'↑':clients.length;
   document.getElementById('cnt-tbr').textContent=tbrPending>0?tbrPending:'—';
   document.getElementById('cnt-rev').textContent=revPending>0?revPending+'↑':'—';
   document.getElementById('cnt-rep').textContent=repDue>0?repDue+'↑':'—';
@@ -3936,24 +3945,14 @@ function updateSidebarCounts(){
 
 function renderStats(){
   let html='';
-  if(currentTab==='inperson'){
-    const overdue=clients.filter(c=>getIPStatus(c).cls==='overdue').length;
-    const dueSoon=clients.filter(c=>getIPStatus(c).cls==='due-soon').length;
-    const onTrack=clients.filter(c=>getIPStatus(c).cls==='on-track').length;
-    const notVisited=clients.filter(c=>getIPStatus(c).cls==='not-visited').length;
+  if(currentTab==='visits'){
+    const overdue=clients.filter(c=>combinedVisitStatus(c).worstCls==='overdue').length;
+    const dueSoon=clients.filter(c=>combinedVisitStatus(c).worstCls==='due-soon').length;
+    const onTrack=clients.filter(c=>combinedVisitStatus(c).worstCls==='on-track').length;
     html=`<div class="stat-cell"><div class="stat-num num-danger">${overdue}</div><div class="stat-lbl">Overdue</div></div>
           <div class="stat-cell"><div class="stat-num num-warning">${dueSoon}</div><div class="stat-lbl">Due soon</div></div>
           <div class="stat-cell"><div class="stat-num num-success">${onTrack}</div><div class="stat-lbl">On track</div></div>
-          <div class="stat-cell"><div class="stat-num">${notVisited}</div><div class="stat-lbl">Not yet visited</div></div>`;
-  } else if(currentTab==='phone'){
-    const overdue=clients.filter(c=>getPhoneStatus(c).cls==='overdue').length;
-    const pending=clients.filter(c=>getPhoneStatus(c).cls==='pending').length;
-    const completed=clients.filter(c=>getPhoneStatus(c).cls==='completed').length;
-    const notSched=clients.filter(c=>getPhoneStatus(c).cls==='not-scheduled').length;
-    html=`<div class="stat-cell"><div class="stat-num num-danger">${overdue}</div><div class="stat-lbl">Overdue</div></div>
-          <div class="stat-cell"><div class="stat-num num-warning">${pending}</div><div class="stat-lbl">Pending</div></div>
-          <div class="stat-cell"><div class="stat-num num-success">${completed}</div><div class="stat-lbl">Completed</div></div>
-          <div class="stat-cell"><div class="stat-num">${notSched}</div><div class="stat-lbl">Not scheduled</div></div>`;
+          <div class="stat-cell"><div class="stat-num">${clients.length}</div><div class="stat-lbl">Total clients</div></div>`;
   } else if(currentTab==='reviews'){
     const reviewed=clients.filter(c=>getReviewStatus(c).cls==='reviewed').length;
     const awaiting=clients.filter(c=>getReviewStatus(c).cls==='sent').length;
@@ -4132,42 +4131,33 @@ function renderCards(rows){
     const noteEsc = note.replace(/"/g,'&quot;');
     let summary = '', details = '';
 
-    if(currentTab==='inperson'){
-      const st = getIPStatus(c);
-      const due = st.nextDue ? fmt(st.nextDue) : '—';
+    if(currentTab==='visits'){
+      const cv = combinedVisitStatus(c);
+      const p = phoneData[c.name]||{};
+      const ipDue = cv.ip.nextDue ? fmt(cv.ip.nextDue) : '—';
+      const phDue = cv.ph.nextDue ? fmt(cv.ph.nextDue) : '—';
       const schedBadge = c.scheduledVisit ? ` <span style="display:inline-block;margin-left:6px;background:#f0e8ff;color:#5a2da0;font-family:var(--mono);font-size:9px;font-weight:600;padding:1px 6px;border-radius:3px;text-transform:uppercase;letter-spacing:0.03em;">📅 ${fmt(c.scheduledVisit)}</span>` : '';
-      summary = `<div class="card-due">Next due: ${due}${schedBadge}</div>`;
-      const ipLog = getVisitLog(c.name).filter(v=>v.type==='formal'||v.type==='adhoc').slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-      const ipLogRows = ipLog.length
-        ? ipLog.map(v=>`<div class="card-detail-row"><span class="card-detail-label">${fmt(v.date)} ${v.type==='formal'?'(Formal)':'(Ad hoc)'}</span><span class="card-detail-val">${(v.note||'').replace(/</g,'&lt;')||'—'}</span></div>`).join('')
-        : '';
+      summary = `<div class="card-due">📍 ${ipDue} &nbsp;·&nbsp; 📞 ${phDue}${schedBadge}</div>`;
+      const allLog = getVisitLog(c.name).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+      const logRows = allLog.length
+        ? allLog.map(v=>{
+            const typeLbl = v.type==='formal'?'Formal':v.type==='phone'?'Phone':'Ad hoc';
+            return `<div class="card-detail-row"><span class="card-detail-label">${fmt(v.date)} (${typeLbl})</span><span class="card-detail-val">${(v.note||'').replace(/</g,'&lt;')||'—'}</span></div>`;
+          }).join('')
+        : '<div class="card-detail-row"><span class="card-detail-label">History</span><span class="card-detail-val">None logged yet</span></div>';
       details = `
         <div class="card-detail-row"><span class="card-detail-label">Most recent visit</span><span class="card-detail-val">${fmt(lastInPersonDate(c))}</span></div>
-        <div class="card-detail-row"><span class="card-detail-label">Legacy slot 1 / 2</span><span class="card-detail-val" style="color:var(--text-muted);">${fmt(c.lastVisit)} / ${fmt(c.lastVisit2)}</span></div>
+        <div class="card-detail-row"><span class="card-detail-label">Last phone contact</span><span class="card-detail-val">${fmt(lastPhoneContactDate(c))}</span></div>
+        <div class="card-detail-row"><span class="card-detail-label">Legacy visit slots 1 / 2</span><span class="card-detail-val" style="color:var(--text-muted);">${fmt(c.lastVisit)} / ${fmt(c.lastVisit2)}</span></div>
+        <div class="card-detail-row"><span class="card-detail-label">Legacy phone slots 1 / 2</span><span class="card-detail-val" style="color:var(--text-muted);">${fmt(p.ph1)} / ${fmt(p.ph2)}</span></div>
         ${c.scheduledVisit ? `<div class="card-detail-row"><span class="card-detail-label">Scheduled visit</span><span class="card-detail-val" style="color:#5a2da0;font-weight:600;">📅 ${fmt(c.scheduledVisit)}</span></div>` : ''}
         <div class="card-detail-row"><span class="card-detail-label">Address</span><span class="card-detail-val">${[c.address,c.city].filter(Boolean).join(', ')||'—'}</span></div>
         ${c.mainPhone ? `<div class="card-detail-row"><span class="card-detail-label">Main Phone</span><a href="${telHref(c.mainPhone)}" onclick="copyPhone(event,c.mainPhone)" style="font-family:var(--mono);font-size:12px;color:var(--accent);text-decoration:none;">${c.mainPhone}</a></div>` : ''}
-        ${ipLogRows ? `<div class="card-detail-row" style="margin-top:6px;"><span class="card-detail-label" style="font-weight:600;">All logged visits (${ipLog.length})</span><span class="card-detail-val"></span></div>${ipLogRows}` : ''}
+        <div class="card-detail-row" style="margin-top:6px;"><span class="card-detail-label" style="font-weight:600;">All logged contacts (${allLog.length})</span><span class="card-detail-val"></span></div>
+        ${logRows}
         ${cardContacts(c.name)}`;
-      return cardHTML(c, color, st, summary, details, note, noteEsc);
-    } else if(currentTab==='phone'){
-      const p = phoneData[c.name]||{};
-      const st = getPhoneStatus(c);
-      const nextUp = p.ph1c ? fmt(p.ph2) : fmt(p.ph1);
-      summary = `<div class="card-due">Next call: ${nextUp||'—'}</div>`;
-      const phoneLog = getVisitLog(c.name).filter(v=>v.type==='phone').slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-      const logRows = phoneLog.length
-        ? phoneLog.map(v=>`<div class="card-detail-row"><span class="card-detail-label">${fmt(v.date)}</span><span class="card-detail-val">${(v.note||'Call logged').replace(/</g,'&lt;')}</span></div>`).join('')
-        : '<div class="card-detail-row"><span class="card-detail-label">Contacts</span><span class="card-detail-val">None logged yet</span></div>';
-      details = `
-        <div class="card-detail-row"><span class="card-detail-label">Last contact (any)</span><span class="card-detail-val">${fmt(lastPhoneContactDate(c))}</span></div>
-        <div class="card-detail-row"><span class="card-detail-label">Visit 1 scheduled</span><span class="card-detail-val">${fmt(p.ph1)}</span></div>
-        <div class="card-detail-row"><span class="card-detail-label">Visit 1 done</span><span class="card-detail-val">${fmt(p.ph1c)}</span></div>
-        <div class="card-detail-row"><span class="card-detail-label">Visit 2 scheduled</span><span class="card-detail-val">${fmt(p.ph2)}</span></div>
-        <div class="card-detail-row"><span class="card-detail-label">Visit 2 done</span><span class="card-detail-val">${fmt(p.ph2c)}</span></div>
-        <div class="card-detail-row" style="margin-top:6px;"><span class="card-detail-label" style="font-weight:600;">All logged calls (${phoneLog.length})</span><span class="card-detail-val"></span></div>
-        ${logRows}`;
-      return cardHTML(c, color, st, summary, details, note, noteEsc);
+      const stBadge = `<div style="display:flex;flex-direction:column;gap:3px;align-items:flex-end;">${badge(cv.ipCls,'📍 '+cv.ip.label)}${badge(cv.phCls,'📞 '+cv.ph.label)}</div>`;
+      return cardHTML(c, color, cv.ip, summary, details, note, noteEsc, stBadge);
     } else if(currentTab==='tbr'){
       const t = tbrData[c.name]||{};
       const st = getTBRStatus(c);
@@ -4208,10 +4198,8 @@ function renderCards(rows){
 
 function quickLogBtn(c){
   const nameEsc = c.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-  if(currentTab === 'inperson'){
-    return `<button class="card-quick-btn" id="qlb-${c.id}" onclick="quickLogVisit(${c.id},'formal');event.stopPropagation();">✓ Visited today</button>`;
-  } else if(currentTab === 'phone'){
-    return `<button class="card-quick-btn" id="qlb-${c.id}" onclick="quickLogVisit(${c.id},'phone');event.stopPropagation();">✓ Called today</button>`;
+  if(currentTab === 'visits'){
+    return `<button class="card-quick-btn" id="qlb-${c.id}" onclick="quickLogVisit(${c.id},'formal');event.stopPropagation();">✓ Visited today</button><button class="card-quick-btn" id="qlbp-${c.id}" style="margin-left:6px;" onclick="quickLogVisit(${c.id},'phone');event.stopPropagation();">✓ Called today</button>`;
   } else if(currentTab === 'reviews'){
     const emailCount=(reviewEmailLog[c.name]||[]).length;
     return `<button class="card-quick-btn" style="background:#c47eb5;color:#fff;" onclick="logRevEmailQuick('${nameEsc}');event.stopPropagation();">+ Log email</button><button class="card-quick-btn" style="margin-left:6px;" onclick="openRevEmailLog('${nameEsc}');event.stopPropagation();">📋 Log${emailCount?` (${emailCount})`:''}`;
@@ -4222,7 +4210,8 @@ function quickLogBtn(c){
 async function quickLogVisit(clientId, type){
   const c = clients.find(x => x.id === clientId);
   if(!c) return;
-  const btn = document.getElementById('qlb-' + clientId);
+  const btnId = type === 'phone' ? 'qlbp-' + clientId : 'qlb-' + clientId;
+  const btn = document.getElementById(btnId);
   if(btn){ btn.textContent = 'Saving…'; btn.style.opacity = '0.6'; }
 
   const date = fmtISO(TODAY);
@@ -4340,8 +4329,7 @@ function render(){
     if(q&&!c.name.toLowerCase().includes(q)&&!c.city.toLowerCase().includes(q))return false;
     if(f!=='all'){
       let cls='';
-      if(currentTab==='inperson')cls=getIPStatus(c).cls;
-      else if(currentTab==='phone')cls=getPhoneStatus(c).cls;
+      if(currentTab==='visits')cls=combinedVisitStatus(c).worstCls;
       else if(currentTab==='tbr')cls=getTBRStatus(c).cls;
       else if(currentTab==='reviews') cls=getReviewStatus(c).cls;
       else cls=getReportStatus(c).cls;
@@ -4357,43 +4345,30 @@ function render(){
   }
 
   let html='';
-  if(currentTab==='inperson'){
-    const customThCells = getCustomCols('inperson').map(col=>`<th class="th-custom">${col.label}</th>`).join('');
-    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>Most recent visit</th><th>Next due</th><th>Days until due</th><th>Status</th><th>Scheduled</th><th>Visits</th><th>Notes</th>${customThCells}${renderAddColTh('inperson')}<th></th></tr></thead><tbody>`;
+  if(currentTab==='visits'){
+    const customThCells = getCustomCols('visits').map(col=>`<th class="th-custom">${col.label}</th>`).join('');
+    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>In-person</th><th>Phone</th><th>Scheduled</th><th>Visits</th><th>Notes</th>${customThCells}${renderAddColTh('visits')}<th></th></tr></thead><tbody>`;
     rows.forEach((c,i)=>{
-      const st=getIPStatus(c);
-      const ds=st.days!==null?(st.days<0?`${Math.abs(st.days)} days ago`:`${st.days} days`):'—';
+      const cv = combinedVisitStatus(c);
       const color=getClientColor(c.name);
       const note=notesData[c.name]||'';
       const isExp=expandedRows.has(c.id);
       const schedCell = renderScheduledVisitBadge(c);
+      const ipTip = `Most recent: ${fmt(lastInPersonDate(c))||'never'}${cv.ip.nextDue?' · Next due '+fmt(cv.ip.nextDue):''}`;
+      const phTip = `Last contact: ${fmt(lastPhoneContactDate(c))||'never'}${cv.ph.nextDue?' · Next due '+fmt(cv.ph.nextDue):''}`;
       html+=`<tr class="has-color client-main-row${isExp?' row-expanded':''}" style="--client-color:${color}" onclick="toggleRow(${c.id})">
         <td class="td-num">${i+1}</td>
         <td class="td-name"><span class="expand-chevron">▶</span>${nameCell(c)}</td>
         <td class="td-city">${c.city}</td>
-        <td class="td-date">${fmt(lastInPersonDate(c))}</td>
-        <td class="td-date">${st.nextDue?fmt(st.nextDue):'—'}</td>
-        <td class="td-days">${ds}</td>
-        <td>${badge(st.cls,st.label)}</td>
+        <td>${visitChip('📍',cv.ip.label,cv.ipCls,ipTip)}</td>
+        <td>${visitChip('📞',cv.ph.label,cv.phCls,phTip)}</td>
         <td>${schedCell}</td>
         <td>${renderVisitCountBadge(c.name)}</td>
         <td class="notes-cell" onclick="event.stopPropagation()">${renderNote(c.name,note)}</td>
-        ${renderCustomCells('inperson',c.name)}
+        ${renderCustomCells('visits',c.name)}
         <td></td>
         <td onclick="event.stopPropagation()"><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td>
       </tr>`;
-      if(isExp) html += renderVisitLogPanel(c);
-    });
-    html+='</tbody></table>';
-  } else if(currentTab==='phone'){
-    const customThCells = getCustomCols('phone').map(col=>`<th class="th-custom">${col.label}</th>`).join('');
-    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>Visit 1 scheduled</th><th>Visit 2 scheduled</th><th>Visit 1 done</th><th>Visit 2 done</th><th>Last contact</th><th>Status</th><th>Contacts</th><th>Notes</th>${customThCells}${renderAddColTh('phone')}<th></th></tr></thead><tbody>`;
-    rows.forEach((c,i)=>{
-      const p=phoneData[c.name]||{};const st=getPhoneStatus(c);
-      const color=getClientColor(c.name);
-      const note=notesData[c.name]||'';
-      const isExp=expandedRows.has(c.id);
-      html+=`<tr class="has-color client-main-row${isExp?' row-expanded':''}" style="--client-color:${color}" onclick="toggleRow(${c.id})"><td class="td-num">${i+1}</td><td class="td-name"><span class="expand-chevron">▶</span>${nameCell(c)}</td><td class="td-city">${c.city}</td><td class="td-date">${fmt(p.ph1)}</td><td class="td-date">${fmt(p.ph2)}</td><td class="td-date">${fmt(p.ph1c)}</td><td class="td-date">${fmt(p.ph2c)}</td><td class="td-date">${fmt(lastPhoneContactDate(c))}</td><td>${badge(st.cls,st.label)}</td><td>${renderVisitCountBadge(c.name)}</td><td class="notes-cell" onclick="event.stopPropagation()">${renderNote(c.name,note)}</td>${renderCustomCells('phone',c.name)}<td></td><td onclick="event.stopPropagation()"><button class="edit-btn" onclick="openEdit(${c.id})">edit</button></td></tr>`;
       if(isExp) html += renderVisitLogPanel(c);
     });
     html+='</tbody></table>';
@@ -5401,7 +5376,7 @@ function getDashboardItems(){
         cls: ip.cls,
         detail: ip.nextDue ? 'Due ' + fmt(ip.nextDue) : (c.lastVisit ? 'Last: ' + fmt(c.lastVisit) : 'Never visited'),
         urgency,
-        tabTarget: 'inperson'
+        tabTarget: 'visits'
       });
     }
 
@@ -5424,7 +5399,7 @@ function getDashboardItems(){
         cls: ph.cls,
         detail: p.ph1 ? 'Visit 1: ' + fmt(p.ph1) : 'Not scheduled',
         urgency,
-        tabTarget: 'phone'
+        tabTarget: 'visits'
       });
     }
 
@@ -5848,7 +5823,8 @@ async function loadFromSupabase(){
   }
   updateFilterOptions();
   // Restore the active tab; default to 'dashboard' if no tab has been saved yet
-  const savedTab = localStorage.getItem('cvt_activeTab') || 'dashboard';
+  let savedTab = localStorage.getItem('cvt_activeTab') || 'dashboard';
+  if(savedTab === 'inperson' || savedTab === 'phone') savedTab = 'visits'; // old tabs merged
   const navEl = document.querySelector(`.nav-item[onclick*="'${savedTab}'"]`);
   if(navEl) switchTab(savedTab, navEl);
   else render();
@@ -6920,7 +6896,7 @@ let customCols = {};
 let customColData = {};
 let colPopupOpen = false;
 
-const TABS_WITH_COLS = ['inperson','phone','tbr','reviews','reports'];
+const TABS_WITH_COLS = ['visits','tbr','reviews','reports'];
 
 function getCustomCols(tab){ return customCols[tab] || []; }
 function getColData(tab, name, colId){ return (customColData[tab]||{})[name]?.[colId] || ''; }
@@ -6946,6 +6922,34 @@ function loadCustomColsLocal(){
     if(cc) customCols = JSON.parse(cc);
     if(cd) customColData = JSON.parse(cd);
   } catch(e){}
+  migrateVisitsCustomCols();
+}
+
+// One-time migration: the In-person and Phone tabs were merged into a single
+// "Visits" tab. Any custom columns saved under the old 'inperson'/'phone' keys
+// get folded into 'visits' so nothing the user built gets silently dropped.
+function migrateVisitsCustomCols(){
+  let changed = false;
+  ['inperson','phone'].forEach(oldKey=>{
+    const cols = customCols[oldKey];
+    if(cols && cols.length){
+      if(!customCols.visits) customCols.visits = [];
+      customCols.visits.push(...cols);
+      delete customCols[oldKey];
+      changed = true;
+    }
+    const data = customColData[oldKey];
+    if(data){
+      if(!customColData.visits) customColData.visits = {};
+      Object.keys(data).forEach(clientName=>{
+        if(!customColData.visits[clientName]) customColData.visits[clientName] = {};
+        Object.assign(customColData.visits[clientName], data[clientName]);
+      });
+      delete customColData[oldKey];
+      changed = true;
+    }
+  });
+  if(changed) saveCustomColsLocal();
 }
 
 function openColPopup(tab){
@@ -7460,8 +7464,8 @@ function cadenceSetSearch(v){
   renderCadenceView();
 }
 function cadenceJumpToClient(name){
-  const nb = document.querySelector(".nav-item[onclick*=\"'inperson'\"]");
-  if(nb) switchTab('inperson', nb);
+  const nb = document.querySelector(".nav-item[onclick*=\"'visits'\"]");
+  if(nb) switchTab('visits', nb);
   const searchEl = document.getElementById('search');
   if(searchEl) searchEl.value = name;
   setTimeout(()=>{
