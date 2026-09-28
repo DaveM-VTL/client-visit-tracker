@@ -3709,55 +3709,24 @@ let showingArchived = false;
 let nextId=58, currentTab='visits', editingId=null;
 
 function getIPStatus(c){
-  // "Last in-person contact" now pulls from every source that counts as an in-person
-  // touch — the two legacy date slots, any Formal/Ad hoc entry in the visit log, and
-  // any completed TBR (a TBR counts as an in-person visit) — not just the two slots.
+  // In-person cadence: once a year. "Last in-person contact" pulls from every source
+  // that counts as an in-person touch — the two legacy date slots, any Formal/Ad hoc
+  // entry in the visit log, and any completed TBR (a TBR counts as an in-person visit).
   const mostRecent = lastInPersonDate(c);
-  if(!mostRecent)return{label:'Not yet visited',cls:'not-visited',days:null,nextDue:null};
-  const next=addDays(mostRecent,182);
-  const d=daysFrom(next);
-  if(d<0)return{label:'Overdue',cls:'overdue',days:d,nextDue:next};
-  if(d<=30)return{label:'Due soon',cls:'due-soon',days:d,nextDue:next};
-  return{label:'On track',cls:'on-track',days:d,nextDue:next};
+  return cadenceItem(mostRecent, 365, 60, 'Not yet visited');
 }
-function getPhoneStatus(c){
-  const p=phoneData[c.name]||{};
-  // Any logged "Phone" visit-log entry counts as a completed phone contact too —
-  // not just the two formal ph1c/ph2c slots — so ongoing ad hoc calls clear "Overdue".
-  const mostRecent = lastPhoneContactDate(c);
-
-  if(!p.ph1 && !p.ph2 && !mostRecent) return {label:'Not scheduled', cls:'not-scheduled'};
-
-  if(mostRecent){
-    // A formally scheduled second visit that's now overdue still takes priority over
-    // "Completed", so the formal schedule keeps being tracked even once ad hoc calls exist.
-    if(p.ph1c && p.ph2 && !p.ph2c){
-      const d2=daysFrom(new Date(p.ph2));
-      return d2<0?{label:'Visit 2 overdue',cls:'overdue',days:d2,nextDue:parseDate(p.ph2)}:{label:'Visit 2 pending',cls:'pending',days:d2,nextDue:parseDate(p.ph2)};
-    }
-    const next=addDays(mostRecent,182);
-    const d=daysFrom(next);
-    if(d<0)return{label:'Overdue',cls:'overdue',days:d,nextDue:next};
-    return{label:'Completed',cls:'completed',days:d,nextDue:next};
-  }
-
-  if(p.ph1){const d=daysFrom(new Date(p.ph1));return d<0?{label:'Visit 1 overdue',cls:'overdue'}:{label:'Visit 1 pending',cls:'pending'};}
-  return{label:'Not scheduled',cls:'not-scheduled'};
-}
-// ── Combined Visits tab (in-person + phone merged into one view) ──
-// Normalizes the richer per-status vocabulary (not-visited/pending/completed/not-scheduled)
-// down to the same 3-color scale used everywhere else, so the two can sit side by side.
-function chipClsFor(st){
-  if(st.cls==='overdue' || st.cls==='not-visited') return 'overdue';
-  if(st.cls==='due-soon' || st.cls==='pending' || st.cls==='not-scheduled') return 'due-soon';
-  return 'on-track'; // on-track, completed
+function getContactStatus(c){
+  // Monthly cadence: SOME contact — phone call, in-person visit, or TBR — at least once
+  // a month. An in-person visit this month fully satisfies this; no separate phone call
+  // is required on top of it. This is deliberately not "phone-only."
+  const mostRecent = lastAnyContactDate(c);
+  return cadenceItem(mostRecent, 30, 7, 'No contact yet');
 }
 function combinedVisitStatus(c){
-  const ip = getIPStatus(c), ph = getPhoneStatus(c);
-  const ipCls = chipClsFor(ip), phCls = chipClsFor(ph);
+  const ip = getIPStatus(c), ph = getContactStatus(c);
   const rank = {overdue:2, 'due-soon':1, 'on-track':0};
-  const worstCls = rank[ipCls] >= rank[phCls] ? ipCls : phCls;
-  return {ip, ph, ipCls, phCls, worstCls};
+  const worstCls = rank[ip.cls] >= rank[ph.cls] ? ip.cls : ph.cls;
+  return {ip, ph, ipCls:ip.cls, phCls:ph.cls, worstCls};
 }
 function visitChip(icon, label, cls, tip){
   return `<span class="cad-chip cad-${cls}"${tip?` title="${tip}"`:''}>${icon} ${label}</span>`;
@@ -4137,7 +4106,7 @@ function renderCards(rows){
       const ipDue = cv.ip.nextDue ? fmt(cv.ip.nextDue) : '—';
       const phDue = cv.ph.nextDue ? fmt(cv.ph.nextDue) : '—';
       const schedBadge = c.scheduledVisit ? ` <span style="display:inline-block;margin-left:6px;background:#f0e8ff;color:#5a2da0;font-family:var(--mono);font-size:9px;font-weight:600;padding:1px 6px;border-radius:3px;text-transform:uppercase;letter-spacing:0.03em;">📅 ${fmt(c.scheduledVisit)}</span>` : '';
-      summary = `<div class="card-due">📍 ${ipDue} &nbsp;·&nbsp; 📞 ${phDue}${schedBadge}</div>`;
+      summary = `<div class="card-due">📍 ${ipDue} &nbsp;·&nbsp; 💬 ${phDue}${schedBadge}</div>`;
       const allLog = getVisitLog(c.name).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
       const logRows = allLog.length
         ? allLog.map(v=>{
@@ -4146,8 +4115,8 @@ function renderCards(rows){
           }).join('')
         : '<div class="card-detail-row"><span class="card-detail-label">History</span><span class="card-detail-val">None logged yet</span></div>';
       details = `
-        <div class="card-detail-row"><span class="card-detail-label">Most recent visit</span><span class="card-detail-val">${fmt(lastInPersonDate(c))}</span></div>
-        <div class="card-detail-row"><span class="card-detail-label">Last phone contact</span><span class="card-detail-val">${fmt(lastPhoneContactDate(c))}</span></div>
+        <div class="card-detail-row"><span class="card-detail-label">Most recent in-person visit</span><span class="card-detail-val">${fmt(lastInPersonDate(c))}</span></div>
+        <div class="card-detail-row"><span class="card-detail-label">Most recent contact (any kind)</span><span class="card-detail-val">${fmt(lastAnyContactDate(c))}</span></div>
         <div class="card-detail-row"><span class="card-detail-label">Legacy visit slots 1 / 2</span><span class="card-detail-val" style="color:var(--text-muted);">${fmt(c.lastVisit)} / ${fmt(c.lastVisit2)}</span></div>
         <div class="card-detail-row"><span class="card-detail-label">Legacy phone slots 1 / 2</span><span class="card-detail-val" style="color:var(--text-muted);">${fmt(p.ph1)} / ${fmt(p.ph2)}</span></div>
         ${c.scheduledVisit ? `<div class="card-detail-row"><span class="card-detail-label">Scheduled visit</span><span class="card-detail-val" style="color:#5a2da0;font-weight:600;">📅 ${fmt(c.scheduledVisit)}</span></div>` : ''}
@@ -4156,7 +4125,7 @@ function renderCards(rows){
         <div class="card-detail-row" style="margin-top:6px;"><span class="card-detail-label" style="font-weight:600;">All logged contacts (${allLog.length})</span><span class="card-detail-val"></span></div>
         ${logRows}
         ${cardContacts(c.name)}`;
-      const stBadge = `<div style="display:flex;flex-direction:column;gap:3px;align-items:flex-end;">${badge(cv.ipCls,'📍 '+cv.ip.label)}${badge(cv.phCls,'📞 '+cv.ph.label)}</div>`;
+      const stBadge = `<div style="display:flex;flex-direction:column;gap:3px;align-items:flex-end;">${badge(cv.ipCls,'📍 '+cv.ip.label)}${badge(cv.phCls,'💬 '+cv.ph.label)}</div>`;
       return cardHTML(c, color, cv.ip, summary, details, note, noteEsc, stBadge);
     } else if(currentTab==='tbr'){
       const t = tbrData[c.name]||{};
@@ -4347,21 +4316,21 @@ function render(){
   let html='';
   if(currentTab==='visits'){
     const customThCells = getCustomCols('visits').map(col=>`<th class="th-custom">${col.label}</th>`).join('');
-    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>In-person</th><th>Phone</th><th>Scheduled</th><th>Visits</th><th>Notes</th>${customThCells}${renderAddColTh('visits')}<th></th></tr></thead><tbody>`;
+    html=`<table><thead><tr><th>#</th><th>Client</th><th>City</th><th>In-person <span style="font-weight:400;opacity:0.6;">(yearly)</span></th><th>Contact <span style="font-weight:400;opacity:0.6;">(monthly)</span></th><th>Scheduled</th><th>Visits</th><th>Notes</th>${customThCells}${renderAddColTh('visits')}<th></th></tr></thead><tbody>`;
     rows.forEach((c,i)=>{
       const cv = combinedVisitStatus(c);
       const color=getClientColor(c.name);
       const note=notesData[c.name]||'';
       const isExp=expandedRows.has(c.id);
       const schedCell = renderScheduledVisitBadge(c);
-      const ipTip = `Most recent: ${fmt(lastInPersonDate(c))||'never'}${cv.ip.nextDue?' · Next due '+fmt(cv.ip.nextDue):''}`;
-      const phTip = `Last contact: ${fmt(lastPhoneContactDate(c))||'never'}${cv.ph.nextDue?' · Next due '+fmt(cv.ph.nextDue):''}`;
+      const ipTip = `Most recent in-person visit (or TBR): ${fmt(lastInPersonDate(c))||'never'}${cv.ip.nextDue?' · Next due '+fmt(cv.ip.nextDue):''}`;
+      const phTip = `Most recent contact of any kind — phone, in-person, or TBR — counts: ${fmt(lastAnyContactDate(c))||'never'}${cv.ph.nextDue?' · Next due '+fmt(cv.ph.nextDue):''}`;
       html+=`<tr class="has-color client-main-row${isExp?' row-expanded':''}" style="--client-color:${color}" onclick="toggleRow(${c.id})">
         <td class="td-num">${i+1}</td>
         <td class="td-name"><span class="expand-chevron">▶</span>${nameCell(c)}</td>
         <td class="td-city">${c.city}</td>
         <td>${visitChip('📍',cv.ip.label,cv.ipCls,ipTip)}</td>
-        <td>${visitChip('📞',cv.ph.label,cv.phCls,phTip)}</td>
+        <td>${visitChip('💬',cv.ph.label,cv.phCls,phTip)}</td>
         <td>${schedCell}</td>
         <td>${renderVisitCountBadge(c.name)}</td>
         <td class="notes-cell" onclick="event.stopPropagation()">${renderNote(c.name,note)}</td>
@@ -5020,8 +4989,9 @@ function exportCSV(){
   sections.push(row([
     'Client Name','Address','City','Main Phone','Website','Scheduled Visit',
     ...contactHeaders,
-    'Last In-Person Visit 1','Last In-Person Visit 2','Most Recent In-Person Contact (incl. ad hoc/TBR)',
-    'Phone Visit 1 Scheduled','Phone Visit 2 Scheduled','Phone Visit 1 Completed','Phone Visit 2 Completed','Most Recent Phone Contact (incl. logged calls)',
+    'Last In-Person Visit 1','Last In-Person Visit 2','Most Recent In-Person Contact (yearly cadence — incl. ad hoc/TBR)',
+    'Phone Visit 1 Scheduled','Phone Visit 2 Scheduled','Phone Visit 1 Completed','Phone Visit 2 Completed','Most Recent Phone-Only Contact',
+    'Most Recent Contact — Any Kind (monthly cadence)',
     'Visits Logged (Formal/Ad hoc/Phone)',
     'TBR Twice/Year','TBR History (scheduled/completed pairs)',
     'Review Request Sent','Review Request Person','Review Date','Reviewer Name',
@@ -5048,6 +5018,7 @@ function exportCSV(){
       ...ctFields,
       fmtD(c.lastVisit), fmtD(c.lastVisit2), fmtD(lastInPersonDate(c)),
       fmtD(p.ph1), fmtD(p.ph2), fmtD(p.ph1c), fmtD(p.ph2c), fmtD(lastPhoneContactDate(c)),
+      fmtD(lastAnyContactDate(c)),
       `${vc.formal}F / ${vc.adhoc}A / ${vc.phone}P`,
       t.twice||'', tbrEntries(c.name).map(e=>(e.scheduled||'?')+(e.completed?' (done '+e.completed+')':' (not done, '+(e.confirmed?'confirmed':'preliminary')+')')).join('; '),
       fmtD(r.sent), r.person||'', fmtD(r.reviewed), r.reviewer||'',
@@ -5380,24 +5351,24 @@ function getDashboardItems(){
       });
     }
 
-    // Phone visit
-    const ph = getPhoneStatus(c);
-    if(ph.cls !== 'completed' && ph.cls !== 'on-track'){
-      let urgency = 0;
-      const p = phoneData[c.name] || {};
+    // Monthly contact — phone, in-person, or TBR; an in-person visit this month
+    // already satisfies this, so it only shows up when NOTHING has happened recently.
+    const ph = getContactStatus(c);
+    if(ph.cls !== 'on-track'){
+      let urgency;
       if(ph.cls === 'overdue'){
-        const ref = p.ph1c ? p.ph2 : p.ph1;
-        const d = ref ? Math.abs(daysFrom(ref)) : 0;
-        urgency = 2800 + d;
-      } else if(ph.cls === 'pending'){ urgency = 800; }
-      else if(ph.cls === 'not-scheduled'){ urgency = 400; }
-      else { urgency = 600; }
+        const daysVal = ph.days !== null ? Math.abs(ph.days) : 999;
+        urgency = 2800 + daysVal;
+      } else { // due-soon
+        const daysVal = ph.days !== null ? ph.days : 0;
+        urgency = 900 + (7 - daysVal);
+      }
       items.push({
         client: c.name, city: c.city,
-        type: 'Phone', icon: '📞',
+        type: 'Contact', icon: '💬',
         label: ph.label,
         cls: ph.cls,
-        detail: p.ph1 ? 'Visit 1: ' + fmt(p.ph1) : 'Not scheduled',
+        detail: ph.nextDue ? 'Due ' + fmt(ph.nextDue) : 'No contact yet',
         urgency,
         tabTarget: 'visits'
       });
