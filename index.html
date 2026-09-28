@@ -432,6 +432,18 @@
   .cadence-filter-btn.active { background:var(--text); color:#fff; border-color:var(--text); }
   .cadence-search { flex:1; min-width:140px; max-width:260px; padding:6px 10px; border:1px solid var(--border); border-radius:var(--radius); font-family:var(--sans); font-size:12px; background:var(--surface); color:var(--text); }
   .cadence-legend { font-family:var(--mono); font-size:10px; color:var(--text-muted); padding:0 20px 10px; }
+  .cadence-view-toggle { display:flex; gap:4px; margin-left:auto; }
+  .cadence-view-btn { font-family:var(--mono); font-size:11px; font-weight:600; padding:6px 12px; border-radius:var(--radius); border:1px solid var(--border); background:var(--surface); color:var(--text-muted); cursor:pointer; }
+  .cadence-view-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .cadence-chart-legend { display:flex; align-items:center; padding:2px 0 10px; }
+  .cadence-bar-row { display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--border); cursor:pointer; }
+  .cadence-bar-row:hover { background:var(--surface2); }
+  .cadence-bar-label { width:160px; flex:none; font-family:var(--sans); font-size:12px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .cadence-bar-track { position:relative; flex:1; height:14px; background:var(--surface2); border-radius:3px; overflow:hidden; }
+  .cadence-bar-fill { position:absolute; left:0; top:0; bottom:0; border-radius:3px; transition:width 0.2s; }
+  .cadence-bar-due-line { position:absolute; left:50%; top:-3px; bottom:-3px; width:1px; background:var(--text-muted); opacity:0.6; z-index:1; }
+  .cadence-bar-meta { width:130px; flex:none; font-family:var(--mono); font-size:10px; text-align:right; color:var(--text-muted); white-space:nowrap; }
+  @media (max-width:768px){ .cadence-bar-label{ width:92px; font-size:11px; } .cadence-bar-meta{ width:92px; font-size:9px; } }
   .tbr-q-geo { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:4px; }
   .tbr-q-geo-badge { font-size:10px; font-family:var(--mono); padding:2px 7px; border-radius:10px; background:var(--surface2); color:var(--text-muted); }
 
@@ -3149,6 +3161,10 @@
           <button class="cadence-filter-btn" data-f="overdue" onclick="cadenceSetFilter('overdue')">Overdue <span id="cad-cnt-overdue">—</span></button>
           <button class="cadence-filter-btn" data-f="due-soon" onclick="cadenceSetFilter('due-soon')">Due soon <span id="cad-cnt-due-soon">—</span></button>
           <button class="cadence-filter-btn" data-f="on-track" onclick="cadenceSetFilter('on-track')">On track <span id="cad-cnt-on-track">—</span></button>
+          <div class="cadence-view-toggle">
+            <button class="cadence-view-btn active" data-v="list" onclick="cadenceSetViewMode('list')">List</button>
+            <button class="cadence-view-btn" data-v="chart" onclick="cadenceSetViewMode('chart')">Chart</button>
+          </div>
         </div>
         <div class="cadence-legend">Sorted by urgency — most overdue first. Tap a client to open their visit log. Contact = any touchpoint, due monthly. In-person = visit or TBR, due yearly. TBR = due yearly.</div>
         <div id="cadence-list" style="padding:4px 20px 24px;"></div>
@@ -7427,10 +7443,16 @@ function aiSuggest(text){ document.getElementById('ai-input').value=text; sendAi
 // -- Cadence tab --
 let cadenceFilter = 'all';
 let cadenceQuery = '';
+let cadenceViewMode = 'list';
 
 function cadenceSetFilter(f){
   cadenceFilter = f;
   document.querySelectorAll('.cadence-filter-btn').forEach(b=>b.classList.toggle('active', b.dataset.f===f));
+  renderCadenceView();
+}
+function cadenceSetViewMode(m){
+  cadenceViewMode = m;
+  document.querySelectorAll('.cadence-view-btn').forEach(b=>b.classList.toggle('active', b.dataset.v===m));
   renderCadenceView();
 }
 function cadenceSetSearch(v){
@@ -7469,6 +7491,41 @@ function cadenceClassSet(c){
   const cad = getCadence(c);
   return [cad.contact.cls, cad.inperson.cls, cad.tbr.cls];
 }
+// -- Bar chart: how far into (or past) its required cycle each client's WORST
+// category is. 0% = just contacted, 100% = due today, 200%+ = badly overdue.
+function cadencePercent(item, intervalDays){
+  if(item.lastDate === null) return 200;
+  return Math.max(0, 100 - (item.days / intervalDays * 100));
+}
+function cadenceWorst(c){
+  const cad = getCadence(c);
+  const cats = [
+    {label:'Contact', item:cad.contact, interval:30},
+    {label:'In-person', item:cad.inperson, interval:365},
+    {label:'TBR', item:cad.tbr, interval:365},
+  ];
+  let worst = null;
+  cats.forEach(cat=>{
+    const pct = cadencePercent(cat.item, cat.interval);
+    if(!worst || pct > worst.pct) worst = {label:cat.label, item:cat.item, pct};
+  });
+  return worst;
+}
+function cadenceBarRowHtml(c){
+  const w = cadenceWorst(c);
+  const widthPct = Math.min(w.pct,200)/200*100;
+  const color = w.item.cls==='overdue' ? 'var(--danger)' : w.item.cls==='due-soon' ? 'var(--warning)' : 'var(--success)';
+  const metaText = w.item.lastDate===null ? 'never · '+w.label : (w.item.days<0 ? Math.abs(w.item.days)+'d overdue · '+w.label : w.item.days===0 ? 'due today · '+w.label : w.item.days+'d left · '+w.label);
+  const nameEsc = c.name.replace(/'/g,"\\'");
+  return `<div class="cadence-bar-row" onclick="cadenceJumpToClient('${nameEsc}')">
+    <div class="cadence-bar-label">${c.name}</div>
+    <div class="cadence-bar-track">
+      <div class="cadence-bar-due-line"></div>
+      <div class="cadence-bar-fill" style="width:${widthPct}%;background:${color};"></div>
+    </div>
+    <div class="cadence-bar-meta">${metaText}</div>
+  </div>`;
+}
 function renderCadenceView(){
   const base = clients.filter(c=>{
     if(!cadenceQuery) return true;
@@ -7502,7 +7559,12 @@ function renderCadenceView(){
   const wrap = document.getElementById('cadence-list');
   if(!wrap) return;
   if(!list.length){ wrap.innerHTML = '<div class="empty-state"><p>No clients match.</p></div>'; return; }
-  wrap.innerHTML = list.map((c,i)=>cadenceCardHtml(c,i+1)).join('');
+  if(cadenceViewMode === 'chart'){
+    wrap.innerHTML = `<div class="cadence-chart-legend"><span style="width:160px;flex:none;"></span><span style="flex:1;text-align:center;font-family:var(--mono);font-size:10px;color:var(--text-muted);">← more overdue&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;due today&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;more buffer →</span><span style="width:130px;flex:none;"></span></div>`
+      + list.map(c=>cadenceBarRowHtml(c)).join('');
+  } else {
+    wrap.innerHTML = list.map((c,i)=>cadenceCardHtml(c,i+1)).join('');
+  }
 }
 
 // -- TBR Priority Queue --
