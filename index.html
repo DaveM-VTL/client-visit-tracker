@@ -5876,6 +5876,8 @@ async function saveClientToSupabase(){
     if(editingId){ const i = clients.findIndex(c => c.id === editingId); clients[i] = { ...clients[i], ...data }; }
     else { clients.push(data); nextId++; clients.sort((a,b) => a.name.localeCompare(b.name)); }
 
+    await syncTbrVisitLog(name); // completed TBR => matching Formal visit in the log
+
     closeModal();
     render();
     showStatus('Saved!', true);
@@ -7682,7 +7684,7 @@ function tbrQuickConfirm(name) {
   updateCounts();
 }
 
-function tbrMarkDone(name) {
+async function tbrMarkDone(name) {
   var today = fmtISO(TODAY);
   if(!tbrData[name] || !Array.isArray(tbrData[name].entries)) return;
   // Complete the earliest not-yet-completed entry (upcoming or missed); if none, log a new one.
@@ -7690,10 +7692,60 @@ function tbrMarkDone(name) {
     .sort(function(a,b){ return a.scheduled.localeCompare(b.scheduled); });
   if(candidates.length){ candidates[0].completed = today; }
   else{ tbrData[name].entries.push({ scheduled: today, completed: today }); }
-  saveTbrToSupabase(name);
+  await saveTbrToSupabase(name);
+  await syncTbrVisitLog(name);
   renderTbrQueue();
   renderStats();
   updateCounts();
+}
+
+// ── Auto-log a Formal visit whenever a TBR is marked completed ──
+// A completed TBR counts as an in-person visit, so each completed date gets a matching
+// Formal entry in the visit log. Auto entries use a deterministic id ('tbr_<date>_<client>')
+// so they can be updated/removed if the completed date changes. If a Formal or Ad hoc visit
+// is already logged on that date, nothing is added (no doubles).
+function tbrAutoVisitId(name, date){
+  return 'tbr_' + date + '_' + name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,40);
+}
+async function syncTbrVisitLog(name){
+  try {
+    const c = clients.find(x => x.name === name);
+    if(!c) return;
+    if(!visitLog[name]) visitLog[name] = [];
+    const doneDates = new Set(tbrEntries(name).map(e => e.completed).filter(Boolean));
+    let changed = false;
+
+    // Remove auto entries whose TBR completed date is gone or changed
+    const stale = visitLog[name].filter(v => String(v.id).startsWith('tbr_') && !doneDates.has(v.date));
+    for(const v of stale){
+      visitLog[name] = visitLog[name].filter(x => x.id !== v.id);
+      try { await sbDelete('visit_log', 'id', v.id); } catch(e){ console.warn('auto TBR visit delete failed', e); }
+      changed = true;
+    }
+
+    // Add a Formal visit for each completed TBR date that isn't already covered
+    for(const date of doneDates){
+      const covered = visitLog[name].some(v => v.date === date && (v.type === 'formal' || v.type === 'adhoc'));
+      if(covered) continue;
+      const id = tbrAutoVisitId(name, date);
+      const entry = {id, date, type:'formal', note:'TBR completed (auto-logged)', nextDue:null};
+      visitLog[name].push(entry);
+      try {
+        await sbUpsert('visit_log', {id, client_name:name, date, type:'formal', note:entry.note, next_due:null});
+      } catch(e){
+        console.warn('auto TBR visit save failed', e);
+        visitLog[name] = visitLog[name].filter(x => x.id !== id); // roll back local state
+        continue;
+      }
+      changed = true;
+      // Keep the client's legacy lastVisit in step with Formal visits (only if newer)
+      if(!c.lastVisit || date > c.lastVisit){
+        c.lastVisit = date;
+        try { await sbUpsert('clients', {id: c.id, name: c.name, address: c.address, city: c.city, last_visit: date, last_visit2: c.lastVisit2 || null}); } catch(e){}
+      }
+    }
+    return changed;
+  } catch(e){ console.warn('syncTbrVisitLog failed', e); }
 }
 
 async function saveTbrToSupabase(name) {
